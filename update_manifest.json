@@ -1,14 +1,14 @@
 {
-  "latestVersion": "0.6.0",
-  "latestVersionCode": 60,
+  "latestVersion": "0.6.1",
+  "latestVersionCode": 61,
   "releaseDate": "2026-10-02",
-  "releaseNotes": "Fix direct APK installation on download, show recents call log on dialpad open in recents tab, and multi-vendor VoWiFi / Wi-Fi Calling detection.",
+  "releaseNotes": "Fix incoming dial/call intents from external apps like inDrive, Uber, etc., with robust phone number sanitization and reactive dialpad state.",
   "fullApk": {
-    "fileName": "rill-phone-60-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-60-foss-release.apk",
-    "sizeBytes": 7789007,
-    "sizeFormatted": "7.43 MB",
-    "sha256": "3f3a2e8875c62b55101103bc93eef47968d139a2e1caa9e5322316518aa02283"
+    "fileName": "rill-phone-61-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-61-foss-release.apk",
+    "sizeBytes": 7805503,
+    "sizeFormatted": "7.44 MB",
+    "sha256": "2378fd262106362e2715e6742295bdc30106393e945ec0f3b6a1742ee70980e7"
   },
   "patches": []
 }

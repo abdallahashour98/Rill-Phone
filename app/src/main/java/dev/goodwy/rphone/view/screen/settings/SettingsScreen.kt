@@ -623,18 +623,6 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
             )
         ) { navigator.navigate(PrivateContactsScreenDestination) },
         SettingsSearchEntry(
-            headline = stringResource(R.string.support_development),
-            supporting = stringResource(R.string.support_development_description3),
-            leadingIcon = Icons.Rounded.VolunteerActivism,
-            iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
-            iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
-            options = listOf(
-                stringResource(R.string.unlock_all_features),
-                stringResource(R.string.support_project_to_unlock),
-                stringResource(R.string.your_donation_ensures),
-            )
-        ) { navigator.navigate(DonateScreenDestination) },
-        SettingsSearchEntry(
             headline = stringResource(R.string.create_backup),
             supporting = stringResource(R.string.create_backup_subtitle),
             leadingIcon = Icons.Rounded.Backup,
@@ -852,19 +840,6 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
                         )
                     }
                 } else {
-                    if (!isPro && proCheckDone) {
-                        item {
-                            RillAnimatedSection(delayMs = 30L) {
-                                RillExpressiveCard {
-                                    SupportProjectItem(
-                                        modifier = Modifier.shake(enabledShake) { enabledShake = false },
-                                        onClick = { navigator.navigate(DonateScreenDestination) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
                     // ── Appearance ───────────────────────────────────────────────────
                     item {
                         RillAnimatedSection(delayMs = 60L) {
@@ -1041,16 +1016,6 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
                             Column {
                                 SettingsSectionLabel(stringResource(R.string.other))
                                 RillExpressiveCard {
-                                    if (isPro) {
-                                        RillListItem(
-                                            headline = stringResource(R.string.support_development),
-                                            supporting = stringResource(R.string.support_development_description3),
-                                            leadingIcon = Icons.Rounded.VolunteerActivism,
-                                            iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
-                                            iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
-                                            trailingIcon = Icons.Default.ChevronRight,
-                                            onClick = { navigator.navigate(DonateScreenDestination) })
-                                    }
                                     val isFoss = BuildConfig.FLAVOR == "foss"
                                     if (isFoss) RillListItem(
                                         headline = stringResource(R.string.updates),

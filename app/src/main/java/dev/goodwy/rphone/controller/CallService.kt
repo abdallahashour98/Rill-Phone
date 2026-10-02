@@ -83,8 +83,13 @@ class CallService : InCallService() {
             }
         }
         serviceScope.launch {
-            callStateManager.callerMetadataMap.collect {
-                callRepository.currentCallSession.value?.call?.let { currentCall ->
+            var lastMetadata: dev.goodwy.rphone.modal.data.CallerMetadata? = null
+            callStateManager.callerMetadataMap.collect { map ->
+                val currentCall = callRepository.currentCallSession.value?.call ?: return@collect
+                val number = currentCall.details?.handle?.schemeSpecificPart?.let { Uri.decode(it) } ?: ""
+                val currentMeta = map[number]
+                if (currentMeta != null && currentMeta != lastMetadata) {
+                    lastMetadata = currentMeta
                     updateNotification(currentCall)
                 }
             }
@@ -196,7 +201,8 @@ class CallService : InCallService() {
 //                    val photoUri = getContactPhotoFromCache(number)
 //                    notificationManager.showMissedCallNotification(call, contactName, photoUri)
 
-                    val metadata = withTimeoutOrNull(2000L.milliseconds) {
+                    val cachedMeta = callStateManager.getMetadata(number)
+                    val metadata = cachedMeta ?: withTimeoutOrNull(1000L.milliseconds) {
                         callStateManager.onNewCallReceived(number, null)
                         callStateManager.callerMetadataMap.first { map ->
                             map.containsKey(number)
@@ -212,6 +218,7 @@ class CallService : InCallService() {
 
     private suspend fun isNumberBlocked(number: String): Boolean = withContext(Dispatchers.IO) {
         if (number.isBlank()) return@withContext false
+        if (!dev.goodwy.rphone.controller.util.BlockedNumbersManager.canBlockNumbers(this@CallService)) return@withContext false
         return@withContext try {
             BlockedNumberContract.isBlocked(this@CallService, number)
         } catch (_: Exception) {
@@ -367,6 +374,21 @@ class CallService : InCallService() {
         // Update call state synchronously so CallActivity sees active calls immediately
         updateCallState()
 
+        val isIncoming = call.state == Call.STATE_RINGING
+        if (!isIncoming) {
+            // Outgoing call: display CallActivity immediately with zero blocking or delay!
+            updateNotification(call)
+            val intent = Intent(this@CallService, CallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            try {
+                startActivity(intent)
+            } catch (_: Exception) {
+            }
+            return
+        }
+
+        // Incoming call: check block status efficiently
         serviceScope.launch {
             if (isNumberBlocked(number)) {
                 handleBlockedCall(call, number)
@@ -376,7 +398,7 @@ class CallService : InCallService() {
             updateNotification(call)
 
             val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
-            if (call.state != Call.STATE_RINGING || fullscreenCalls) {
+            if (fullscreenCalls) {
                 val intent = Intent(this@CallService, CallActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 }

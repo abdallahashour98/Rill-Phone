@@ -718,4 +718,16 @@
     <string name="most_talked_persons">الأشخاص الأكثر تواصلًا</string>
     <string name="no_call_records_this_period">لم يتم العثور على سجلات مكالمات لهذه الفترة</string>
     <string name="total_calls_in_number">%1$s مكالمة (واردة: %2$s، صادرة: %3$s، فائتة: %4$s)</string>
+
+    <!-- Caller UI font sizes & VoWiFi -->
+    <string name="caller_font_size_section">عرض بيانات المتصل</string>
+    <string name="caller_name_size">حجم خط اسم المتصل</string>
+    <string name="caller_name_size_subtitle">تعديل حجم خط اسم جهة الاتصال أثناء المكالمة</string>
+    <string name="caller_number_size">حجم خط رقم الهاتف</string>
+    <string name="caller_number_size_subtitle">تعديل حجم خط رقم الهاتف أثناء المكالمة</string>
+    <string name="size_normal">عادي</string>
+    <string name="size_large">كبير</string>
+    <string name="size_extra_large">كبير جداً</string>
+    <string name="wifi_calling">مكالمات عبر الواي فاي (VoWiFi)</string>
+    <string name="wifi_calling_subtitle">إجراء واستقبال المكالمات عبر شبكة Wi-Fi عند ضعف شبكة المحمول</string>
 </resources>

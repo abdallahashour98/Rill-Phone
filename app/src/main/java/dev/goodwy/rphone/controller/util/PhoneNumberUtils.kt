@@ -39,7 +39,7 @@ fun deduplicateNumbers(numbers: List<String>): List<String> {
  * representations of the same number ("+1 (555) 123-4567" vs "5551234567") can be compared.
  */
 fun normalizeNumberDigits(number: String): String =
-    number.filter { it.isDigit() || it == '+' }
+    number.normalizeDigits().filter { it.isDigit() || it == '+' }
 
 /**
  * Loose equality check for two phone numbers: compares the last 9 digits (enough to avoid

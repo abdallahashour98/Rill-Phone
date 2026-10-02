@@ -39,11 +39,20 @@ class CallStateManager(private val getCallerNameUseCase: GetCallerNameUseCase) {
         }
     }
     
+    fun getMetadata(number: String): CallerMetadata? = _callerMetadataMap.value[number]
+
     fun onCallEnded(number: String? = null) {
+        // Keep metadata retained in the bounded cache (MAX_ENTRIES = 50)
+        // so that CallActivity disconnect animations and missed call notifications
+        // can instantly display caller details without re-querying.
         if (number == null) {
-            _callerMetadataMap.value = emptyMap()
-        } else {
-            _callerMetadataMap.update { current -> current - number }
+            // Only prune if cache exceeds limit
+            if (_callerMetadataMap.value.size > MAX_ENTRIES) {
+                _callerMetadataMap.update { current ->
+                    val keysToRemove = current.keys.take(current.size - MAX_ENTRIES)
+                    current - keysToRemove.toSet()
+                }
+            }
         }
     }
 }

@@ -15,7 +15,14 @@ import dev.goodwy.rphone.modal.repository.ContactsRepository
 import dev.goodwy.rphone.private_only
 import dev.goodwy.rphone.view.screen.settings.NumberChangeExample
 import dev.goodwy.rphone.view.screen.settings.StandardizeStats
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.ContactsContract
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +48,31 @@ class ContactsViewModel(
     private val _allContactsFull = MutableStateFlow<List<Contact>>(emptyList())
     val allContactsFull: StateFlow<List<Contact>> = _allContactsFull.asStateFlow()
     private var isFullContactsLoaded = false
+
+    private var isObserverRegistered = false
+    private var contactsDebounceJob: Job? = null
+    private val contactsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            contactsDebounceJob?.cancel()
+            contactsDebounceJob = viewModelScope.launch {
+                delay(500.milliseconds)
+                refreshContacts()
+            }
+        }
+    }
+
+    private fun registerObserverIfNeeded() {
+        if (!isObserverRegistered) {
+            try {
+                getApplication<Application>().contentResolver.registerContentObserver(
+                    ContactsContract.Contacts.CONTENT_URI,
+                    true,
+                    contactsObserver
+                )
+                isObserverRegistered = true
+            } catch (_: Exception) {}
+        }
+    }
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -135,8 +167,12 @@ class ContactsViewModel(
             } else {
                 it.givenName.ifBlank { it.displayName }
             }
-            val firstChar = nameToUse.firstOrNull()?.uppercaseChar() ?: '#'
-            if (firstChar.isLetter()) firstChar else '#'
+            val firstChar = nameToUse.trim().firstOrNull()?.uppercaseChar() ?: '#'
+            val normalizedChar = when (firstChar) {
+                'أ', 'إ', 'آ', 'ٱ' -> 'ا'
+                else -> firstChar
+            }
+            if (normalizedChar.isLetter()) normalizedChar else '#'
         }.toMutableMap()
 
         val finalMap = linkedMapOf<Char, List<Contact>>()
@@ -153,9 +189,11 @@ class ContactsViewModel(
 
     init {
         fetchAccounts()
+        registerObserverIfNeeded()
     }
 
     fun fetchContacts() {
+        registerObserverIfNeeded()
         viewModelScope.launch {
             if (_allContacts.value.isEmpty()) {
                 _isLoading.value = true
@@ -166,8 +204,8 @@ class ContactsViewModel(
         }
     }
 
-    fun fetchContactsFull() {
-        if (!isFullContactsLoaded) {
+    fun fetchContactsFull(force: Boolean = false) {
+        if (!isFullContactsLoaded || force) {
             isFullContactsLoaded = true
             viewModelScope.launch {
                 val fullContacts = contactsRepo.getContactsFull()
@@ -522,10 +560,14 @@ class ContactsViewModel(
         }
     }
 
-    private fun refreshContacts() {
+    fun refreshContacts() {
         viewModelScope.launch {
             val freshContacts = contactsRepo.getContacts()
             _allContacts.value = freshContacts
+            if (isFullContactsLoaded) {
+                val fullContacts = contactsRepo.getContactsFull()
+                _allContactsFull.value = fullContacts
+            }
         }
     }
 
@@ -576,5 +618,16 @@ class ContactsViewModel(
 
     suspend fun dumpContact(contactId: String): String {
         return contactsRepo.dumpContact(contactId)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        contactsDebounceJob?.cancel()
+        if (isObserverRegistered) {
+            try {
+                getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver)
+                isObserverRegistered = false
+            } catch (_: Exception) {}
+        }
     }
 }

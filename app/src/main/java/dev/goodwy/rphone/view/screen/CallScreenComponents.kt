@@ -686,7 +686,7 @@ fun HorizontalSwipeToAnswer(
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                    .offset { IntOffset((if (isRtl) -offsetX.value else offsetX.value).roundToInt(), 0) }
                     .graphicsLayer {
                         val idleFactor = (1f - dragNormal.value * 5f).coerceIn(0f, 1f)
                         scaleX = 1f + (handlePulseScale - 1f) * idleFactor
@@ -1161,14 +1161,9 @@ fun IPhoneSwipeToAnswer(
                 shadowElevation = 0.dp,
                 tonalElevation  = 0.dp,
                 modifier = Modifier
+                    .width(trackWidth)
                     .height(trackHeight)
-                    .align(Alignment.CenterEnd)
-                    .width(
-                        with(localDensity) {
-                            val width = trackWidthPx - offsetX.value
-                            width.coerceAtLeast(0f).toDp()
-                        }
-                    )
+                    .align(Alignment.Center)
                     .then(
                         if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
                             backdrop = globalBackdrop,
@@ -1219,7 +1214,7 @@ fun IPhoneSwipeToAnswer(
             Box(
                 modifier = Modifier
                     .padding(start = handlePadding)
-                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                    .offset { IntOffset((if (isRtl) -offsetX.value else offsetX.value).roundToInt(), 0) }
                     .size(handleSize)
                     .clip(CircleShape)
                     .background(handleBgColor)

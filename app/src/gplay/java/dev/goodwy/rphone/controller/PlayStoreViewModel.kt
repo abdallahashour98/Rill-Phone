@@ -59,10 +59,10 @@ class PlayStoreViewModel (
     private val _isBillingReady = MutableStateFlow(false)
     override val isBillingReady: StateFlow<Boolean> = _isBillingReady.asStateFlow()
 
-    private val _isPro = MutableStateFlow(false)
+    private val _isPro = MutableStateFlow(true)
     override val isPro: StateFlow<Boolean> = _isPro.asStateFlow()
 
-    private val _proCheckDone = MutableStateFlow(false)
+    private val _proCheckDone = MutableStateFlow(true)
     override val proCheckDone: StateFlow<Boolean> = _proCheckDone.asStateFlow()
 
     // We save shopping lists to reload

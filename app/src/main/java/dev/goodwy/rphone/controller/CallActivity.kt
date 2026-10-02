@@ -71,6 +71,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     private val contactsRepo: IContactsRepository by inject()
     private val preferenceManager: PreferenceManager by inject()
     private val callViewModel: CallViewModel by inject()
+    private val callStateManager: CallStateManager by inject()
     private var proximityWakeLock: PowerManager.WakeLock? = null
     private val isFinishingCall = java.util.concurrent.atomic.AtomicBoolean(false)
     private var keyguardDismissRequested = false
@@ -296,8 +297,22 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
             val base = if (isConference) {
                 CallIdentity("", conference, null, null)
             } else {
-                cachedIdentity(number, settingsState)
-                    ?: CallIdentity(number, cnam ?: number.ifEmpty { unknownLabel }, null, null)
+                val cached = cachedIdentity(number, settingsState)
+                if (cached != null) {
+                    cached
+                } else {
+                    val metadata = callStateManager.getMetadata(number)
+                    if (metadata != null) {
+                        CallIdentity(
+                            number = number,
+                            name = metadata.name.ifBlank { cnam ?: number.ifEmpty { unknownLabel } },
+                            photoUri = metadata.photoUri,
+                            backgroundUri = null
+                        )
+                    } else {
+                        CallIdentity(number, cnam ?: number.ifEmpty { unknownLabel }, null, null)
+                    }
+                }
             }
             mutableStateOf(
                 if (base.backgroundUri == null) {
@@ -310,6 +325,20 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
         if (isConference) {
             return identity
+        }
+
+        LaunchedEffect(number) {
+            if (number.isNotEmpty()) {
+                callStateManager.callerMetadataMap.collect { map ->
+                    val meta = map[number] ?: return@collect
+                    if (meta.name.isNotBlank() && meta.name != number) {
+                        identity = identity.copy(
+                            name = meta.name,
+                            photoUri = meta.photoUri ?: identity.photoUri
+                        )
+                    }
+                }
+            }
         }
 
         val displayOrder = preferenceManager.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0)

@@ -292,13 +292,42 @@ class CallNotificationManager(
         notificationManager.notify(number.hashCode(), builder.build())
     }
 
+    private val contactBitmapCache = android.util.LruCache<String, Bitmap>(20)
+
     suspend fun getContactBitmap(photoUri: String?): Bitmap? = withContext(kotlinx.coroutines.Dispatchers.IO) {
-        if (photoUri == null) return@withContext null
+        if (photoUri.isNullOrBlank()) return@withContext null
+        contactBitmapCache.get(photoUri)?.let { return@withContext it }
         try {
             val uri = photoUri.toUri()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BitmapFactory.decodeStream(inputStream)
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
             }
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, options)
+            }
+
+            val targetSize = 256
+            var inSampleSize = 1
+            if (options.outHeight > targetSize || options.outWidth > targetSize) {
+                val halfHeight = options.outHeight / 2
+                val halfWidth = options.outWidth / 2
+                while ((halfHeight / inSampleSize) >= targetSize && (halfWidth / inSampleSize) >= targetSize) {
+                    inSampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+
+            val bitmap = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, decodeOptions)
+            }
+            if (bitmap != null) {
+                contactBitmapCache.put(photoUri, bitmap)
+            }
+            bitmap
         } catch (_: Exception) {
             null
         }

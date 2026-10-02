@@ -353,17 +353,6 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (!isPro && proCheckDone) {
-                    item {
-                        RillAnimatedSection(delayMs = 30L) {
-                            SupportProjectItem(
-                                modifier = Modifier.shake(enabledShake) { enabledShake = false },
-                                onClick = { navigator.navigate(DonateScreenDestination) }
-                            )
-                        }
-                    }
-                }
-
                 // ── App Theme ────────────────────────────────────────
                 item {
                     RillAnimatedSection(delayMs = 0L) {

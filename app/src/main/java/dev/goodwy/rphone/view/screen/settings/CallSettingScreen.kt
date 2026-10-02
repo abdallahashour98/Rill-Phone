@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.SettingsPhone
 import androidx.compose.material.icons.rounded.SimCard
 import androidx.compose.material.icons.rounded.SpatialTracking
 import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -144,6 +145,36 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                         } catch (_: Exception) {
                                             try {
                                                 val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                }
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {}
+                                        }
+                                    }
+                                }
+                            )
+                            RillListItem(
+                                headline = stringResource(R.string.wifi_calling),
+                                supporting = stringResource(R.string.wifi_calling_subtitle),
+                                leadingIcon = Icons.Rounded.Wifi,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                trailingIcon = Icons.Default.ChevronRight,
+                                onClick = {
+                                    try {
+                                        val intent = Intent("android.settings.WIFI_CALLING_SETTINGS").apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {
+                                        try {
+                                            val intent = Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {
+                                            try {
+                                                val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS).apply {
                                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 }
                                                 context.startActivity(intent)

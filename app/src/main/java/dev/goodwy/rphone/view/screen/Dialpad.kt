@@ -52,6 +52,8 @@ import androidx.navigation.NavController
 import dev.goodwy.rphone.controller.ContactsViewModel
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.makeCall
+import dev.goodwy.rphone.controller.util.normalizeDigits
+import dev.goodwy.rphone.controller.util.normalizeNumberDigits
 import dev.goodwy.rphone.view.components.SimPickerDialog
 import dev.goodwy.rphone.view.components.SingleTile
 import com.ramcosta.composedestinations.annotation.Destination
@@ -393,17 +395,19 @@ fun DialPadContent(
                 .debounce(150.milliseconds) // We wait 150 ms after the last press
                 .distinctUntilChanged()
                 .collect { (num, contacts, t9) ->
-                    val cleanQuery = num.replace(" ", "").replace("-", "")
+                    val cleanQuery = num.normalizeDigits().replace(" ", "").replace("-", "")
                     value = if (cleanQuery.isEmpty()) {
                         emptyList()
                     } else {
+                        val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
                         contacts.asSequence()
                             .filter { contact ->
                                 val matchesNumber = contact.phoneNumbers.any {
-                                    it.replace(" ", "").replace("-", "").contains(cleanQuery)
+                                    val cleanNum = normalizeNumberDigits(it)
+                                    cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
                                 }
                                 val matchesName = t9 && T9Matcher.isMatch(contact.displayName, cleanQuery)
-                                val matchesNickname = t9 && contact.nickname.let { T9Matcher.isMatch(it, cleanQuery) } ?: false
+                                val matchesNickname = t9 && contact.nickname.isNotBlank() && T9Matcher.isMatch(contact.nickname, cleanQuery)
                                 matchesNumber || matchesName || matchesNickname
                             }
                             .take(take)
@@ -417,16 +421,18 @@ fun DialPadContent(
             snapshotFlow {
                 Triple(number, logs, t9Enabled)
             }
-                .debounce(150.milliseconds)
+                .debounce(150.milliseconds) // We wait 150 ms after the last press
                 .distinctUntilChanged()
                 .collect { (num, logsList, t9) ->
-                    val cleanQuery = num.replace(" ", "").replace("-", "")
+                    val cleanQuery = num.normalizeDigits().replace(" ", "").replace("-", "")
                     value = if (cleanQuery.isEmpty()) {
                         emptyList()
                     } else {
+                        val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
                         logsList.asSequence()
                             .filter { log ->
-                                val matchesNumber = log.number.replace(" ", "").replace("-", "").contains(cleanQuery)
+                                val cleanNum = normalizeNumberDigits(log.number)
+                                val matchesNumber = cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
                                 val matchesName = t9 && T9Matcher.isMatch(log.name ?: "", cleanQuery)
                                 matchesNumber || matchesName
                             }
@@ -928,18 +934,8 @@ fun DialPadContent(
                                 listOf("7", "8", "9"),
                                 listOf("*", "0", "#")
                             )
-                            val subKeys = mapOf(
-                                "1" to "   ",
-                                "2" to "ABC",
-                                "3" to "DEF",
-                                "4" to "GHI",
-                                "5" to "JKL",
-                                "6" to "MNO",
-                                "7" to "PQRS",
-                                "8" to "TUV",
-                                "9" to "WXYZ",
-                                "0" to "+"
-                            )
+                            val currentLocale = LocalConfiguration.current.locales[0] ?: java.util.Locale.getDefault()
+                            val subKeys = remember(currentLocale) { getDialpadSubKeys(currentLocale.language) }
                             keys.forEach { row ->
                                 Row(
                                     modifier = Modifier
@@ -1818,18 +1814,8 @@ fun DialPadContent(
                                                 listOf("7", "8", "9"),
                                                 listOf("*", "0", "#")
                                             )
-                                            val subKeys = mapOf(
-                                                "1" to "   ",
-                                                "2" to "ABC",
-                                                "3" to "DEF",
-                                                "4" to "GHI",
-                                                "5" to "JKL",
-                                                "6" to "MNO",
-                                                "7" to "PQRS",
-                                                "8" to "TUV",
-                                                "9" to "WXYZ",
-                                                "0" to "+"
-                                            )
+                                            val currentLocale = LocalConfiguration.current.locales[0] ?: java.util.Locale.getDefault()
+                                            val subKeys = remember(currentLocale) { getDialpadSubKeys(currentLocale.language) }
 
                                             keys.forEach { row ->
                                                 Row(
@@ -2434,14 +2420,56 @@ private fun DialpadNumberDisplay(
     }
 }
 
+fun getDialpadSubKeys(language: String): Map<String, String> {
+    return when (language) {
+        "ar" -> mapOf(
+            "1" to "   ",
+            "2" to "أبتث ABC",
+            "3" to "جحخ DEF",
+            "4" to "دذرز GHI",
+            "5" to "سشصض JKL",
+            "6" to "طظعغ MNO",
+            "7" to "فقكل PQRS",
+            "8" to "منه TUV",
+            "9" to "وي WXYZ",
+            "0" to "+"
+        )
+        "ru", "be", "uk" -> mapOf(
+            "1" to "   ",
+            "2" to "АБВГ ABC",
+            "3" to "ДЕЖЗ DEF",
+            "4" to "ИЙКЛ GHI",
+            "5" to "МНОП JKL",
+            "6" to "РСТУ MNO",
+            "7" to "ФХЦЧ PQRS",
+            "8" to "ШЩЪЫ TUV",
+            "9" to "ЬЭЮЯ WXYZ",
+            "0" to "+"
+        )
+        else -> mapOf(
+            "1" to "   ",
+            "2" to "ABC",
+            "3" to "DEF",
+            "4" to "GHI",
+            "5" to "JKL",
+            "6" to "MNO",
+            "7" to "PQRS",
+            "8" to "TUV",
+            "9" to "WXYZ",
+            "0" to "+"
+        )
+    }
+}
+
 object T9Matcher {
     fun isMatch(contactName: String, query: String): Boolean {
-        if (query.isEmpty()) return false
+        val normQuery = query.normalizeDigits()
+        if (normQuery.isEmpty()) return false
 
         val startIndices = mutableListOf(0)
         for (i in 0 until contactName.length - 1) {
             val c = contactName[i]
-            if (c == ' ' || c == '-' || c == '.' || c == '_') {
+            if (isWordSeparator(c)) {
                 startIndices.add(i + 1)
             }
         }
@@ -2450,27 +2478,34 @@ object T9Matcher {
             var qIdx = 0
             var nIdx = startIndex
 
-            while (qIdx < query.length && nIdx < contactName.length) {
+            while (qIdx < normQuery.length && nIdx < contactName.length) {
                 val nC = contactName[nIdx]
-                if (nC == ' ' || nC == '-' || nC == '.' || nC == '_') {
+                if (isWordSeparator(nC) || isIgnoredChar(nC)) {
                     nIdx++
                     continue
                 }
 
-                if (charToT9(nC) != query[qIdx]) {
+                if (charToT9(nC) != normQuery[qIdx]) {
                     break
                 }
                 qIdx++
                 nIdx++
             }
 
-            if (qIdx == query.length) return true
+            if (qIdx == normQuery.length) return true
         }
 
         return false
     }
 
+    private fun isWordSeparator(c: Char): Boolean =
+        c == ' ' || c == '-' || c == '.' || c == '_' || c == '/' || c == '(' || c == ')'
+
+    private fun isIgnoredChar(c: Char): Boolean =
+        (c in '\u064B'..'\u0652') || c == '\u0640' || c == '\u200E' || c == '\u200F'
+
     private fun charToT9(c: Char): Char = when (c.uppercaseChar()) {
+        // Latin
         'A', 'B', 'C' -> '2'
         'D', 'E', 'F' -> '3'
         'G', 'H', 'I' -> '4'
@@ -2479,6 +2514,28 @@ object T9Matcher {
         'P', 'Q', 'R', 'S' -> '7'
         'T', 'U', 'V' -> '8'
         'W', 'X', 'Y', 'Z' -> '9'
+
+        // Arabic
+        'ا', 'أ', 'إ', 'آ', 'ٱ', 'ء', 'ب', 'ت', 'ث' -> '2'
+        'ج', 'ح', 'خ' -> '3'
+        'د', 'ذ', 'ر', 'ز' -> '4'
+        'س', 'ش', 'ص', 'ض' -> '5'
+        'ط', 'ظ', 'ع', 'غ' -> '6'
+        'ف', 'ق', 'ك', 'ل', 'ک' -> '7'
+        'م', 'ن', 'ه', 'ة' -> '8'
+        'و', 'ي', 'ى', 'ئ', 'ؤ', 'ی' -> '9'
+
+        // Cyrillic
+        'А', 'Б', 'В', 'Г', 'Ґ' -> '2'
+        'Д', 'Е', 'Ё', 'Є', 'Ж', 'З' -> '3'
+        'И', 'І', 'Ї', 'Й', 'К', 'Л' -> '4'
+        'М', 'Н', 'О', 'П' -> '5'
+        'Р', 'С', 'Т', 'У' -> '6'
+        'Ф', 'Х', 'Ц', 'Ч' -> '7'
+        'Ш', 'Щ', 'Ъ', 'Ы' -> '8'
+        'Ь', 'Э', 'Ю', 'Я' -> '9'
+
+        // Digits
         '0' -> '0'
         '1' -> '1'
         '2' -> '2'

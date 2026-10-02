@@ -63,6 +63,7 @@ import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.forceLtr
 import dev.goodwy.rphone.controller.util.makeCall
 import dev.goodwy.rphone.controller.util.normalizeNumberDigits
+import dev.goodwy.rphone.controller.util.normalizeForSearch
 import dev.goodwy.rphone.controller.util.placeCallWithSimPreference
 import dev.goodwy.rphone.modal.data.CallLogEntry
 import dev.goodwy.rphone.modal.data.getDisplayContactInfo
@@ -138,8 +139,11 @@ fun ContactSearchContent(
     val callLogVM: CallLogViewModel = koinActivityViewModel()
     val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+        contactsVM.fetchContactsFull(force = true)
+    }
     LaunchedEffect(settingsVer) {
-        contactsVM.fetchContactsFull()
+        contactsVM.fetchContactsFull(force = false)
     }
 
     val contacts by contactsVM.allContactsFull.collectAsStateWithLifecycle()
@@ -183,16 +187,26 @@ fun ContactSearchContent(
 
     val filteredContacts = remember(query, contacts, filterState.contacts) {
         if (!filterState.contacts || query.isBlank()) emptyList()
-        else contacts.filter {
-            it.displayName.contains(query, ignoreCase = true) ||
-                    it.nickname.contains(query, ignoreCase = true) ||
-                    it.company.contains(query, ignoreCase = true) ||
-                    it.jobTitle.contains(query, ignoreCase = true) ||
-                    it.phoneNumbers.any { number -> number.replace(" ", "").replace("-", "").contains(query.replace(" ", "").replace("-", "")) } ||
-                    it.emails.any { email -> email.value.replace(" ", "").contains(query.replace(" ", "")) } ||
-                    it.addresses.any { address -> address.formattedAddress.replace(" ", "").contains(query.replace(" ", "")) } ||
-                    it.events.any { event -> event.date.replace(" ", "").replace("-", "").replace(".", "")
-                        .contains(query.replace(" ", "").replace("-", "").replace(".", "")) }
+        else {
+            val normQuery = query.normalizeForSearch()
+            val cleanDigits = normalizeNumberDigits(query)
+            val cleanPureDigits = cleanDigits.filter { it.isDigit() }
+            contacts.filter { contact ->
+                contact.displayName.normalizeForSearch().contains(normQuery) ||
+                contact.nickname.normalizeForSearch().contains(normQuery) ||
+                contact.company.normalizeForSearch().contains(normQuery) ||
+                contact.jobTitle.normalizeForSearch().contains(normQuery) ||
+                (cleanDigits.isNotEmpty() && contact.phoneNumbers.any { number ->
+                    val cleanNum = normalizeNumberDigits(number)
+                    cleanNum.contains(cleanDigits) || (cleanPureDigits.length >= 3 && cleanNum.filter { it.isDigit() }.contains(cleanPureDigits))
+                }) ||
+                contact.emails.any { email -> email.value.contains(query.trim(), ignoreCase = true) } ||
+                contact.addresses.any { address -> address.formattedAddress.normalizeForSearch().contains(normQuery) } ||
+                contact.events.any { event ->
+                    event.date.replace(" ", "").replace("-", "").replace(".", "")
+                        .contains(query.replace(" ", "").replace("-", "").replace(".", ""))
+                }
+            }
         }
     }
 
@@ -210,9 +224,11 @@ fun ContactSearchContent(
                         .ifBlank { entry.number }
                     seen.putIfAbsent(key, entry)
                 }
+            val normQuery = query.normalizeForSearch()
+            val cleanQueryDigits = normalizeNumberDigits(query)
             seen.values.filter { entry ->
-                entry.number.replace(" ", "").contains(query.replace(" ", "")) ||
-                        (entry.isCallerIdName && (entry.name?.contains(query, ignoreCase = true) == true))
+                (cleanQueryDigits.isNotEmpty() && normalizeNumberDigits(entry.number).contains(cleanQueryDigits)) ||
+                        (entry.isCallerIdName && (entry.name?.normalizeForSearch()?.contains(normQuery) == true))
             }
         }
     }
@@ -220,11 +236,14 @@ fun ContactSearchContent(
     var refreshNoteTrigger by remember { mutableIntStateOf(0) }
     // Notes attached to a contact/number (from the call screen or contact info screen).
     val contactNoteResults = remember(query, filterState.contactNotes, refreshNoteTrigger) {
+        val normQuery = query.normalizeForSearch()
+        val cleanQueryDigits = normalizeNumberDigits(query)
         if (!filterState.contactNotes || query.isBlank()) emptyList()
         else NoteManager.getAllNotes(context).filter { note ->
-            note.contactName.contains(query, ignoreCase = true) ||
-                    note.phoneNumber.contains(query.filter { c -> c.isDigit() || c == '+' }.ifEmpty { query }, ignoreCase = true) ||
-                    note.content.contains(query, ignoreCase = true)
+            val noteCleanDigits = normalizeNumberDigits(note.phoneNumber)
+            note.contactName.normalizeForSearch().contains(normQuery) ||
+                    (cleanQueryDigits.isNotEmpty() && noteCleanDigits.contains(cleanQueryDigits)) ||
+                    note.content.normalizeForSearch().contains(normQuery)
         }
     }
 

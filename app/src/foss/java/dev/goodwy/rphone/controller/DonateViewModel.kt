@@ -10,9 +10,7 @@ class DonateViewModel (
     private val preferenceManager: PreferenceManager
 ) : PurchaseHelper {
 
-    private val _isPro = MutableStateFlow(
-        preferenceManager.getBoolean(PreferenceManager.KEY_IS_PRO_FOSS, false)
-    )
+    private val _isPro = MutableStateFlow(true)
     override val isPro: StateFlow<Boolean> = _isPro.asStateFlow()
 
     private val _proCheckDone = MutableStateFlow(true)
@@ -42,14 +40,13 @@ class DonateViewModel (
     }
 
     override fun checkProStatus() {
-        val isPro = preferenceManager.getBoolean(PreferenceManager.KEY_IS_PRO_FOSS, false)
-        _isPro.value = isPro
+        _isPro.value = true
         _proCheckDone.value = true
     }
 
     override fun setProStatusImmediate(isPro: Boolean) {
-        _isPro.value = isPro
-        preferenceManager.setBoolean(PreferenceManager.KEY_IS_PRO_FOSS, isPro)
+        _isPro.value = true
+        preferenceManager.setBoolean(PreferenceManager.KEY_IS_PRO_FOSS, true)
         _proCheckDone.value = true
     }
 

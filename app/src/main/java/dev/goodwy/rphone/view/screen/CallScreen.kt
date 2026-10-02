@@ -71,8 +71,10 @@ import dev.goodwy.rphone.view.theme.color_call_end
 import dev.goodwy.rphone.controller.util.formatDuration
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.forceLtr
+import dev.goodwy.rphone.controller.util.isPhoneNumber
 import dev.goodwy.rphone.controller.util.hasCapability
 import dev.goodwy.rphone.controller.util.isHD
+import dev.goodwy.rphone.controller.util.isWifi
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.LayerBackdrop
 import dev.goodwy.rphone.liquidglass.drawBackdrop
@@ -85,7 +87,10 @@ import dev.goodwy.rphone.liquidglass.shadow.Shadow
 import dev.goodwy.rphone.view.components.RillAvatar
 import dev.goodwy.rphone.view.screen.settings.PasswordSetupDialog
 import dev.goodwy.rphone.view.screen.settings.PinSetupDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -105,6 +110,7 @@ fun ExpressiveCallScreen(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val preferenceManager = koinInject<PreferenceManager>()
     val contactsRepo = koinInject<IContactsRepository>()
     val callViewModel = koinInject<CallViewModel>()
@@ -141,6 +147,12 @@ fun ExpressiveCallScreen(
     }
     val hasBackground = !backgroundUri.isNullOrEmpty()
     val shouldShowAvatar = showCallScreenAvatar && !(hideAvatarWithBg && hasBackground)
+    val callerNameSize = remember(settingsState) {
+        preferenceManager.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 0)
+    }
+    val callerNumberSize = remember(settingsState) {
+        preferenceManager.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 0)
+    }
 
     val globalBackdrop = LocalLiquidGlassBackdrop.current
     val liquidGlass = remember(settingsState) { preferenceManager.getBoolean(PreferenceManager.KEY_LIQUID_GLASS, false) }
@@ -230,14 +242,18 @@ fun ExpressiveCallScreen(
 
     LaunchedEffect(phoneNumber) {
         if (phoneNumber.isNotEmpty() && noteText.isBlank()) {
-            val existing = NoteManager.readNoteByPhone(context, phoneNumber)
+            val existing = withContext(Dispatchers.IO) {
+                NoteManager.readNoteByPhone(context, phoneNumber)
+            }
             if (existing.isNotBlank()) noteText = existing
         }
     }
 
     LaunchedEffect(contactName) {
         if (phoneNumber.isNotEmpty() && noteText.isBlank()) {
-            val existing = NoteManager.readNote(context, contactName, phoneNumber)
+            val existing = withContext(Dispatchers.IO) {
+                NoteManager.readNote(context, contactName, phoneNumber)
+            }
             if (existing.isNotBlank()) noteText = existing
         }
     }
@@ -245,7 +261,7 @@ fun ExpressiveCallScreen(
     LaunchedEffect(noteText) {
         if (phoneNumber.isNotEmpty() && noteText.isNotBlank()) {
             delay(1000.milliseconds)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 NoteManager.writeNote(context, contactName, phoneNumber, noteText)
             }
         }
@@ -253,7 +269,9 @@ fun ExpressiveCallScreen(
 
     LaunchedEffect(callState) {
         if ((callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) && noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
-            NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+            withContext(Dispatchers.IO) {
+                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+            }
         }
     }
     // <--- Call notes
@@ -380,10 +398,15 @@ fun ExpressiveCallScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        val nameStyle = when (callerNameSize) {
+                            1 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold)
+                            2 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
+                            else -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium)
+                        }
+
                         Text(
-                            text = contactName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Medium,
+                            text = if (contactName.isPhoneNumber()) contactName.forceLtr() else contactName,
+                            style = nameStyle,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
@@ -392,9 +415,14 @@ fun ExpressiveCallScreen(
 
                         if (contactName != phoneNumber) {
                             Spacer(modifier = Modifier.height(10.dp))
+                            val numberStyle = when (callerNumberSize) {
+                                1 -> MaterialTheme.typography.titleLarge
+                                2 -> MaterialTheme.typography.headlineSmall
+                                else -> MaterialTheme.typography.titleMedium
+                            }
                             Text(
-                                text = phoneNumber,
-                                style = MaterialTheme.typography.titleMedium,
+                                text = phoneNumber.forceLtr(),
+                                style = numberStyle,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -403,7 +431,8 @@ fun ExpressiveCallScreen(
 
                         val currentSimLabel = simLabel
                         val isHD = call.isHD()
-                        if (currentSimLabel != null || isHD) {
+                        val isWifi = call.isWifi()
+                        if (currentSimLabel != null || isHD || isWifi) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (currentSimLabel != null) Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -418,6 +447,31 @@ fun ExpressiveCallScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                }
+                                if (isWifi) Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Wifi,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "VoWiFi",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                                 if (isHD) Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -665,7 +719,11 @@ fun ExpressiveCallScreen(
                                                     enabled = callState != Call.STATE_DIALING,
                                                     onClick = {
                                                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                        if (phoneNumber.isNotEmpty()) NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                                        if (phoneNumber.isNotEmpty()) {
+                                                            scope.launch(Dispatchers.IO) {
+                                                                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                                            }
+                                                        }
                                                         showNoteWindow = false
                                                         showKeypad = false
                                                         showMore = true
@@ -842,7 +900,9 @@ fun ExpressiveCallScreen(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                                         if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
-                                            NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                            scope.launch(Dispatchers.IO) {
+                                                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                            }
                                         }
                                         callDisconnect()
                                     },

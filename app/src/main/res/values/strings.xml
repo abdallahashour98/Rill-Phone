@@ -716,4 +716,16 @@
     <string name="most_talked_persons">Most talked persons</string>
     <string name="no_call_records_this_period">No call records found for this period</string>
     <string name="total_calls_in_number">%1$s calls (in: %2$s, out: %3$s, miss: %4$s)</string>
+
+    <!-- Caller UI font sizes & VoWiFi -->
+    <string name="caller_font_size_section">Caller information display</string>
+    <string name="caller_name_size">Caller name size</string>
+    <string name="caller_name_size_subtitle">Adjust font size of contact name during calls</string>
+    <string name="caller_number_size">Phone number size</string>
+    <string name="caller_number_size_subtitle">Adjust font size of phone number during calls</string>
+    <string name="size_normal">Normal</string>
+    <string name="size_large">Large</string>
+    <string name="size_extra_large">Extra large</string>
+    <string name="wifi_calling">Wi-Fi Calling (VoWiFi)</string>
+    <string name="wifi_calling_subtitle">Make and receive calls over Wi-Fi when cellular network is weak</string>
 </resources>

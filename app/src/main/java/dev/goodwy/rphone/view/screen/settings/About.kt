@@ -58,7 +58,6 @@ import dev.goodwy.rphone.view.theme.customColors
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ContributorsScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.DonateScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import dev.goodwy.rphone.BuildConfig
 import dev.goodwy.rphone.GP_DEV_URL
@@ -286,13 +285,6 @@ fun AboutAppScreen(navigator: DestinationsNavigator) {
                         trailingIcon = Icons.Default.ChevronRight,
                         onClick = { openLink(context, GITHUB_URL) }
                     )
-                    RillListItem(
-                        headline = stringResource(R.string.support_development),
-                        leadingIcon = Icons.Rounded.VolunteerActivism,
-                        iconContainerColor = Color.Black,
-                        iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorOliva,
-                        trailingIcon = Icons.Default.ChevronRight,
-                        onClick = { navigator.navigate(DonateScreenDestination) })
                     RillListItem(
                         headline = stringResource(R.string.privacy_policy),
                         leadingIcon = Icons.Rounded.PrivacyTip,

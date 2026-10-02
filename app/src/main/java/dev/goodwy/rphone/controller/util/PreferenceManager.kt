@@ -518,6 +518,10 @@ class PreferenceManager(context: Context) {
         const val KEY_FIRST_LAUNCH_DONE     = "first_launch_done"
         // Hangup button width fraction (0.4f .. 1.0f)
         const val KEY_HANGUP_WIDTH          = "hangup_button_width"
+        // Caller UI font sizes (0 = Normal, 1 = Large, 2 = Extra Large)
+        const val KEY_CALLER_NAME_SIZE      = "caller_name_size"
+        const val KEY_CALLER_NUMBER_SIZE    = "caller_number_size"
+
         // Dialer role popup shown after welcome
         const val KEY_DIALER_POPUP_SHOWN    = "dialer_popup_shown"
         const val KEY_TELEGRAM_SHOWN        = "telegram_shown"

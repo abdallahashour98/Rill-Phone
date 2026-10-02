@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
+import dev.goodwy.rphone.controller.util.forceLtr
+import dev.goodwy.rphone.controller.util.isPhoneNumber
 import dev.goodwy.rphone.view.theme.MyColors.cardColor
 import org.koin.compose.koinInject
 import androidx.core.net.toUri
@@ -173,7 +175,7 @@ fun SingleTile(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text     = title,
+                        text     = if (title.isPhoneNumber()) title.forceLtr() else title,
                         style    = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color    = if (isMissedCall) MaterialTheme.colorScheme.error
@@ -190,7 +192,7 @@ fun SingleTile(
                     supportingContent()
                 } else if (subtitle != null) {
                     Text(
-                        text     = subtitle,
+                        text     = if (subtitle.isPhoneNumber()) subtitle.forceLtr() else subtitle,
                         style    = MaterialTheme.typography.bodyMedium,
                         color    = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

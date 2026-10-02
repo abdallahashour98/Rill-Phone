@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.rounded.CallEnd
+import androidx.compose.material.icons.rounded.FormatSize
+import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +58,7 @@ import dev.goodwy.rphone.controller.PurchaseHelper
 import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.view.components.SupportProjectItem
 import dev.goodwy.rphone.view.components.Title
+import dev.goodwy.rphone.view.components.RillSelectListItem
 import dev.goodwy.rphone.view.components.shake
 import dev.goodwy.rphone.view.theme.customColors
 import kotlinx.coroutines.delay
@@ -92,6 +95,8 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
 
     var themeMode   by remember(settingsState) { mutableStateOf(prefs.getString(PreferenceManager.KEY_THEME_MODE, "auto") ?: "auto") }
     var hangupWidth by remember(settingsState) { mutableFloatStateOf(prefs.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f).coerceIn(0.1f, 1.0f)) }
+    var callerNameSize by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 0)) }
+    var callerNumberSize by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 0)) }
 
     var defaultCallBg by remember { mutableStateOf<String?>(null) }
     var loadingBg by remember { mutableStateOf(true) }
@@ -153,17 +158,6 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (!isPro && proCheckDone) {
-                    item {
-                        RillAnimatedSection(delayMs = 30L) {
-                            SupportProjectItem(
-                                modifier = Modifier.shake(enabledShake) { enabledShake = false },
-                                onClick = { navigator.navigate(DonateScreenDestination) }
-                            )
-                        }
-                    }
-                }
-
                 item {
                     RillExpressiveCard {
                         Column(
@@ -314,6 +308,51 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // ── Caller Font Sizes ──────────────────────────────────────
+                item {
+                    RillAnimatedSection(delayMs = 45L) {
+                        Column {
+                            SettingsSectionLabel(stringResource(R.string.caller_font_size_section))
+                            RillExpressiveCard {
+                                RillSelectListItem(
+                                    headline = stringResource(R.string.caller_name_size),
+                                    supporting = stringResource(R.string.caller_name_size_subtitle),
+                                    leadingIcon = Icons.Rounded.FormatSize,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
+                                    options = listOf(
+                                        stringResource(R.string.size_normal) to 0,
+                                        stringResource(R.string.size_large) to 1,
+                                        stringResource(R.string.size_extra_large) to 2
+                                    ),
+                                    selectedValue = callerNameSize,
+                                    onValueChange = {
+                                        callerNameSize = it
+                                        prefs.setInt(PreferenceManager.KEY_CALLER_NAME_SIZE, it)
+                                    }
+                                )
+                                RillSelectListItem(
+                                    headline = stringResource(R.string.caller_number_size),
+                                    supporting = stringResource(R.string.caller_number_size_subtitle),
+                                    leadingIcon = Icons.Rounded.Numbers,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
+                                    options = listOf(
+                                        stringResource(R.string.size_normal) to 0,
+                                        stringResource(R.string.size_large) to 1,
+                                        stringResource(R.string.size_extra_large) to 2
+                                    ),
+                                    selectedValue = callerNumberSize,
+                                    onValueChange = {
+                                        callerNumberSize = it
+                                        prefs.setInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, it)
+                                    }
+                                )
                             }
                         }
                     }

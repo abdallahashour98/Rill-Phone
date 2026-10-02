@@ -689,3 +689,34 @@ fun HtmlTextView(
 }
 
 fun String.forceLtr(): String = "\u200E$this"
+
+fun String.normalizeDigits(): String {
+    if (this.isEmpty()) return this
+    val builder = StringBuilder(this.length)
+    for (i in 0 until this.length) {
+        val ch = this[i]
+        when (ch) {
+            in '\u0660'..'\u0669' -> builder.append((ch - '\u0660' + '0'.code).toChar())
+            in '\u06F0'..'\u06F9' -> builder.append((ch - '\u06F0' + '0'.code).toChar())
+            else -> builder.append(ch)
+        }
+    }
+    return builder.toString()
+}
+
+fun String.normalizeForSearch(): String {
+    if (this.isBlank()) return ""
+    var result = this.lowercase().trim()
+    result = result.normalizeDigits()
+    // Strip Arabic diacritics / tashkeel and tatweel
+    result = result.replace(Regex("[\u064B-\u0652\u0640]"), "")
+    // Normalize Alef forms (أ, إ, آ, ٱ) -> ا
+    result = result.replace(Regex("[أإآٱ]"), "ا")
+    // Normalize Ta Marbuta (ة) -> ه
+    result = result.replace('ة', 'ه')
+    // Normalize Alef Maqsura (ى) -> ي
+    result = result.replace('ى', 'ي')
+    // Normalize Persian/Urdu variants
+    result = result.replace('ک', 'ك').replace('ی', 'ي')
+    return result
+}

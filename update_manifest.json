@@ -1,0 +1,14 @@
+{
+  "latestVersion": "0.5.6",
+  "latestVersionCode": 56,
+  "releaseDate": "2026-10-02",
+  "releaseNotes": "UI improvements, Caller UI enhancements, Dialpad search fixes, Arabic localization, and automated release system",
+  "fullApk": {
+    "fileName": "rill-phone-56-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/download/v0.5.6/rill-phone-56-foss-release.apk",
+    "sizeBytes": 7784927,
+    "sizeFormatted": "7.42 MB",
+    "sha256": "7832af97561de4cf2296573be14b725e208fff6a14fa887ddcc768f4858f35ca"
+  },
+  "patches": []
+}

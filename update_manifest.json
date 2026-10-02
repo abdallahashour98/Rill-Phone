@@ -1,14 +1,14 @@
 {
-  "latestVersion": "0.5.8",
-  "latestVersionCode": 58,
+  "latestVersion": "0.5.9",
+  "latestVersionCode": 59,
   "releaseDate": "2026-10-02",
-  "releaseNotes": "Enhanced caller UI with much larger font size slider, seamless dialpad integration into Recents with quick toggle FAB, and modern iOS-style circular dialpad buttons.",
+  "releaseNotes": "Ultra-fast lag-free dialpad typing with async DTMF audio, authentic iOS circular keypad aesthetics, and clean centered number display.",
   "fullApk": {
-    "fileName": "rill-phone-58-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-58-foss-release.apk",
-    "sizeBytes": 7804875,
-    "sizeFormatted": "7.44 MB",
-    "sha256": "8eb9bf9e05b000128ca74eb8be3fea8ec3e49b7084a6ad9b64f548a9b005c0e8"
+    "fileName": "rill-phone-59-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-59-foss-release.apk",
+    "sizeBytes": 7788491,
+    "sizeFormatted": "7.43 MB",
+    "sha256": "b27ad6cd07213e68a19eb761bb604895e44c2f33add5496001eb47bf749a42cb"
   },
   "patches": []
 }

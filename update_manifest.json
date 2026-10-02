@@ -1,14 +1,14 @@
 {
-  "latestVersion": "0.6.1",
-  "latestVersionCode": 61,
+  "latestVersion": "0.6.2",
+  "latestVersionCode": 62,
   "releaseDate": "2026-10-02",
-  "releaseNotes": "Fix incoming dial/call intents from external apps like inDrive, Uber, etc., with robust phone number sanitization and reactive dialpad state.",
+  "releaseNotes": "fix",
   "fullApk": {
-    "fileName": "rill-phone-61-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-61-foss-release.apk",
-    "sizeBytes": 7805503,
+    "fileName": "rill-phone-62-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-62-foss-release.apk",
+    "sizeBytes": 7805507,
     "sizeFormatted": "7.44 MB",
-    "sha256": "2378fd262106362e2715e6742295bdc30106393e945ec0f3b6a1742ee70980e7"
+    "sha256": "6f1431c5f6c92185ee0cbed575ffc7ac3c4b0874525c95e16f045f1fdddc4d19"
   },
   "patches": []
 }

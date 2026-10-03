@@ -1,14 +1,14 @@
 {
-  "latestVersion": "0.6.2",
-  "latestVersionCode": 62,
-  "releaseDate": "2026-10-02",
-  "releaseNotes": "fix",
+  "latestVersion": "0.6.3",
+  "latestVersionCode": 63,
+  "releaseDate": "2026-10-03",
+  "releaseNotes": "fix2",
   "fullApk": {
-    "fileName": "rill-phone-62-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-62-foss-release.apk",
-    "sizeBytes": 7805507,
-    "sizeFormatted": "7.44 MB",
-    "sha256": "6f1431c5f6c92185ee0cbed575ffc7ac3c4b0874525c95e16f045f1fdddc4d19"
+    "fileName": "rill-phone-63-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-63-foss-release.apk",
+    "sizeBytes": 7810543,
+    "sizeFormatted": "7.45 MB",
+    "sha256": "f4b4eb403e2e68485195bcf01f942f09fea60088b71f9dbf2f3e95b35ef5d2ea"
   },
   "patches": []
 }

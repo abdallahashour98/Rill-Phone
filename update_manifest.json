@@ -1,14 +1,14 @@
 {
-  "latestVersion": "0.6.3",
-  "latestVersionCode": 63,
-  "releaseDate": "2026-10-03",
-  "releaseNotes": "fix2",
+  "latestVersion": "0.6.5",
+  "latestVersionCode": 65,
+  "releaseDate": "2026-10-05",
+  "releaseNotes": "إصلاح واجهة المكالمات الواردة ونمط iOS",
   "fullApk": {
-    "fileName": "rill-phone-63-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-63-foss-release.apk",
+    "fileName": "rill-phone-65-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-65-foss-release.apk",
     "sizeBytes": 7810543,
     "sizeFormatted": "7.45 MB",
-    "sha256": "f4b4eb403e2e68485195bcf01f942f09fea60088b71f9dbf2f3e95b35ef5d2ea"
+    "sha256": "d8b11f01b400308d4a332ebfeafa2259fa3206a3bbf230cfe73ebcea9faa095c"
   },
   "patches": []
 }

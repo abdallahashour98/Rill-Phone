@@ -1015,10 +1015,10 @@ fun IPhoneSwipeToAnswer(
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
-    val trackWidth = 320.dp
-    val trackHeight = 94.dp
-    val handleSize = 78.dp
-    val handlePadding = 8.dp
+    val trackWidth = 300.dp
+    val trackHeight = 72.dp
+    val handleSize = 60.dp
+    val handlePadding = 6.dp
 
     val trackWidthPx = with(localDensity) { trackWidth.toPx() }
     val handleSizePx = with(localDensity) { handleSize.toPx() }
@@ -1027,8 +1027,8 @@ fun IPhoneSwipeToAnswer(
     val maxDrag = trackWidthPx - handleSizePx - (handlePaddingPx * 2)
 
     val trackBgColor =
-        if (useLg || useBlur) bottomBarColor else MaterialTheme.colorScheme.onSurface.copy(alpha = if (isDark) 0.15f else 0.1f)
-    val buttonContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        if (useLg || useBlur) bottomBarColor else Color.Black.copy(alpha = if (isDark) 0.35f else 0.25f)
+    val buttonContentColor = Color.White
     val handleBgColor = Color.White
 
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
@@ -1036,67 +1036,44 @@ fun IPhoneSwipeToAnswer(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
+            animation = tween(1800, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "offset"
     )
 
     val dragProgress = remember { derivedStateOf { if (maxDrag > 0f) offsetX.value / maxDrag else 0f } }
-    val iconRotation by remember { derivedStateOf {
-        dragProgress.value * 135f
-    } }
+    val iconRotation by remember { derivedStateOf { dragProgress.value * 135f } }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(42.dp),
-        modifier = Modifier.padding(bottom = 42.dp)
+        verticalArrangement = Arrangement.spacedBy(32.dp),
+        modifier = Modifier.padding(bottom = 32.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(0.75f),
+            modifier = Modifier.fillMaxWidth(0.72f),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(
                     onClick = onDecline,
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = trackBgColor.copy(alpha = 0.35f)),
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = color_call_end),
                     modifier = Modifier
-                        .size(60.dp)
-                        .then(
-                            if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
-                                backdrop = globalBackdrop,
-                                shape = { CircleShape },
-                                shadow = { Shadow(radius = 8.dp) },
-                                effects = {
-                                    val d = density
-                                    colorControls(saturation = 1.3f)
-                                    blur(blurIntensity * d)
-                                    lens(refractionHeight = 18f * d, refractionAmount = 52f * d)
-                                },
-                                highlight = { Highlight.Default }
-                            )
-                            else if (useBlur && globalBackdrop != null) Modifier.drawPlainBackdrop(
-                                backdrop = globalBackdrop,
-                                shape    = { CircleShape },
-                                shadow = { Shadow(radius = 8.dp) },
-                                effects  = { blur(blurIntensity * density) }
-                            )
-                            else Modifier.background(
-                                trackBgColor,
-                                CircleShape
-                            )
-                        )
+                        .size(56.dp)
+                        .clip(CircleShape)
                 ) {
                     Icon(
                         Icons.Rounded.CallEnd,
                         contentDescription = stringResource(R.string.decline),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
                 Text(
                     stringResource(R.string.decline),
                     style = MaterialTheme.typography.labelMedium,
                     color = buttonContentColor,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -1104,9 +1081,9 @@ fun IPhoneSwipeToAnswer(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(
                     onClick = onMessage,
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = trackBgColor.copy(alpha = 0.35f)),
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = trackBgColor),
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(56.dp)
                         .then(
                             if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
                                 backdrop = globalBackdrop,
@@ -1135,13 +1112,15 @@ fun IPhoneSwipeToAnswer(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_message_outline),
                         contentDescription = stringResource(R.string.message),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
                 Text(
                     stringResource(R.string.message),
                     style = MaterialTheme.typography.labelMedium,
                     color = buttonContentColor,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -1149,21 +1128,18 @@ fun IPhoneSwipeToAnswer(
 
         Box(
             modifier = Modifier
-                .width(trackWidth + 16.dp)
-                .height(trackHeight + 16.dp)
-                .clip(CircleShape)
-                .padding(8.dp),
+                .width(trackWidth)
+                .height(trackHeight)
+                .clip(CircleShape),
             contentAlignment = Alignment.CenterStart
         ) {
             Surface(
                 shape           = CircleShape,
-                color           = trackBgColor.copy(alpha = 0.35f),
+                color           = trackBgColor,
                 shadowElevation = 0.dp,
                 tonalElevation  = 0.dp,
                 modifier = Modifier
-                    .width(trackWidth)
-                    .height(trackHeight)
-                    .align(Alignment.Center)
+                    .fillMaxSize()
                     .then(
                         if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
                             backdrop = globalBackdrop,
@@ -1187,8 +1163,8 @@ fun IPhoneSwipeToAnswer(
                     )
             ) {}
 
-            val baseTextColor = MaterialTheme.colorScheme.onSurface
-            val shimmerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            val baseTextColor = Color.White
+            val shimmerColor = Color.White.copy(alpha = 0.35f)
 
             val brush = Brush.linearGradient(
                 colors = listOf(shimmerColor, baseTextColor, shimmerColor),
@@ -1200,13 +1176,13 @@ fun IPhoneSwipeToAnswer(
                 text = stringResource(R.string.slide_to_answer),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = handleSize)
+                    .padding(start = handleSize + 8.dp, end = 16.dp)
                     .graphicsLayer {
                         alpha = (1f - (offsetX.value / maxDrag) * 2f).coerceIn(0f, 1f)
                     },
                 style = MaterialTheme.typography.titleMedium.copy(
                     brush = brush,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 ),
                 textAlign = TextAlign.Center
             )
@@ -1222,7 +1198,7 @@ fun IPhoneSwipeToAnswer(
                         detectHorizontalDragGestures(
                             onDragEnd = {
                                 coroutineScope.launch {
-                                    if (offsetX.value > maxDrag * 0.85f) {
+                                    if (offsetX.value > maxDrag * 0.8f) {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         } else {
@@ -1255,7 +1231,7 @@ fun IPhoneSwipeToAnswer(
                     contentDescription = null,
                     tint = color_call_button,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(32.dp)
                         .graphicsLayer {
                             val adjustedIconRotation = if (isRtl) -iconRotation else iconRotation
                             rotationZ = adjustedIconRotation

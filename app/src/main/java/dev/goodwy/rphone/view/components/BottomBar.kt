@@ -96,6 +96,7 @@ private val TAB_ROUTES = setOf(
     RecentScreenDestination.route,
     NotesScreenDestination.route,
     DialPadScreenDestination.route,
+    DialPadScreenDestination.baseRoute,
 //    SettingsScreenDestination.route,
 //    SearchScreenDestination.route
 )
@@ -158,7 +159,7 @@ fun BottomBar(navController: NavController) {
     val isFavoritesSelected = currentDestination?.hierarchy?.any { it.route == FavoritesScreenDestination.route } == true
     val isRecentsSelected   = currentDestination?.hierarchy?.any { it.route == RecentScreenDestination.route } == true
     val isContactsSelected  = currentDestination?.hierarchy?.any { it.route == ContactScreenDestination.route } == true
-    val isDialpadSelected   = currentDestination?.hierarchy?.any { it.route == DialPadScreenDestination.route } == true
+    val isDialpadSelected   = currentDestination?.hierarchy?.any { it.route?.contains(DialPadScreenDestination.baseRoute) == true } == true
     val isNotesSelected     = currentDestination?.hierarchy?.any { it.route == NotesScreenDestination.route } == true
     val isSearchSelected    = currentDestination?.hierarchy?.any { it.route == SearchScreenDestination.route } == true
     val isSettingsSelected  = currentDestination?.hierarchy?.any {
@@ -172,7 +173,8 @@ fun BottomBar(navController: NavController) {
             add(RecentScreenDestination.route)
             // Add contacts if ‘Favorites’ and ‘Contacts’ are hidden to make the ‘View contacts’ button work
             add(ContactScreenDestination.route)
-            if (showDialpadTab)   add(DialPadScreenDestination.route)
+            add(DialPadScreenDestination.route)
+            add(DialPadScreenDestination.baseRoute)
             if (showNotesTab)     add(NotesScreenDestination.route)
             if (showSearchTab)    add(SearchScreenDestination.route)
             if (showSettingsTab)  add(SettingsScreenDestination.route)
@@ -196,6 +198,7 @@ fun BottomBar(navController: NavController) {
     // away again in a loop.
     val isOnHiddenTab = TAB_ROUTES.any { currentRoute.contains(it, ignoreCase = true) } &&
             visibleTabRoutes.none { currentRoute.contains(it, ignoreCase = true) } &&
+            !currentRoute.contains(DialPadScreenDestination.baseRoute, ignoreCase = true) &&
 //            !NavBarVisibilityState.hideForSettingsEntry &&
             !NavBarVisibilityState.hideForSearchResult
     fun routeForTabKey(key: String): String? = when (key) {
@@ -216,9 +219,13 @@ fun BottomBar(navController: NavController) {
                 .mapNotNull { routeForTabKey(it) }
                 .firstOrNull { it in visibleTabRoutes }
                 ?: RecentScreenDestination.route
+            val isStartDest = firstVisible == navController.graph.findStartDestination().route
             navController.navigate(firstVisible) {
-                popUpTo(navController.graph.findStartDestination().id) { saveState = false }
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = !isStartDest
+                }
                 launchSingleTop = true
+                restoreState = !isStartDest
             }
         }
     }
@@ -258,10 +265,13 @@ fun BottomBar(navController: NavController) {
     fun navigate(route: String) {
         // If already on this route, do nothing (prevents double-tap freeze)
         if (currentDestination?.hierarchy?.any { it.route == route } == true) return
+        val isStartDest = route == navController.graph.findStartDestination().route
         navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = !isStartDest
+            }
             launchSingleTop = true
-            restoreState    = true
+            restoreState = !isStartDest
         }
     }
 

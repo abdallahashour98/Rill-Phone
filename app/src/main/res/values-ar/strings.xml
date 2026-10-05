@@ -120,6 +120,7 @@
     <string name="install_update">تثبيت التحديث؟</string>
     <string name="install_update_subtitle">تم تنزيل التحديث v%1$s بالفعل. هل تريد تثبيته الآن؟</string>
     <string name="download">تنزيل</string>
+    <string name="install">تثبيت</string>
     <string name="not_now">ليس الآن</string>
     <string name="downloading_update">جارٍ تنزيل التحديث</string>
     <string name="please_wait">يرجى الانتظار…</string>
@@ -128,6 +129,7 @@
     <string name="download_complete">اكتمل التنزيل</string>
     <string name="download_complete_subtitle">تم تنزيل التحديث إلى الإصدار %1$s بنجاح.</string>
     <string name="open_downloads_folder_manually">افتح مجلد التنزيلات يدويًا</string>
+    <string name="allow_install_unknown_apps_then_retry">يرجى السماح بتثبيت التطبيقات المجهولة لـ Rill Phone، ثم حاول مرة أخرى.</string>
     <string name="try_again">حاول مرة أخرى</string>
     <string name="couldnt_check_for_updates">تعذر التحقق من التحديثات</string>
     <string name="couldnt_check_for_updates_subtitle">تعذر الوصول إلى مستودع إصدارات GitHub. يرجى التحقق من اتصالك.</string>
@@ -433,6 +435,13 @@
     <string name="call_failed_no_network">فشلت المكالمة: شبكة الهاتف غير متوفرة</string>
     <string name="call_failed_restricted">فشلت المكالمة: المكالمة مقيدة</string>
     <string name="call_failed_generic">تعذر إكمال المكالمة</string>
+    <string name="call_event_hold_failed">تعذّر تعليق المكالمة</string>
+    <string name="call_event_merge_failed">تعذّر دمج المكالمات</string>
+    <string name="call_event_switch_failed">تعذّر التبديل بين المكالمات</string>
+    <string name="call_event_remotely_held">قام الطرف الآخر بتعليق المكالمة</string>
+    <string name="call_event_remotely_unheld">استأنف الطرف الآخر المكالمة</string>
+    <string name="call_switched_to_wifi">تم تحويل المكالمة إلى الاتصال عبر Wi-Fi</string>
+    <string name="call_switched_to_mobile">تم تحويل المكالمة إلى شبكة الهاتف</string>
     <string name="call">اتصال</string>
     <string name="incoming">واردة</string>
     <string name="outgoing">صادرة</string>
@@ -730,4 +739,13 @@
     <string name="size_extra_large">كبير جداً</string>
     <string name="wifi_calling">مكالمات عبر الواي فاي (VoWiFi)</string>
     <string name="wifi_calling_subtitle">إجراء واستقبال المكالمات عبر شبكة Wi-Fi عند ضعف شبكة المحمول</string>
+    <string name="record_call">تسجيل المكالمة</string>
+    <string name="stop_recording">إيقاف التسجيل</string>
+    <string name="recording_started">بدأ تسجيل المكالمة</string>
+    <string name="recording_saved">تم حفظ تسجيل المكالمة</string>
+    <string name="recording_error">تعذر تسجيل المكالمة</string>
+    <string name="live_preview">معاينة مباشرة</string>
+    <string name="sample_caller_name">خدمة العملاء 1</string>
+    <string name="sample_caller_number">111</string>
+    <string name="sample_calling">جارٍ الاتصال…</string>
 </resources>

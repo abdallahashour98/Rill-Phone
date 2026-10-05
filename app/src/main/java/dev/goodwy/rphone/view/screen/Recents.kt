@@ -124,7 +124,7 @@ fun RecentScreen(navController: NavController, navigator: DestinationsNavigator)
     val settingsEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SETTINGS, true)
 
     var showDialpad by remember { mutableStateOf(false) }
-    var fabVisible by remember { mutableStateOf(false) }
+    var fabVisible by remember { mutableStateOf(true) }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -174,7 +174,7 @@ fun RecentScreen(navController: NavController, navigator: DestinationsNavigator)
             shape = MaterialTheme.shapes.extraExtraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)),
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow, //MaterialTheme.colorScheme.surface,
             tonalElevation = 4.dp,
-            scrimColor = Color.Transparent,
+            scrimColor = Color.Black.copy(alpha = 0.32f),
             contentWindowInsets = {
                 if (isLandscape) {
                     WindowInsets.systemBars.only(
@@ -188,13 +188,13 @@ fun RecentScreen(navController: NavController, navigator: DestinationsNavigator)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 12.dp, bottom = 12.dp),
+                            .padding(top = 12.dp, bottom = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Surface(
                             shape = RoundedCornerShape(3.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.size(width = 36.dp, height = 4.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(width = 38.dp, height = 4.dp)
                         ) {}
                     }
                 }
@@ -415,90 +415,86 @@ fun RecentScreen(navController: NavController, navigator: DestinationsNavigator)
             }
         },
         floatingActionButton = {
-            if (!dialpadEnabled) {
-                val globalBackdrop = LocalLiquidGlassBackdrop.current
-                val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
-                val liquidGlass = remember(settingsVer) {
-                    prefs.getBoolean(
-                        PreferenceManager.KEY_LIQUID_GLASS,
-                        false
-                    )
-                }
-                val lgRecentsFab = remember(settingsVer) {
-                    prefs.getBoolean(
-                        PreferenceManager.KEY_LG_RECENTS_FAB,
-                        false
-                    )
-                }
-                val blurEffects = remember(settingsVer) {
-                    prefs.getBoolean(
-                        PreferenceManager.KEY_BLUR_EFFECTS,
-                        false
-                    )
-                }
-                val blurRecentsFab = remember(settingsVer) {
-                    prefs.getBoolean(
-                        PreferenceManager.KEY_BLUR_RECENTS_FAB,
-                        false
-                    )
-                }
-                val fabShape = RoundedCornerShape(17.dp)
-                val useLiquidGlass =
-                    liquidGlass && lgRecentsFab && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && globalBackdrop != null
-                val useBlur = blurEffects && blurRecentsFab && !useLiquidGlass
-
-                val fabScale by animateFloatAsState(
-                    targetValue = if (fabVisible) 1f else 0f,
-                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                    label = "fabScale"
+            val globalBackdrop = LocalLiquidGlassBackdrop.current
+            val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
+            val liquidGlass = remember(settingsVer) {
+                prefs.getBoolean(
+                    PreferenceManager.KEY_LIQUID_GLASS,
+                    false
                 )
-                val baseModifier = Modifier
-                    .scale(fabScale)
-                    .then(
-                        if (isLandscape) Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = 0.dp)
-                        else if (pillNav) Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = if (showBottomBar) 90.dp else 0.dp)
-                        else Modifier
-                            .padding(bottom = if (showBottomBar) bottomBarHeight + 24.dp else 0.dp)
-                            .then( if (showBottomBar) Modifier else Modifier.navigationBarsPadding())
+            }
+            val lgRecentsFab = remember(settingsVer) {
+                prefs.getBoolean(
+                    PreferenceManager.KEY_LG_RECENTS_FAB,
+                    false
+                )
+            }
+            val blurEffects = remember(settingsVer) {
+                prefs.getBoolean(
+                    PreferenceManager.KEY_BLUR_EFFECTS,
+                    false
+                )
+            }
+            val blurRecentsFab = remember(settingsVer) {
+                prefs.getBoolean(
+                    PreferenceManager.KEY_BLUR_RECENTS_FAB,
+                    false
+                )
+            }
+            val fabShape = RoundedCornerShape(17.dp)
+            val useLiquidGlass =
+                liquidGlass && lgRecentsFab && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && globalBackdrop != null
+            val useBlur = blurEffects && blurRecentsFab && !useLiquidGlass
+
+            val fabScale by animateFloatAsState(
+                targetValue = if (fabVisible) 1f else 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "fabScale"
+            )
+            val baseModifier = Modifier
+                .scale(fabScale)
+                .then(
+                    if (isLandscape) Modifier
+                        .navigationBarsPadding()
+                        .padding(bottom = 0.dp)
+                    else if (pillNav) Modifier
+                        .navigationBarsPadding()
+                        .padding(bottom = if (showBottomBar) 90.dp else 0.dp)
+                    else Modifier
+                        .padding(bottom = if (showBottomBar) bottomBarHeight + 24.dp else 0.dp)
+                        .then( if (showBottomBar) Modifier else Modifier.navigationBarsPadding())
+                )
+            if (useLiquidGlass) {
+                Box(
+                    modifier = baseModifier.drawBackdrop(
+                        backdrop = globalBackdrop,
+                        shape = { fabShape },
+                        effects = {
+                            val d = density
+                            colorControls(brightness = -0.15f)
+                            lens(refractionHeight = 46f * d, refractionAmount = 64f * d)
+                        },
+                        highlight = { Highlight.Default }
                     )
-                if (useLiquidGlass) {
-                    Box(
-                        modifier = baseModifier.drawBackdrop(
-                            backdrop = globalBackdrop,
-                            shape = { fabShape },
-                            effects = {
-                                val d = density
-                                colorControls(brightness = -0.15f)
-                                lens(refractionHeight = 46f * d, refractionAmount = 64f * d)
-                            },
-                            highlight = { Highlight.Default }
-                        )
-                    ) {
-                        FloatingActionButton(
-                            onClick = { showDialpad = true },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.0f),
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            shape = fabShape,
-//                            elevation = FloatingActionButtonDefaults.elevation(0.dp),
-                        ) { Icon(Icons.Default.Dialpad, "Dialpad") }
-                    }
-                } else {
+                ) {
                     FloatingActionButton(
                         onClick = { showDialpad = true },
-                        containerColor = if (useBlur)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
-                        else
-                            MaterialTheme.colorScheme.primaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.0f),
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         shape = fabShape,
-//                        elevation = FloatingActionButtonDefaults.elevation(0.dp),
-                        modifier = baseModifier
-                    ) { Icon(Icons.Default.Dialpad, "Dialpad") }
+                    ) { Icon(Icons.Default.Dialpad, stringResource(R.string.keypad)) }
                 }
+            } else {
+                FloatingActionButton(
+                    onClick = { showDialpad = true },
+                    containerColor = if (useBlur)
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+                    else
+                        MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = fabShape,
+                    modifier = baseModifier
+                ) { Icon(Icons.Default.Dialpad, stringResource(R.string.keypad)) }
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
@@ -1004,7 +1000,7 @@ fun CallLogFullContent(
                                         if (isLast) cardCornerExtraLarge else cardCornerExtraSmall
                                     val bottomPadding = if (!isLast) cardSpacedBy else 0.dp
                                     item(
-                                        key = "log_${lg.number}_${lg.date}_${index}",
+                                        key = lg.id,
                                         contentType = "callLogEntry"
                                     ) {
                                         val isSelected = selectedEntries.any { it.id == lg.id }

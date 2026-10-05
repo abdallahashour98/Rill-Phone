@@ -176,7 +176,12 @@ class FloatingCallService : Service() {
         contactNameState.value = intent?.getStringExtra(EXTRA_CONTACT_NAME) ?: "?"
         phoneNumberState.value  = intent?.getStringExtra(EXTRA_PHONE_NUMBER) ?: ""
         photoUriState.value     = intent?.getStringExtra(EXTRA_PHOTO_URI)
-        if (bubbleView == null) { createBubble(); observeAll() }
+        if (bubbleView == null) {
+            createBubble()
+            observeAll()
+        } else {
+            bubbleView?.visibility = if (CallActivity.isInForeground.value) View.GONE else View.VISIBLE
+        }
         return START_STICKY
     }
 
@@ -185,6 +190,7 @@ class FloatingCallService : Service() {
     private fun createBubble() {
         val cv = ComposeView(this).apply {
             filterTouchesWhenObscured = true
+            visibility = if (CallActivity.isInForeground.value) View.GONE else View.VISIBLE
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)

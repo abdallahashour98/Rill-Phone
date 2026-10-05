@@ -706,17 +706,19 @@ fun String.normalizeDigits(): String {
 
 fun String.normalizeForSearch(): String {
     if (this.isBlank()) return ""
-    var result = this.lowercase().trim()
-    result = result.normalizeDigits()
-    // Strip Arabic diacritics / tashkeel and tatweel
-    result = result.replace(Regex("[\u064B-\u0652\u0640]"), "")
-    // Normalize Alef forms (أ, إ, آ, ٱ) -> ا
-    result = result.replace(Regex("[أإآٱ]"), "ا")
-    // Normalize Ta Marbuta (ة) -> ه
-    result = result.replace('ة', 'ه')
-    // Normalize Alef Maqsura (ى) -> ي
-    result = result.replace('ى', 'ي')
-    // Normalize Persian/Urdu variants
-    result = result.replace('ک', 'ك').replace('ی', 'ي')
-    return result
+    val normalizedDigits = this.normalizeDigits().lowercase().trim()
+    val builder = StringBuilder(normalizedDigits.length)
+    for (i in normalizedDigits.indices) {
+        val ch = normalizedDigits[i]
+        when (ch) {
+            in '\u064B'..'\u0652', '\u0640' -> { /* Skip diacritics / tashkeel / tatweel */ }
+            'أ', 'إ', 'آ', 'ٱ' -> builder.append('ا')
+            'ة' -> builder.append('ه')
+            'ى' -> builder.append('ي')
+            'ک' -> builder.append('ك')
+            'ی' -> builder.append('ي')
+            else -> builder.append(ch)
+        }
+    }
+    return builder.toString()
 }

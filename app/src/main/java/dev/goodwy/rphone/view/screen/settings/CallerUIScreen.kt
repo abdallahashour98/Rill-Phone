@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -95,8 +96,25 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
 
     var themeMode   by remember(settingsState) { mutableStateOf(prefs.getString(PreferenceManager.KEY_THEME_MODE, "auto") ?: "auto") }
     var hangupWidth by remember(settingsState) { mutableFloatStateOf(prefs.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f).coerceIn(0.1f, 1.0f)) }
-    var callerNameSize by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 0)) }
-    var callerNumberSize by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 0)) }
+    val rawCallerNameSize = prefs.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 28)
+    val initialCallerNameSize = when (rawCallerNameSize) {
+        0 -> 28
+        1 -> 36
+        2 -> 46
+        in 16..72 -> rawCallerNameSize
+        else -> 28
+    }
+    var callerNameSize by remember(settingsState) { mutableIntStateOf(initialCallerNameSize) }
+
+    val rawCallerNumberSize = prefs.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 20)
+    val initialCallerNumberSize = when (rawCallerNumberSize) {
+        0 -> 20
+        1 -> 28
+        2 -> 38
+        in 12..64 -> rawCallerNumberSize
+        else -> 20
+    }
+    var callerNumberSize by remember(settingsState) { mutableIntStateOf(initialCallerNumberSize) }
 
     var defaultCallBg by remember { mutableStateOf<String?>(null) }
     var loadingBg by remember { mutableStateOf(true) }
@@ -313,46 +331,195 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                     }
                 }
 
-                // ── Caller Font Sizes ──────────────────────────────────────
+                // ── Caller Font Sizes & Live Preview ──────────────────────────────────────
                 item {
                     RillAnimatedSection(delayMs = 45L) {
                         Column {
                             SettingsSectionLabel(stringResource(R.string.caller_font_size_section))
                             RillExpressiveCard {
-                                RillSelectListItem(
-                                    headline = stringResource(R.string.caller_name_size),
-                                    supporting = stringResource(R.string.caller_name_size_subtitle),
-                                    leadingIcon = Icons.Rounded.FormatSize,
-                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
-                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
-                                    options = listOf(
-                                        stringResource(R.string.size_normal) to 0,
-                                        stringResource(R.string.size_large) to 1,
-                                        stringResource(R.string.size_extra_large) to 2
-                                    ),
-                                    selectedValue = callerNameSize,
-                                    onValueChange = {
-                                        callerNameSize = it
-                                        prefs.setInt(PreferenceManager.KEY_CALLER_NAME_SIZE, it)
+                                Column(
+                                    modifier = Modifier
+                                        .background(color = cardColor)
+                                        .padding(16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.customColors.colorPurple.copy(alpha = 0.15f),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Rounded.FormatSize,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.customColors.colorPurple,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text(
+                                                stringResource(R.string.caller_font_size_section),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                stringResource(R.string.caller_name_size_subtitle),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                lineHeight = MaterialTheme.typography.bodyMedium.fontSize,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
-                                )
-                                RillSelectListItem(
-                                    headline = stringResource(R.string.caller_number_size),
-                                    supporting = stringResource(R.string.caller_number_size_subtitle),
-                                    leadingIcon = Icons.Rounded.Numbers,
-                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
-                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
-                                    options = listOf(
-                                        stringResource(R.string.size_normal) to 0,
-                                        stringResource(R.string.size_large) to 1,
-                                        stringResource(R.string.size_extra_large) to 2
-                                    ),
-                                    selectedValue = callerNumberSize,
-                                    onValueChange = {
-                                        callerNumberSize = it
-                                        prefs.setInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, it)
+
+                                    Spacer(Modifier.height(20.dp))
+
+                                    // Live preview card mimicking CallScreen
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 18.dp, horizontal = 12.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.sample_calling),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(R.string.sample_caller_name),
+                                                fontSize = callerNameSize.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = stringResource(R.string.sample_caller_number),
+                                                fontSize = callerNumberSize.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "etisalat by e&",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
                                     }
-                                )
+
+                                    Spacer(Modifier.height(20.dp))
+
+                                    // Caller Name Size Slider
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.caller_name_size),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            "${callerNameSize} sp",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable {
+                                                callerNameSize = 26
+                                                prefs.setInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 26)
+                                            }
+                                        )
+                                    }
+                                    Slider(
+                                        value = callerNameSize.toFloat(),
+                                        onValueChange = { callerNameSize = it.toInt() },
+                                        onValueChangeFinished = {
+                                            prefs.setInt(PreferenceManager.KEY_CALLER_NAME_SIZE, callerNameSize)
+                                        },
+                                        valueRange = 18f..60f,
+                                        steps = 20,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("18 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("38 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("60 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
+
+                                    // Caller Number Size Slider
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.caller_number_size),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            "${callerNumberSize} sp",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable {
+                                                callerNumberSize = 20
+                                                prefs.setInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 20)
+                                            }
+                                        )
+                                    }
+                                    Slider(
+                                        value = callerNumberSize.toFloat(),
+                                        onValueChange = { callerNumberSize = it.toInt() },
+                                        onValueChangeFinished = {
+                                            prefs.setInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, callerNumberSize)
+                                        },
+                                        valueRange = 14f..52f,
+                                        steps = 18,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("14 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("32 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("52 sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
                     }

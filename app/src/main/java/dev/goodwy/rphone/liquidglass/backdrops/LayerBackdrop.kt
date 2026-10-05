@@ -40,6 +40,7 @@ class LayerBackdrop internal constructor(
     override val isCoordinatesDependent: Boolean = true
 
     internal var layerCoordinates: LayoutCoordinates? by mutableStateOf(null)
+    internal var hasConsumers: Boolean by mutableStateOf(false)
 
     private var inverseLayerScope: InverseLayerScope? = null
 
@@ -48,6 +49,7 @@ class LayerBackdrop internal constructor(
         coordinates: LayoutCoordinates?,
         layerBlock: (GraphicsLayerScope.() -> Unit)?
     ) {
+        hasConsumers = true
         val coordinates = coordinates ?: return
         val layerCoordinates = layerCoordinates ?: return
         withTransform({

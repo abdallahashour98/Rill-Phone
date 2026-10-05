@@ -123,6 +123,7 @@
     <string name="install_update">Install update?</string>
     <string name="install_update_subtitle">Update v%1$s has already been downloaded. Would you like to install it now?</string>
     <string name="download">Download</string>
+    <string name="install">Install</string>
     <string name="not_now">Not now</string>
     <string name="downloading_update">Downloading update</string>
     <string name="please_wait">Please wait…</string>
@@ -131,6 +132,7 @@
     <string name="download_complete">Download complete</string>
     <string name="download_complete_subtitle">The update to version %1$s has been successfully downloaded.</string>
     <string name="open_downloads_folder_manually">Open the Downloads folder manually</string>
+    <string name="allow_install_unknown_apps_then_retry" tools:ignore="MissingTranslation">Please allow installing unknown apps for Rill Phone, then try again.</string>
     <string name="try_again">Try Again</string>
     <string name="couldnt_check_for_updates">Couldn\'t check for updates</string>
     <string name="couldnt_check_for_updates_subtitle">Unable to reach the GitHub releases repository. Please verify your connection.</string>
@@ -435,6 +437,13 @@
     <string name="call_failed_no_network">Call failed: Cellular network unavailable</string>
     <string name="call_failed_restricted">Call failed: Call is restricted</string>
     <string name="call_failed_generic">Call could not be completed</string>
+    <string name="call_event_hold_failed">Couldn\'t put the call on hold</string>
+    <string name="call_event_merge_failed">Couldn\'t merge calls</string>
+    <string name="call_event_switch_failed">Couldn\'t switch calls</string>
+    <string name="call_event_remotely_held">The other party put you on hold</string>
+    <string name="call_event_remotely_unheld">The other party resumed the call</string>
+    <string name="call_switched_to_wifi">Call switched to Wi-Fi calling</string>
+    <string name="call_switched_to_mobile">Call switched to mobile network</string>
     <string name="call">Call</string>
     <string name="incoming">Incoming</string>
     <string name="outgoing">Outgoing</string>
@@ -728,4 +737,13 @@
     <string name="size_extra_large">Extra large</string>
     <string name="wifi_calling">Wi-Fi Calling (VoWiFi)</string>
     <string name="wifi_calling_subtitle">Make and receive calls over Wi-Fi when cellular network is weak</string>
+    <string name="record_call">Record call</string>
+    <string name="stop_recording">Stop recording</string>
+    <string name="recording_started">Recording started</string>
+    <string name="recording_saved">Recording saved</string>
+    <string name="recording_error">Unable to record call</string>
+    <string name="live_preview">Live preview</string>
+    <string name="sample_caller_name">Call center 1</string>
+    <string name="sample_caller_number">111</string>
+    <string name="sample_calling">Calling…</string>
 </resources>

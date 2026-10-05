@@ -12,6 +12,14 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import dev.goodwy.rphone.controller.util.CallRecorder
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -37,6 +45,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -154,6 +163,23 @@ fun ExpressiveCallScreen(
         preferenceManager.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 0)
     }
 
+    val isRecording by CallRecorder.isRecording.collectAsStateWithLifecycle()
+    val recordingDuration by CallRecorder.recordingDuration.collectAsStateWithLifecycle()
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val started = CallRecorder.startRecording(context, phoneNumber)
+            if (started) {
+                Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val globalBackdrop = LocalLiquidGlassBackdrop.current
     val liquidGlass = remember(settingsState) { preferenceManager.getBoolean(PreferenceManager.KEY_LIQUID_GLASS, false) }
     val lgCallScreen = remember(settingsState) { preferenceManager.getBoolean(PreferenceManager.KEY_LG_CALL_SCREEN, true) }
@@ -268,9 +294,25 @@ fun ExpressiveCallScreen(
     }
 
     LaunchedEffect(callState) {
-        if ((callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) && noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+        if (callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) {
+            if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                }
+            }
+            if (CallRecorder.isRecording.value) {
+                val saved = CallRecorder.stopRecording()
+                if (saved != null) {
+                    Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (CallRecorder.isRecording.value) {
+                CallRecorder.stopRecording()
             }
         }
     }
@@ -398,15 +440,27 @@ fun ExpressiveCallScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        val nameStyle = when (callerNameSize) {
-                            1 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold)
-                            2 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
-                            else -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium)
+                        val resolvedNameSize = when (callerNameSize) {
+                            0 -> 28.sp
+                            1 -> 36.sp
+                            2 -> 46.sp
+                            in 14..72 -> callerNameSize.sp
+                            else -> 28.sp
+                        }
+                        val resolvedNumberSize = when (callerNumberSize) {
+                            0 -> 20.sp
+                            1 -> 28.sp
+                            2 -> 38.sp
+                            in 10..64 -> callerNumberSize.sp
+                            else -> 20.sp
                         }
 
                         Text(
                             text = if (contactName.isPhoneNumber()) contactName.forceLtr() else contactName,
-                            style = nameStyle,
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = resolvedNameSize,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
@@ -415,14 +469,12 @@ fun ExpressiveCallScreen(
 
                         if (contactName != phoneNumber) {
                             Spacer(modifier = Modifier.height(10.dp))
-                            val numberStyle = when (callerNumberSize) {
-                                1 -> MaterialTheme.typography.titleLarge
-                                2 -> MaterialTheme.typography.headlineSmall
-                                else -> MaterialTheme.typography.titleMedium
-                            }
                             Text(
                                 text = phoneNumber.forceLtr(),
-                                style = numberStyle,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = resolvedNumberSize,
+                                    fontWeight = FontWeight.Normal
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -431,7 +483,13 @@ fun ExpressiveCallScreen(
 
                         val currentSimLabel = simLabel
                         val isHD = call.isHD()
-                        val isWifi = call.isWifi()
+                        var isWifi by remember(call) { mutableStateOf(call.isWifi(context)) }
+                        LaunchedEffect(call, callState) {
+                            while (true) {
+                                isWifi = call.isWifi(context)
+                                delay(1000.milliseconds)
+                            }
+                        }
                         if (currentSimLabel != null || isHD || isWifi) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (currentSimLabel != null) Surface(
@@ -502,6 +560,47 @@ fun ExpressiveCallScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = isRecording,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
+                                modifier = Modifier.padding(top = 10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    val infiniteTransition = rememberInfiniteTransition(label = "recPulse")
+                                    val pulseAlpha by infiniteTransition.animateFloat(
+                                        initialValue = 1f,
+                                        targetValue = 0.25f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(600, easing = LinearEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        ),
+                                        label = "pulseAlpha"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(9.dp)
+                                            .alpha(pulseAlpha)
+                                            .background(Color.Red, CircleShape)
+                                    )
+                                    Text(
+                                        text = "REC ${CallRecorder.formatDuration(recordingDuration)}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
                             }
                         }
                     }
@@ -636,6 +735,37 @@ fun ExpressiveCallScreen(
 
                                         if (showMore) {
                                             RillExpressiveCard {
+                                                MoreItem(
+                                                    headline = if (isRecording) {
+                                                        "${stringResource(R.string.stop_recording)} (${CallRecorder.formatDuration(recordingDuration)})"
+                                                    } else {
+                                                        stringResource(R.string.record_call)
+                                                    },
+                                                    leadingIcon = if (isRecording) Icons.Rounded.StopCircle else Icons.Rounded.FiberManualRecord,
+                                                    isSelected = isRecording,
+                                                    onClick = {
+                                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                        if (isRecording) {
+                                                            CallRecorder.stopRecording()
+                                                            Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
+                                                        } else {
+                                                            val hasPerm = ContextCompat.checkSelfPermission(
+                                                                context,
+                                                                Manifest.permission.RECORD_AUDIO
+                                                            ) == PackageManager.PERMISSION_GRANTED
+                                                            if (hasPerm) {
+                                                                val started = CallRecorder.startRecording(context, phoneNumber)
+                                                                if (started) {
+                                                                    Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                                } else {
+                                                                    Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                                }
+                                                            } else {
+                                                                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                            }
+                                                        }
+                                                    }
+                                                )
                                                 MoreItem(
                                                     headline = stringResource(R.string.add_note),
                                                     leadingIcon = Icons.AutoMirrored.Outlined.StickyNote2,

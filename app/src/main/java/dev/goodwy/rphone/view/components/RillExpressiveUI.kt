@@ -1276,22 +1276,17 @@ fun RillScrollAnimatedItem(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val prefs = koinInject<PreferenceManager>()
-    // Must be keyed on settingsVersion (not a bare remember{}) — otherwise a composable
-    // that was already placed in the lazy list keeps its first-read value forever and
-    // flipping the setting in InterfaceScreen has no visible effect until the process
-    // restarts or the item happens to leave/re-enter composition.
-    val settingsVersion by prefs.settingsChanged.collectAsStateWithLifecycle()
-    val scrollAnimEnabled = remember(settingsVersion) { prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false) }
+    val context = LocalContext.current
+    val prefs = remember { PreferenceManager(context) }
+    val scrollAnimEnabled = prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false)
 
     if (scrollAnimEnabled) {
-        // Use a key that changes each time this composable enters composition,
-        // ensuring LaunchedEffect(Unit) inside RillAnimatedSection always fires
-        // fresh — both on first load and when the item scrolls back into view.
         val animKey = remember { Any() }
         key(animKey) {
             RillAnimatedSection(delayMs = delayMs, modifier = modifier, content = content)
         }
+    } else if (modifier == Modifier) {
+        content()
     } else {
         Box(modifier = modifier) { content() }
     }

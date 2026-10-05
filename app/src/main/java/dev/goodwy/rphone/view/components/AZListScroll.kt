@@ -307,25 +307,16 @@ fun ContactListItem(
     onSelectToggle: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
-    val prefs = koinInject<PreferenceManager>()
+    val prefs = remember { PreferenceManager(context) }
     val contactsVM: ContactsViewModel = koinActivityViewModel()
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var isPressed by remember { mutableStateOf(false) }
-    var horizontalDragDetected by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (showMenu) 0.97f else if (isPressed) 0.97f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "contactItemScale"
-    )
 
     val headline =  getDisplayName(contact, displayOrder)
 
     // Delete confirmation dialog
     if (showDeleteConfirm) {
-        var trashEnabled by remember { mutableStateOf(prefs.isContactsTrashEnabled()) }
+        val trashEnabled = prefs.isContactsTrashEnabled()
         RillDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = if (trashEnabled) stringResource(R.string.trash_contact) else stringResource(R.string.delete_contact),
@@ -374,40 +365,17 @@ fun ContactListItem(
     Surface(
         color = if (isSelected) cardColorSelected else cardColor,
         shape = RoundedCornerShape(cardCornerExtraSmall),
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale),
+        modifier = Modifier.fillMaxWidth(),
         shadowElevation = 0.dp
     ) {
-//        val defaultOrFirstPhone = contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
         val contactInfo = getDisplayContactInfo(contact)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = {
-                        if (horizontalDragDetected) return@combinedClickable
-                        onClick()
-                    },
+                    onClick = onClick,
                     onLongClick = onSelectToggle
                 )
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        isPressed = true
-                        horizontalDragDetected = false
-                        val downPos = down.position
-                        do {
-                            val event = awaitPointerEvent()
-                            val current = event.changes.firstOrNull() ?: break
-                            val dx = kotlin.math.abs(current.position.x - downPos.x)
-                            val dy = kotlin.math.abs(current.position.y - downPos.y)
-                            if (dx > 28.dp.toPx() && dx > dy * 1.3f) horizontalDragDetected = true
-                            if (!current.pressed) break
-                        } while (true)
-                        isPressed = false
-                    }
-                }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -441,12 +409,8 @@ fun ContactListItem(
                         .combinedClickable(
                             interactionSource = null,
                             indication = ripple(bounded = false, radius = 32.dp),
-                            onClick = {
-                                if (horizontalDragDetected) return@combinedClickable
-                                onClick()
-                            },
+                            onClick = onClick,
                             onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 showMenu = true
                             }
                         )

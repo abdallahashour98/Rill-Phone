@@ -61,12 +61,16 @@ class CallRepositoryImpl : ICallRepository {
     override fun getPreferredCall(): Call? = _preferredCall.value
 
     override fun answerCall() {
-        _currentCallSession.value?.call?.answer(VideoProfile.STATE_AUDIO_ONLY)
+        val callToAnswer = _allCalls.value.find { it.state == Call.STATE_RINGING || it.state == Call.STATE_SIMULATED_RINGING }
+            ?: _currentCallSession.value?.call
+        try {
+            callToAnswer?.answer(VideoProfile.STATE_AUDIO_ONLY)
+        } catch (_: Exception) {}
     }
 
     override fun declineCall() {
         val call = _currentCallSession.value?.call ?: return
-        val isRinging = call.state == Call.STATE_RINGING
+        val isRinging = call.state == Call.STATE_RINGING || call.state == Call.STATE_SIMULATED_RINGING
         try {
             if (isRinging && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 call.reject(Call.REJECT_REASON_DECLINED)

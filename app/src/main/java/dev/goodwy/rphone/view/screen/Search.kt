@@ -146,7 +146,12 @@ fun ContactSearchContent(
         contactsVM.fetchContactsFull(force = false)
     }
 
-    val contacts by contactsVM.allContactsFull.collectAsStateWithLifecycle()
+    val fullContacts by contactsVM.allContactsFull.collectAsStateWithLifecycle()
+    val baseContacts by contactsVM.allContacts.collectAsStateWithLifecycle()
+    val isLoadingContacts by contactsVM.isLoading.collectAsStateWithLifecycle()
+    val contacts = remember(fullContacts, baseContacts) {
+        if (fullContacts.isNotEmpty()) fullContacts else baseContacts
+    }
     val callLogs by callLogVM.allCallLogs.collectAsStateWithLifecycle()
 
     val filterState = remember(settingsVer) { prefs.getSearchFilterState() }
@@ -418,23 +423,29 @@ fun ContactSearchContent(
             }
             !hasAnyResults -> {
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.SearchOff,
-                            null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    if (isLoadingContacts && contacts.isEmpty()) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            strokeWidth = 3.dp
                         )
-                        Text(
-//                            "No results for \"$query\"",
-                            stringResource(R.string.no_results),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.SearchOff,
+                                null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                stringResource(R.string.no_results),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }

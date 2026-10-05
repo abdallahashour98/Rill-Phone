@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.controller.util.PreferenceManager
@@ -49,7 +50,10 @@ import dev.goodwy.rphone.view.screen.ExpressiveCallScreen
 import dev.goodwy.rphone.view.theme.Rill4Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.android.ext.android.inject
 import kotlin.getValue
 import kotlin.time.Duration.Companion.milliseconds
@@ -76,6 +80,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     private val isFinishingCall = java.util.concurrent.atomic.AtomicBoolean(false)
     private var keyguardDismissRequested = false
     private val identityCache = mutableMapOf<String, CachedCallIdentity>()
+    private var answeredFromNotificationState by mutableStateOf(false)
 
     companion object {
         /** FloatingCallService observes this to hide the bubble when CallActivity is visible. */
@@ -85,26 +90,9 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onCreate(savedInstanceState: Bundle?) {
         turnScreenOnAndShowWhileLocked()
         super.onCreate(savedInstanceState)
+        handleCallIntent(intent)
 
         CallBackgroundStore.attach(preferenceManager)
-
-        val telecomManager = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-        val isTelecomInCall = try {
-            telecomManager?.isInCall == true
-        } catch (e: SecurityException) {
-            false
-        }
-
-        if (!isTelecomInCall &&
-            callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED } &&
-            callViewModel.currentCallSession.value == null
-        ) {
-            setShowWhenLocked(false)
-            setTurnScreenOn(false)
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            finishAndRemoveTask()
-            return
-        }
 
         if (preferenceManager.getBoolean(PreferenceManager.KEY_KEEP_SCREEN_ON, true)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -224,7 +212,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                         },
                         label = "CallSwitch"
                     ) { targetCall ->
-                        val answeredFromNotification = intent?.getBooleanExtra("ANSWERED_FROM_NOTIFICATION", false) ?: false
+                        val answeredFromNotification = answeredFromNotificationState || (intent?.getBooleanExtra("ANSWERED_FROM_NOTIFICATION", false) ?: false)
 
                         if (targetCall == null) {
                             Box(modifier = Modifier.fillMaxSize())
@@ -457,6 +445,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleCallIntent(intent)
         if (!isFinishingCall.get() && callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
             turnScreenOnAndShowWhileLocked()
         }
@@ -470,9 +459,14 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
             return
         }
 
-        setShowWhenLocked(false)
-        setTurnScreenOn(false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(false)
+            setTurnScreenOn(false)
+        }
+        @Suppress("DEPRECATION")
         window.clearFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
             WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         )
@@ -485,21 +479,62 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         turnScreenOnAndShowWhileLocked()
     }
     private fun turnScreenOnAndShowWhileLocked() {
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        @Suppress("DEPRECATION")
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
 
-        // We do not call `keyguardManager.requestDismissKeyguard(this, null)`
-        // This causes the unlock screen to appear. The call screen should simply be displayed on top of the lock screen.
+        try {
+            val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
+            if (powerManager != null) {
+                @Suppress("DEPRECATION")
+                val wakeLock = powerManager.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
+                    "RillPhone:IncomingCallWakeLock"
+                )
+                wakeLock.acquire(5000L)
+            }
+        } catch (e: Exception) {
+            Log.w("CallActivity", "Failed to acquire screen wake lock", e)
+        }
+    }
+
+    private fun handleCallIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        val autoAnswer = intent.getBooleanExtra("AUTO_ANSWER_CALL", false) ||
+                intent.getBooleanExtra("ANSWERED_FROM_NOTIFICATION", false) ||
+                action == "ACTION_ANSWER"
+        if (autoAnswer) {
+            answeredFromNotificationState = true
+            lifecycleScope.launch {
+                withTimeoutOrNull(2000L) {
+                    callViewModel.allCalls.first { list ->
+                        list.any { it.state == Call.STATE_RINGING || it.state == Call.STATE_ACTIVE }
+                    }
+                }
+                callViewModel.answerCall()
+            }
+        }
     }
 
     override fun onStart() {
         super.onStart()
+        isInForeground.value = true
         callViewModel.setIsActivityVisible(true)
     }
 
     override fun onStop() {
         super.onStop()
+        isInForeground.value = false
         if (proximityWakeLock?.isHeld != true) {
             callViewModel.setIsActivityVisible(false)
         }

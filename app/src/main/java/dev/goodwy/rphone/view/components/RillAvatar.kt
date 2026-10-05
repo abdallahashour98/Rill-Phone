@@ -1,7 +1,7 @@
 package dev.goodwy.rphone.view.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -68,19 +69,15 @@ fun RillAvatar(
     modifier: Modifier = Modifier,
     shape: Shape = CircleShape
 ) {
-    val prefs = koinInject<PreferenceManager>()
-    // Collect settingsChanged once so prefs reads below are stable across recompositions.
-    // Using 'by' delegation avoids an extra object allocation on every frame.
-    @Suppress("UNUSED_VARIABLE")
-    val settingsState by prefs.settingsChanged.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val prefs = remember { PreferenceManager(context) }
 
-    val showPicture     = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_SHOW_PICTURE, true) }
-    val showFirstLetter = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_SHOW_FIRST_LETTER, true) }
-    val colorfulAvatars = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_COLORFUL_AVATARS, true) }
-    var primaryColorAvatars     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_PRIMARY_COLOR_AVATARS, false)) }
-    var secondaryColorAvatars     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SECONDARY_COLOR_AVATARS, false)) }
-    var googleContactColorAvatars     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_GOOGLE_CONTACTS_AVATARS, false)) }
-    val avatarFrame = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false) }
+    val showPicture     = prefs.getBoolean(PreferenceManager.KEY_SHOW_PICTURE, true)
+    val showFirstLetter = prefs.getBoolean(PreferenceManager.KEY_SHOW_FIRST_LETTER, true)
+    val colorfulAvatars = prefs.getBoolean(PreferenceManager.KEY_COLORFUL_AVATARS, true)
+    val secondaryColorAvatars = prefs.getBoolean(PreferenceManager.KEY_SECONDARY_COLOR_AVATARS, false)
+    val googleContactColorAvatars = prefs.getBoolean(PreferenceManager.KEY_GOOGLE_CONTACTS_AVATARS, false)
+    val avatarFrame     = prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false)
 
     val hasName  = name.trim().isNotEmpty()
     val isLetter  = name.trim().take(1).isLetter() || name.take(2).isEmoji()
@@ -94,45 +91,30 @@ fun RillAvatar(
         else -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
     }
 
-//    var appeared by remember { mutableStateOf(false) }
-//    LaunchedEffect(Unit) { appeared = true }
-//    val iconScale by animateFloatAsState(
-//        targetValue = if (appeared) 1f else 0.5f,
-//        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-//        label = "iconScale"
-//    )
-//    val iconAlpha by animateFloatAsState(
-//        targetValue = if (appeared) 1f else 0f,
-//        animationSpec = tween(250),
-//        label = "iconAlpha"
-//    )
-
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .then(
-                if (avatarFrame) modifier
+                if (avatarFrame) Modifier
                     .drawBehind {
-                        val borderWidth = size.width * 0.09f // 9% of the width
+                        val borderWidth = size.width * 0.09f
                         drawOutline(
                             outline = shape.createOutline(size, layoutDirection, this),
                             color = contentColor,
                             style = Stroke(width = borderWidth)
                         )
                     }
-                else modifier
+                else Modifier
             )
             .background(backgroundColor, shape)
-//            .scale(iconScale)
-//            .alpha(iconAlpha)
             .clip(shape),
         contentAlignment = Alignment.Center
     ) {
-        val letterFontSize  = (maxWidth.value * 0.60f).coerceIn(14f, 72f).sp
-        val iconSize        = (maxWidth.value * 0.65f).coerceIn(16f, 92f).dp
-        val placeholderSize = (maxWidth.value * 0.85f).dp
+        val letterFontSize  = 22.sp
+        val iconSize        = 28.dp
+        val placeholderSize = 38.dp
 
         when {
-            showPicture && !photoUri.isNullOrEmpty() /*&& photoUri != "voicemail://icon"*/ -> {
+            showPicture && !photoUri.isNullOrEmpty() -> {
                 AsyncImage(
                     model = photoUri,
                     contentDescription = name,
@@ -143,20 +125,12 @@ fun RillAvatar(
             icon != null -> {
                 Icon(imageVector = icon, contentDescription = name, tint = contentColor, modifier = Modifier.size(iconSize))
             }
-//            (photoUri == "voicemail://icon" || name.equals(stringResource(R.string.settings_voicemail_title), ignoreCase = true)) -> {
-//                Icon(
-//                    imageVector = Icons.Rounded.Voicemail,
-//                    contentDescription = name, tint = contentColor,
-//                    modifier = Modifier.size(iconSize)
-//                )
-//            }
             showFirstLetter && hasName && isLetter -> {
                 val emoji = name.take(2)
                 val letter = if (emoji.isEmoji()) emoji else name.trim().take(1).uppercase()
                 Text(
                     text = letter,
                     fontSize = letterFontSize,
-//                    fontWeight = FontWeight.Bold,
                     color = contentColor,
                     lineHeight = letterFontSize
                 )

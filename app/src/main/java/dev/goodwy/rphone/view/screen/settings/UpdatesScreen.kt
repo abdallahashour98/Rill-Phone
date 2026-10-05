@@ -67,6 +67,7 @@ import dev.goodwy.rphone.controller.util.enqueueApkDownload
 import dev.goodwy.rphone.controller.util.fetchLatestRelease
 import dev.goodwy.rphone.controller.util.fetchReleaseForVersion
 import dev.goodwy.rphone.controller.util.getApkDestinationFile
+import dev.goodwy.rphone.controller.util.installDownloadedApk
 import dev.goodwy.rphone.controller.util.isNewerVersion
 import dev.goodwy.rphone.view.components.RillAnimatedSection
 import dev.goodwy.rphone.view.components.RillExpressiveCard
@@ -166,16 +167,7 @@ fun UpdatesScreen(navigator: DestinationsNavigator) {
                 onConfirm = {
                     triggerHaptic()
                     if (ds.readyToInstall) {
-//                        downloadState = DownloadState.Idle
-//                        installApkAndScheduleDelete(context, getApkDestinationFile())
-                        try {
-                            val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            context.toast(failedText)
-                        }
+                        installDownloadedApk(context)
                         downloadState = DownloadState.Idle
                     } else {
                         val url = ds.release.apkUrl
@@ -213,6 +205,7 @@ fun UpdatesScreen(navigator: DestinationsNavigator) {
                     when (status) {
                         DownloadManager.STATUS_SUCCESSFUL -> {
                             prefs.setString(PreferenceManager.KEY_DOWNLOADED_UPDATE_VERSION, ds.release.tagName)
+                            installDownloadedApk(context, ds.downloadId)
                             downloadState = DownloadState.DownloadComplete(ds.release)
                             break
                         }
@@ -234,19 +227,11 @@ fun UpdatesScreen(navigator: DestinationsNavigator) {
             )
         }
         is DownloadState.DownloadComplete -> {
-            val failedText = stringResource(R.string.open_downloads_folder_manually)
             DownloadCompleteDialog(
                 latestVersion = ds.release.tagName,
                 onOpenDownloads = {
                     triggerHaptic()
-                    try {
-                        val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        context.toast(failedText)
-                    }
+                    installDownloadedApk(context)
                     downloadState = DownloadState.Idle
                 },
                 onDismiss = { downloadState = DownloadState.Idle }
@@ -380,7 +365,7 @@ fun UpdatesScreen(navigator: DestinationsNavigator) {
                                 onCheckAgain = { runCheck() },
                                 onUpdateClick = { latest ->
                                     triggerHaptic()
-                                    val apkFile = getApkDestinationFile()
+                                    val apkFile = getApkDestinationFile(context)
                                     val downloadedVersion = prefs.getString(
                                         PreferenceManager.KEY_DOWNLOADED_UPDATE_VERSION,
                                         null
@@ -1361,7 +1346,7 @@ private fun PermissionToDownloadDialog(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text(if (readyToInstall) stringResource(R.string.open) else stringResource(R.string.download))
+                Text(if (readyToInstall) stringResource(R.string.install) else stringResource(R.string.download))
             }
         },
         dismissButton = {
@@ -1417,7 +1402,7 @@ private fun DownloadCompleteDialog(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text(stringResource(R.string.open))
+                Text(stringResource(R.string.install))
             }
         },
         dismissButton = {

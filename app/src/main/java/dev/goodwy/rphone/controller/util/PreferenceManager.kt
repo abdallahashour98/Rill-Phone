@@ -90,38 +90,48 @@ class PreferenceManager(context: Context) {
      *  one SIM instead of nagging with an "Ask every time" dialog on every call. */
     fun getDefaultSimIndexDefault(): Int = if (getActiveSimCount() == 1) 1 else 0
 
+    private val booleanKeys = java.util.concurrent.ConcurrentHashMap<String, Preferences.Key<Boolean>>()
+    private val intKeys = java.util.concurrent.ConcurrentHashMap<String, Preferences.Key<Int>>()
+    private val stringKeys = java.util.concurrent.ConcurrentHashMap<String, Preferences.Key<String>>()
+    private val floatKeys = java.util.concurrent.ConcurrentHashMap<String, Preferences.Key<Float>>()
+
+    private fun boolKey(key: String) = booleanKeys.getOrPut(key) { booleanPreferencesKey(key) }
+    private fun intKey(key: String) = intKeys.getOrPut(key) { intPreferencesKey(key) }
+    private fun stringKey(key: String) = stringKeys.getOrPut(key) { stringPreferencesKey(key) }
+    private fun floatKey(key: String) = floatKeys.getOrPut(key) { floatPreferencesKey(key) }
+
     // Synchronous-style API for backward compatibility
     fun getBoolean(key: String, defaultValue: Boolean): Boolean =
-        _prefsCache.value[booleanPreferencesKey(key)] ?: defaultValue
+        _prefsCache.value[boolKey(key)] ?: defaultValue
 
     fun setBoolean(key: String, value: Boolean) {
-        scope.launch { dataStore.edit { it[booleanPreferencesKey(key)] = value } }
+        scope.launch { dataStore.edit { it[boolKey(key)] = value } }
     }
 
     fun getString(key: String, defaultValue: String?): String? =
-        _prefsCache.value[stringPreferencesKey(key)] ?: defaultValue
+        _prefsCache.value[stringKey(key)] ?: defaultValue
 
     fun setString(key: String, value: String?) {
         scope.launch {
             dataStore.edit {
-                if (value == null) it.remove(stringPreferencesKey(key))
-                else it[stringPreferencesKey(key)] = value
+                if (value == null) it.remove(stringKey(key))
+                else it[stringKey(key)] = value
             }
         }
     }
 
     fun getInt(key: String, defaultValue: Int): Int =
-        _prefsCache.value[intPreferencesKey(key)] ?: defaultValue
+        _prefsCache.value[intKey(key)] ?: defaultValue
 
     fun setInt(key: String, value: Int) {
-        scope.launch { dataStore.edit { it[intPreferencesKey(key)] = value } }
+        scope.launch { dataStore.edit { it[intKey(key)] = value } }
     }
 
     fun getFloat(key: String, defaultValue: Float): Float =
-        _prefsCache.value[floatPreferencesKey(key)] ?: defaultValue
+        _prefsCache.value[floatKey(key)] ?: defaultValue
 
     fun setFloat(key: String, value: Float) {
-        scope.launch { dataStore.edit { it[floatPreferencesKey(key)] = value } }
+        scope.launch { dataStore.edit { it[floatKey(key)] = value } }
     }
 
     /** Returns a map of all preferences in the DataStore for backup purposes. */

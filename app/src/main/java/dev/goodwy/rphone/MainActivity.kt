@@ -41,6 +41,7 @@ import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.ContactDetailsScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.DialPadScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ContactEditScreenDestination
+import dev.goodwy.rphone.view.screen.DialpadDraftHolder
 import android.content.res.Configuration
 import android.os.Build
 import android.telecom.Call
@@ -149,13 +150,12 @@ class MainActivity : FragmentActivity() {
                 val navController = rememberNavController()
                 val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
 
-                val favouritesEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_FAVORITES, false)
-                val contactsEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_CONTACTS, true)
-                val notesEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_NOTES, false)
-                val searchEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SEARCH, false)
-                val settingsEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SETTINGS, true)
-//                val dialpadEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_DIALPAD, true)
-                val defaultTab = prefs.getString(PreferenceManager.KEY_DEFAULT_TAB, "calls") ?: "calls"
+                val favouritesEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_FAVORITES, false) }
+                val contactsEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_CONTACTS, true) }
+                val notesEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_NOTES, false) }
+                val searchEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SEARCH, false) }
+                val settingsEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SETTINGS, true) }
+                val defaultTab = remember(settingsVer) { prefs.getString(PreferenceManager.KEY_DEFAULT_TAB, "calls") ?: "calls" }
 
 //                val defBar = prefs.getInt(PreferenceManager.KEY_DEFAULT_BOTTOM_NAV, 0)
 //                val transitionStyle = prefs.getInt(PreferenceManager.KEY_TRANSITION_STYLE, 0)
@@ -224,7 +224,7 @@ class MainActivity : FragmentActivity() {
                                     lastOpenedTab.contains(FavoritesScreenDestination.route) && favouritesEnabled -> FavoritesScreenDestination
                                     lastOpenedTab.contains(ContactScreenDestination.route) && contactsEnabled -> ContactScreenDestination
                                     lastOpenedTab.contains(NotesScreenDestination.route) && notesEnabled -> NotesScreenDestination()
-//                                    lastOpenedTab.contains(DialPadScreenDestination.route) && dialpadEnabled -> DialPadScreenDestination
+                                    lastOpenedTab.contains(DialPadScreenDestination.baseRoute) -> DialPadScreenDestination()
                                     else -> RecentScreenDestination
                                 }
                             }
@@ -361,7 +361,7 @@ class MainActivity : FragmentActivity() {
                             val isFavoritesSelected = currentDest?.hierarchy?.any { it.route == FavoritesScreenDestination.route }  == true
                             val isRecentsSelected   = currentDest?.hierarchy?.any { it.route == RecentScreenDestination.route }     == true
                             val isContactsSelected  = currentDest?.hierarchy?.any { it.route == ContactScreenDestination.route }    == true
-                            val isDialpadSelected   = currentDest?.hierarchy?.any { it.route == DialPadScreenDestination.route }    == true
+                            val isDialpadSelected   = currentDest?.hierarchy?.any { it.route?.contains(DialPadScreenDestination.baseRoute) == true } == true
                             val isNotesSelected     = currentDest?.hierarchy?.any { it.route == NotesScreenDestination.route }      == true
 
                             fun saveCurrentTab(route: String) {
@@ -384,10 +384,10 @@ class MainActivity : FragmentActivity() {
                                             NotesScreenDestination.route
                                         )
 
-                                    route.contains(DialPadScreenDestination.route) ->
+                                    route.contains(DialPadScreenDestination.baseRoute) ->
                                         prefs.setString(
                                             PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            DialPadScreenDestination.route
+                                            DialPadScreenDestination.baseRoute
                                         )
 
                                     else ->
@@ -406,12 +406,13 @@ class MainActivity : FragmentActivity() {
 
                             fun navTo(route: String) {
                                 saveCurrentTab(route)
+                                val isStartDest = route == navController.graph.findStartDestination().route
                                 navController.navigate(route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                        saveState = !isStartDest
                                     }
                                     launchSingleTop = true
-                                    restoreState = true
+                                    restoreState = !isStartDest
                                 }
                             }
 
@@ -701,8 +702,9 @@ class MainActivity : FragmentActivity() {
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
     private fun handleIntent(intent: Intent?, navController: androidx.navigation.NavController) {
         intent ?: return
-        val target = mainViewModel.getNavigationTarget(intent, this) ?: return
+        val target = mainViewModel.getNavigationTarget(intent, this)
         intentState = null
+        target ?: return
 
         when (target) {
             is NavigationTarget.Recents -> {
@@ -730,7 +732,13 @@ class MainActivity : FragmentActivity() {
                 }
             }
             is NavigationTarget.Dialpad -> {
-                navController.navigate(DialPadScreenDestination(initialNumber = target.number).route)
+                DialpadDraftHolder.pendingNumber = target.number
+                navController.navigate(DialPadScreenDestination(initialNumber = target.number).route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = false
+                    }
+                    launchSingleTop = true
+                }
             }
             is NavigationTarget.ContactDetails -> {
                 navController.navigate(ContactDetailsScreenDestination(contactId = target.contactId).route)

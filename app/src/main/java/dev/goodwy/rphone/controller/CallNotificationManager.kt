@@ -20,9 +20,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.net.toUri
 import kotlinx.coroutines.withContext
+import android.net.Uri
 import dev.goodwy.rphone.MainActivity
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
+import dev.goodwy.rphone.view.screen.BiometricCallActivity
 
 class CallNotificationManager(
     private val context: Context,
@@ -31,8 +33,8 @@ class CallNotificationManager(
     companion object {
         const val CHANNEL_ID_LOW = "call_channel_low"
         const val CHANNEL_ID_HIGH = "call_channel_high"
-        const val INCOMING_CHANNEL_ID = "incoming_call_channel_v3"
-        const val FULLSCREEN_INCOMING_CHANNEL_ID = "fullscreen_incoming_call_channel_v3"
+        const val INCOMING_CHANNEL_ID = "incoming_call_channel_v4"
+        const val FULLSCREEN_INCOMING_CHANNEL_ID = "fullscreen_incoming_call_channel_v4"
         const val MISSED_CHANNEL_ID = "missed_call_channel_v3"
         const val NOTIFICATION_ID = 101
     }
@@ -53,6 +55,21 @@ class CallNotificationManager(
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+    /**
+     * Whether an incoming call can be surfaced as a heads-up notification.
+     * False when app notifications are disabled or the user lowered/blocked the incoming-call channel.
+     */
+    fun canShowIncomingCallNotification(): Boolean {
+        if (!notificationManager.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
+            val channelId = if (fullscreenCalls) FULLSCREEN_INCOMING_CHANNEL_ID else INCOMING_CHANNEL_ID
+            val channel = notificationManager.getNotificationChannel(channelId) ?: return true // will be created as HIGH
+            return channel.importance >= NotificationManager.IMPORTANCE_HIGH
+        }
+        return true
+    }
+
     fun buildCallNotification(
         call: Call,
         contactName: String,
@@ -61,37 +78,47 @@ class CallNotificationManager(
         high: Boolean = false
     ): Notification {
         val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
-        val isRinging = call.state == Call.STATE_RINGING
+        val isRinging = call.state == Call.STATE_RINGING || call.state == Call.STATE_SIMULATED_RINGING
         val channelId = if (isRinging) {
             if (fullscreenCalls) FULLSCREEN_INCOMING_CHANNEL_ID else INCOMING_CHANNEL_ID
         } else {
             if (high) CHANNEL_ID_HIGH else CHANNEL_ID_LOW
         }
 
-        if (!createdChannels.contains(channelId)) {
-//            notificationManager.deleteNotificationChannel(channelId)
-            val channel = if (isRinging) {
-                NotificationChannel(
-                    channelId,
-                    if (fullscreenCalls) context.getString(R.string.notif_channel_fullscreen_incoming_calls) else context.getString(R.string.notif_channel_incoming_calls),
-                    if (fullscreenCalls) NotificationManager.IMPORTANCE_LOW else NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(true)
-                    setBypassDnd(true)
-                }
-            } else {
-                NotificationChannel(
-                    if (high) CHANNEL_ID_HIGH else CHANNEL_ID_LOW,
-                    if (high) "Call Notification on a Locked Screen" else context.getString(R.string.notif_channel_outgoing_calls),
-                    if (high) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (isRinging) {
+                val existing = notificationManager.getNotificationChannel(channelId)
+                if (existing != null && existing.importance < NotificationManager.IMPORTANCE_HIGH) {
+                    try {
+                        notificationManager.deleteNotificationChannel(channelId)
+                    } catch (_: Exception) {}
+                    createdChannels.remove(channelId)
                 }
             }
-            notificationManager.createNotificationChannel(channel)
-            createdChannels.add(channelId)
+            if (!createdChannels.contains(channelId)) {
+                val channel = if (isRinging) {
+                    NotificationChannel(
+                        channelId,
+                        if (fullscreenCalls) context.getString(R.string.notif_channel_fullscreen_incoming_calls) else context.getString(R.string.notif_channel_incoming_calls),
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(true)
+                        setBypassDnd(true)
+                    }
+                } else {
+                    NotificationChannel(
+                        if (high) CHANNEL_ID_HIGH else CHANNEL_ID_LOW,
+                        if (high) "Call Notification on a Locked Screen" else context.getString(R.string.notif_channel_outgoing_calls),
+                        if (high) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_LOW
+                    ).apply {
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(false)
+                    }
+                }
+                notificationManager.createNotificationChannel(channel)
+                createdChannels.add(channelId)
+            }
         }
 
         // Removed contactPhoto = getContactBitmap(photoUri) - handled via parameter
@@ -107,15 +134,41 @@ class CallNotificationManager(
         val fullScreenIntent = Intent(context, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
+        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            @Suppress("DEPRECATION")
+            android.app.ActivityOptions.makeBasic().apply {
+                setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            }.toBundle()
+        } else null
+
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,
             if (isRinging) call.hashCode() else 0,
             fullScreenIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            options
         )
 
-        val answerIntent = Intent(context, CallService::class.java).apply { action = "ANSWER_CALL" }
-        val answerPendingIntent = PendingIntent.getService(context, 1, answerIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val handleNumber = call.details.handle?.schemeSpecificPart?.let { Uri.decode(it) } ?: ""
+        val answerIntent = if (preferenceManager.shouldGateCallWithBiometric(handleNumber)) {
+            Intent(context, BiometricCallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra("NOTIFICATION_PENDING_ACTION", "ANSWER")
+            }
+        } else {
+            Intent(context, CallActivity::class.java).apply {
+                action = "ACTION_ANSWER"
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra("ANSWERED_FROM_NOTIFICATION", true)
+                putExtra("AUTO_ANSWER_CALL", true)
+            }
+        }
+        val answerPendingIntent = PendingIntent.getActivity(
+            context,
+            1,
+            answerIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val declineIntent = Intent(context, CallService::class.java).apply { action = "DECLINE_CALL" }
         val declinePendingIntent = PendingIntent.getService(context, 2, declineIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -142,7 +195,7 @@ class CallNotificationManager(
         }
 
         val contentText = buildString {
-            if (call.state == Call.STATE_RINGING) append(context.getString(R.string.call_status_incoming)) else append(context.getString(R.string.notif_active_call))
+            if (isRinging) append(context.getString(R.string.call_status_incoming)) else append(context.getString(R.string.notif_active_call))
             if (!simLabel.isNullOrEmpty()) {
                 append(" ")
                 append(context.getString(R.string.notif_via_sim, simLabel))
@@ -177,7 +230,7 @@ class CallNotificationManager(
                 .setColor(notificationColor)
                 .addPerson(person)
 
-            if (call.state == Call.STATE_RINGING) {
+            if (isRinging) {
                 builder.setFullScreenIntent(fullScreenPendingIntent, true)
                 builder.setUsesChronometer(false)
                 builder.setShowWhen(false)
@@ -193,7 +246,7 @@ class CallNotificationManager(
                 }
             }
 
-            if (call.state != Call.STATE_RINGING) {
+            if (!isRinging) {
                 builder.addAction(
                     Notification.Action.Builder(
                         Icon.createWithResource(context, R.drawable.ic_notif_speaker),
@@ -230,7 +283,7 @@ class CallNotificationManager(
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(false)
-                .setSilent(call.state != Call.STATE_RINGING)
+                .setSilent(!isRinging)
                 .setOnlyAlertOnce(!isRinging)
                 .setDefaults(if (isRinging) NotificationCompat.DEFAULT_ALL else 0)
                 .setStyle(
@@ -261,7 +314,7 @@ class CallNotificationManager(
                 builder.setShowWhen(false)
             }
 
-            if (call.state != Call.STATE_RINGING) {
+            if (!isRinging) {
                 builder.addAction(
                     R.drawable.ic_notif_speaker,
                     audioLabel,

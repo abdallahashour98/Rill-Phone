@@ -122,6 +122,9 @@ import dev.goodwy.rphone.modal.data.getDisplayName
 import dev.goodwy.rphone.view.components.RillDialog
 import dev.goodwy.rphone.view.components.RillExpressiveButton
 import dev.goodwy.rphone.view.components.performAppHaptic
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.time.Duration.Companion.milliseconds
@@ -420,61 +423,52 @@ fun DialPadContent(
         val take = 30
         // Search contacts results
         val searchResults by produceState(initialValue = emptyList<Contact>(), number, allContacts, t9Enabled) {
-            snapshotFlow {
-                Triple(number, allContacts, t9Enabled)
+            val cleanQuery = number.normalizeDigits().replace(" ", "").replace("-", "")
+            if (cleanQuery.isEmpty()) {
+                value = emptyList()
+                return@produceState
             }
-                .debounce(150.milliseconds) // We wait 150 ms after the last press
-                .distinctUntilChanged()
-                .collect { (num, contacts, t9) ->
-                    val cleanQuery = num.normalizeDigits().replace(" ", "").replace("-", "")
-                    value = if (cleanQuery.isEmpty()) {
-                        emptyList()
-                    } else {
-                        val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
-                        contacts.asSequence()
-                            .filter { contact ->
-                                val matchesNumber = contact.phoneNumbers.any {
-                                    val cleanNum = normalizeNumberDigits(it)
-                                    cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
-                                }
-                                val matchesName = t9 && T9Matcher.isMatch(contact.displayName, cleanQuery)
-                                val matchesNickname = t9 && contact.nickname.isNotBlank() && T9Matcher.isMatch(contact.nickname, cleanQuery)
-                                matchesNumber || matchesName || matchesNickname
-                            }
-                            .take(take)
-                            .toList()
+            delay(100.milliseconds)
+            val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
+            value = withContext(Dispatchers.Default) {
+                allContacts.asSequence()
+                    .filter { contact ->
+                        val matchesNumber = contact.phoneNumbers.any {
+                            val cleanNum = normalizeNumberDigits(it)
+                            cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
+                        }
+                        val matchesName = t9Enabled && T9Matcher.isMatch(contact.displayName, cleanQuery)
+                        val matchesNickname = t9Enabled && contact.nickname.isNotBlank() && T9Matcher.isMatch(contact.nickname, cleanQuery)
+                        matchesNumber || matchesName || matchesNickname
                     }
-                }
+                    .take(take)
+                    .toList()
+            }
         }
 
         // Search logs results with unique numbers (latest call per number)
         val searchLogsResults by produceState(initialValue = emptyList<CallLogEntry>(), number, logs, t9Enabled) {
-            snapshotFlow {
-                Triple(number, logs, t9Enabled)
+            val cleanQuery = number.normalizeDigits().replace(" ", "").replace("-", "")
+            if (cleanQuery.isEmpty()) {
+                value = emptyList()
+                return@produceState
             }
-                .debounce(150.milliseconds) // We wait 150 ms after the last press
-                .distinctUntilChanged()
-                .collect { (num, logsList, t9) ->
-                    val cleanQuery = num.normalizeDigits().replace(" ", "").replace("-", "")
-                    value = if (cleanQuery.isEmpty()) {
-                        emptyList()
-                    } else {
-                        val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
-                        logsList.asSequence()
-                            .filter { log ->
-                                val cleanNum = normalizeNumberDigits(log.number)
-                                val matchesNumber = cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
-                                val matchesName = t9 && T9Matcher.isMatch(log.name ?: "", cleanQuery)
-                                matchesNumber || matchesName
-                            }
-                            .take(take)
-                            .toList()
-                            .groupBy { it.number.replace(" ", "").replace("-", "") }
-                            .map { (_, logsGroup) -> logsGroup.maxByOrNull { it.date } }
-                            .filterNotNull()
-                            .sortedByDescending { it.date }
+            delay(100.milliseconds)
+            val cleanQueryDigits = cleanQuery.filter { it.isDigit() }
+            value = withContext(Dispatchers.Default) {
+                logs.asSequence()
+                    .filter { log ->
+                        val cleanNum = normalizeNumberDigits(log.number)
+                        val matchesNumber = cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
+                        val matchesName = t9Enabled && T9Matcher.isMatch(log.name ?: "", cleanQuery)
+                        matchesNumber || matchesName
                     }
-                }
+                    .take(take)
+                    .toList()
+                    .groupBy { it.number.replace(" ", "").replace("-", "") }
+                    .mapNotNull { (_, logsGroup) -> logsGroup.maxByOrNull { it.date } }
+                    .sortedByDescending { it.date }
+            }
         }
 
         // Create a set of all phone numbers and names from contacts for quick searching

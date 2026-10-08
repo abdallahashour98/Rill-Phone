@@ -33,7 +33,7 @@ class CallLogRepository(
 
     private var cachedContactMap: Map<String, Contact>? = null
     private var lastContactMapUpdate = 0L
-    private val CONTACT_MAP_TTL = 60_000L // 1 minute
+    private val CONTACT_MAP_TTL = 600_000L // 10 minutes
     private val contactMapMutex = Mutex()
 
     override suspend fun getCallLogs(): List<CallLogEntry> = withContext(Dispatchers.IO) {
@@ -83,7 +83,7 @@ class CallLogRepository(
                 baseProjection.toTypedArray(),
                 null,
                 null,
-                "${CallLog.Calls.DATE} DESC"
+                "${CallLog.Calls.DATE} DESC LIMIT 500"
             )
 
             cursor?.use { parseCursor(it, callLogs, contactMap) }
@@ -101,7 +101,7 @@ class CallLogRepository(
                     safeProjection,
                     null,
                     null,
-                    "${CallLog.Calls.DATE} DESC"
+                    "${CallLog.Calls.DATE} DESC LIMIT 500"
                 )
                 cursor?.use { parseCursor(it, callLogs, contactMap) }
             } catch (e2: Exception) {

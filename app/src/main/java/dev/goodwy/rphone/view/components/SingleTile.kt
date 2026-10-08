@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -76,14 +77,12 @@ fun SingleTile(
     val context = LocalContext.current
     val haptic  = LocalHapticFeedback.current
     val prefs   = koinInject<PreferenceManager>()
-    var showMenu              by remember { mutableStateOf(false) }
-    var isPressed             by remember { mutableStateOf(false) }
-    var horizontalDragDetected by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue    = if (showMenu) 0.97f else if (isPressed) 0.95f else 1f,
-        animationSpec  = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy),
-        label          = "TileScale"
+        targetValue   = if (showMenu) 0.97f else 1f,
+        animationSpec = tween(150),
+        label         = "TileScale"
     )
 
     val numberForMenu = phoneNumber ?: subtitle?.filter { it.isDigit() || it == '+' }
@@ -92,15 +91,18 @@ fun SingleTile(
     Surface(
         shape = RoundedCornerShape(cardCornerExtraSmall),
         color = cardColor,
-        modifier = Modifier.fillMaxWidth().scale(scale)
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = {
-                        if (horizontalDragDetected) return@combinedClickable
-                        isPressed = false
                         if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
                             performAppHaptic(
                                 context,
@@ -118,23 +120,6 @@ fun SingleTile(
                         }
                     } else null
                 )
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        isPressed = true
-                        horizontalDragDetected = false
-                        val downPos = down.position
-                        do {
-                            val event   = awaitPointerEvent()
-                            val current = event.changes.firstOrNull() ?: break
-                            val dx = abs(current.position.x - downPos.x)
-                            val dy = abs(current.position.y - downPos.y)
-                            if (dx > 28.dp.toPx() && dx > dy * 1.3f) horizontalDragDetected = true
-                            if (!current.pressed) break
-                        } while (true)
-                        isPressed = false
-                    }
-                }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

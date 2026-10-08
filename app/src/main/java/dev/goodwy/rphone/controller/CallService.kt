@@ -2,7 +2,9 @@ package dev.goodwy.rphone.controller
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.telecom.Connection
@@ -425,7 +427,7 @@ class CallService : InCallService() {
     private fun isDeviceLocked(): Boolean {
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
-        val isLocked = keyguardManager?.isKeyguardLocked == true
+        val isLocked = keyguardManager?.isKeyguardLocked == true || keyguardManager?.isDeviceLocked == true
         val isScreenOff = powerManager?.isInteractive == false
         return isLocked || isScreenOff
     }
@@ -499,12 +501,51 @@ class CallService : InCallService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("NOTIFICATION_PENDING_ACTION", action)
         }
-        startActivity(intent)
+        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ActivityOptions.makeBasic().apply {
+                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            }.toBundle()
+        } else null
+        try {
+            startActivity(intent, options)
+        } catch (_: Exception) {
+            try { startActivity(intent) } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Telecom calls this when it needs the default dialer's in-call UI to be brought
+     * forward. This is especially important while the device is locked, where a
+     * regular background activity launch may otherwise be deferred by the system.
+     */
+    override fun onBringToForeground(showDialpad: Boolean) {
+        super.onBringToForeground(showDialpad)
+        if (callRepository.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
+            showCallActivity()
+        }
+    }
+
+    private fun showCallActivity() {
+        val intent = Intent(this, CallActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ActivityOptions.makeBasic().apply {
+                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            }.toBundle()
+        } else null
+        try {
+            startActivity(intent, options)
+        } catch (_: Exception) {
+            try { startActivity(intent) } catch (_: Exception) {}
+        }
     }
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
         call.registerCallback(callCallback)
+        callAudioState?.let { callRepository.updateAudioState(it) }
+        try { setMuted(false) } catch (_: Exception) {}
 
         val number = numberOf(call)
         val cnam = if (call.details.callerDisplayNamePresentation == TelecomManager.PRESENTATION_ALLOWED) {
@@ -548,9 +589,15 @@ class CallService : InCallService() {
         val intent = Intent(this@CallService, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
+        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ActivityOptions.makeBasic().apply {
+                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            }.toBundle()
+        } else null
         try {
-            startActivity(intent)
+            startActivity(intent, options)
         } catch (_: Exception) {
+            try { startActivity(intent) } catch (_: Exception) {}
         }
     }
 
@@ -563,7 +610,7 @@ class CallService : InCallService() {
                     PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
                     "RillPhone:IncomingCallServiceWakeLock"
                 )
-                wakeLock.acquire(5000L)
+                wakeLock.acquire(10000L)
             }
         } catch (e: Exception) {
             android.util.Log.w("CallService", "Failed to acquire wake lock in CallService", e)
@@ -571,6 +618,7 @@ class CallService : InCallService() {
     }
 
     private fun handleIncomingCall(call: Call, number: String) {
+        val wasLocked = isDeviceLocked()
         wakeUpScreen()
         // Keep the call hidden until we know it isn't blocked, so no notification flashes for it
         blockCheckCalls.add(call)
@@ -592,18 +640,15 @@ class CallService : InCallService() {
             updateNotification(call)
 
             val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
-            val isLocked = isDeviceLocked()
-            // If notifications are disabled or the incoming channel can't heads-up,
-            // the user would see nothing — open the call screen directly instead.
-            val canAlert = notificationManager.canShowIncomingCallNotification()
-            if (fullscreenCalls || isLocked || !canAlert) {
-                val intent = Intent(this@CallService, CallActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                }
-                try {
-                    startActivity(intent)
-                } catch (_: Exception) {
-                }
+            val isLockedNow = isDeviceLocked()
+            val canUseFullScreenIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                nm?.canUseFullScreenIntent() ?: true
+            } else true
+
+            val canAlert = notificationManager.canShowIncomingCallNotification() && canUseFullScreenIntent
+            if (fullscreenCalls || wasLocked || isLockedNow || !canAlert) {
+                showCallActivity()
             }
         }
     }
@@ -661,9 +706,16 @@ class CallService : InCallService() {
                         putExtra("ANSWERED_FROM_NOTIFICATION", true)
                         putExtra("AUTO_ANSWER_CALL", true)
                     }
+                    val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        ActivityOptions.makeBasic().apply {
+                            setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                        }.toBundle()
+                    } else null
                     try {
-                        startActivity(intent)
-                    } catch (_: Exception) {}
+                        startActivity(intent, options)
+                    } catch (_: Exception) {
+                        try { startActivity(intent) } catch (_: Exception) {}
+                    }
                 }
             }
             "DECLINE_CALL" -> {

@@ -78,6 +78,7 @@ class CallLogViewModel(
             if (diskCache.isNotEmpty()) {
                 cachedLogs = diskCache
                 _allCallLogs.value = diskCache
+                _isLoading.value = false
             }
             // Step 2: refresh from provider in background
             fetchLogsInternal()
@@ -151,26 +152,33 @@ class CallLogViewModel(
     private suspend fun fetchLogsInternal() {
         if (isFetching) return
         isFetching = true
-        _isLoading.value = true
+        if (_allCallLogs.value.isEmpty()) {
+            _isLoading.value = true
+        }
         try {
             val result = callLogRepo.getCallLogs()
-            // Only push an update to the UI if the data actually changed.
-            // This prevents a visible "refresh flicker" when the disk cache
-            // and the freshly-fetched data are identical (the common case on
-            // every app open after the first one).
-            val changed = result.size != cachedLogs.size ||
-                    result.zip(cachedLogs).any { (a, b) ->
-                        a.number != b.number || a.date != b.date || a.type != b.type || a.name != b.name || a.isBlocked != b.isBlocked
-                    }
+            val changed = hasLogsChanged(cachedLogs, result)
             cachedLogs = result
-            saveToDisk(result)
             if (changed) {
                 _allCallLogs.value = result
+                saveToDisk(result)
             }
         } finally {
             isFetching = false
             _isLoading.value = false
         }
+    }
+
+    private fun hasLogsChanged(oldList: List<CallLogEntry>, newList: List<CallLogEntry>): Boolean {
+        if (oldList.size != newList.size) return true
+        for (i in oldList.indices) {
+            val a = oldList[i]
+            val b = newList[i]
+            if (a.id != b.id || a.number != b.number || a.date != b.date || a.type != b.type || a.name != b.name || a.isBlocked != b.isBlocked) {
+                return true
+            }
+        }
+        return false
     }
 
     // ── Disk cache helpers ────────────────────────────────────────────────────

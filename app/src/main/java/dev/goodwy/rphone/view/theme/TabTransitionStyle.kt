@@ -25,6 +25,8 @@ private val TAB_ROUTES = listOf(
 
 private val EaseOutQuart = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
 private val EaseOutExpo  = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+private const val TabEnterDuration = 180
+private const val TabExitDuration = 140
 
 internal var isLandscapeMode: Boolean = false
 
@@ -56,9 +58,9 @@ object TabTransitionStyle : NavHostAnimatedDestinationStyle() {
             fromTab && toTab && !isLandscapeMode -> {
                 val goRight = toIdx > fromIdx
                 slideInHorizontally(
-                    animationSpec = tween(550, easing = EaseOutQuart),
-                    initialOffsetX = { if (goRight) (it * 0.25f).toInt() else -(it * 0.25f).toInt() }
-                ) + fadeIn(tween(400, easing = EaseOutQuart))
+                    animationSpec = tween(TabEnterDuration, easing = EaseOutQuart),
+                    initialOffsetX = { if (goRight) (it * 0.08f).toInt() else -(it * 0.08f).toInt() }
+                ) + fadeIn(tween(TabExitDuration, easing = EaseOutQuart))
             }
             !toTab && !isLandscapeMode -> {
                 // Pushing into a detail/settings screen: slide in from right
@@ -81,9 +83,9 @@ object TabTransitionStyle : NavHostAnimatedDestinationStyle() {
             fromTab && toTab && !isLandscapeMode -> {
                 val goRight = toIdx > fromIdx
                 slideOutHorizontally(
-                    animationSpec = tween(550, easing = EaseOutQuart),
-                    targetOffsetX = { if (goRight) -(it * 0.25f).toInt() else (it * 0.25f).toInt() }
-                ) + fadeOut(tween(350, easing = EaseOutQuart))
+                    animationSpec = tween(TabExitDuration, easing = EaseOutQuart),
+                    targetOffsetX = { if (goRight) -(it * 0.08f).toInt() else (it * 0.08f).toInt() }
+                ) + fadeOut(tween(TabExitDuration, easing = EaseOutQuart))
             }
             !toTab && !isLandscapeMode -> {
                 // Pushing to detail: current screen slides slightly left and fades
@@ -101,9 +103,9 @@ object TabTransitionStyle : NavHostAnimatedDestinationStyle() {
         if (!isLandscapeMode) {
             if (toTab) {
                 slideInHorizontally(
-                    animationSpec = tween(550, easing = EaseOutQuart),
-                    initialOffsetX = { -(it * 0.25f).toInt() }
-                ) + fadeIn(tween(400, easing = EaseOutQuart))
+                    animationSpec = tween(TabEnterDuration, easing = EaseOutQuart),
+                    initialOffsetX = { -(it * 0.08f).toInt() }
+                ) + fadeIn(tween(TabExitDuration, easing = EaseOutQuart))
             } else {
                 // Popping back to a detail screen: slide back in from left
                 slideInHorizontally(

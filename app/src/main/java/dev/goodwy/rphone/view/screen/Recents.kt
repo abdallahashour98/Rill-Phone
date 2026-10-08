@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -600,12 +601,16 @@ fun CallLogFullContent(
         val displayOrder by remember(settingsState) {
             mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0))
         }
-        LaunchedEffect(settingsState) {
-            contactsVM.fetchContacts()
-        }
 
         val isLoadingContacts by contactsVM.isLoading.collectAsStateWithLifecycle()
         val allContacts by contactsVM.allContacts.collectAsStateWithLifecycle()
+        // Contacts are only needed here to render the optional favourites row.  Do not
+        // hold the call log behind a contacts query when that row is disabled.
+        LaunchedEffect(favouritesEnabled) {
+            if (favouritesEnabled) {
+                contactsVM.fetchContacts()
+            }
+        }
 //        val favorites = remember(allContacts) { allContacts.filter { it.isFavorite } }
         val favorites = remember(allContacts, settingsState) {
             val favContacts = allContacts.filter { it.isFavorite }
@@ -661,13 +666,16 @@ fun CallLogFullContent(
         }
 
         val pullToRefreshState = rememberPullToRefreshState()
-        val isDataLoading = (logs.isEmpty() && isLoading) || (!favouritesEnabled && isLoadingContacts && allContacts.isEmpty())
+        val isDataLoading = (logs.isEmpty() && isLoading) ||
+            (favouritesEnabled && isLoadingContacts && allContacts.isEmpty())
 
         PullToRefreshBox(
             isRefreshing = isDataLoading,
             onRefresh = {
                 viewModel.refreshLogs()
-                contactsVM.fetchContacts()
+                if (favouritesEnabled) {
+                    contactsVM.fetchContacts()
+                }
             },
             modifier = Modifier.fillMaxSize(),
             state = pullToRefreshState,
@@ -987,7 +995,11 @@ fun CallLogFullContent(
                                     }
                                 }
                                 // Individual items per log entry with per-item rounded corners
-                                logsInGroup.forEachIndexed { index, lg ->
+                                itemsIndexed(
+                                    items = logsInGroup,
+                                    key = { _, lg -> lg.id },
+                                    contentType = { _, _ -> "callLogEntry" }
+                                ) { index, lg ->
                                     val isFirst = index == 0
                                     val isLast = index == logsInGroup.size - 1
                                     val topStart =
@@ -999,12 +1011,8 @@ fun CallLogFullContent(
                                     val bottomEnd =
                                         if (isLast) cardCornerExtraLarge else cardCornerExtraSmall
                                     val bottomPadding = if (!isLast) cardSpacedBy else 0.dp
-                                    item(
-                                        key = lg.id,
-                                        contentType = "callLogEntry"
-                                    ) {
-                                        val isSelected = selectedEntries.any { it.id == lg.id }
-                                        val selectionMode = selectedEntries.isNotEmpty()
+                                    val isSelected = selectedEntries.any { it.id == lg.id }
+                                    val selectionMode = selectedEntries.isNotEmpty()
                                         RillScrollAnimatedItem(delayMs = (index.coerceAtMost(5) * 30).toLong()) {
                                             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                                                 SwipeableCallLogContainer(
@@ -1114,7 +1122,6 @@ fun CallLogFullContent(
                                                     }
                                                 }
                                             }
-                                        }
                                         if (isLast) Spacer(modifier = Modifier.height(12.dp))
                                     }
                                 }

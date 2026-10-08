@@ -140,9 +140,6 @@ fun ContactSearchContent(
     val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        contactsVM.fetchContactsFull(force = true)
-    }
-    LaunchedEffect(settingsVer) {
         contactsVM.fetchContactsFull(force = false)
     }
 

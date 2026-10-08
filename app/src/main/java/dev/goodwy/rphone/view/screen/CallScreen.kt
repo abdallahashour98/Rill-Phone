@@ -961,7 +961,9 @@ fun ExpressiveCallScreen(
                                 AnimatedCallButton(
                                     modifier = Modifier.weight(1f),
                                     icon = audioIcon,
-                                    isActive = audioRoute == CallAudioState.ROUTE_SPEAKER || audioRoute == CallAudioState.ROUTE_BLUETOOTH,
+                                    isActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
+                                            audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
+                                            audioRoute == CallAudioState.ROUTE_WIRED_HEADSET,
                                     label = audioLabel,
                                     btnColor = controlBtnColor,
                                     activeBtnColor = controlBtnActiveColor,

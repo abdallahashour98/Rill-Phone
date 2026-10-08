@@ -526,19 +526,9 @@ fun CallLogListItem(
 ) {
     val context = LocalContext.current
     val prefs = koinInject<PreferenceManager>()
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isMenuOpen) 0.97f else if (isPressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "ListItemScale"
-    )
-
-    val interactionSourceCall = remember { MutableInteractionSource() }
-    val isPressedCall by interactionSourceCall.collectIsPressedAsState()
-    val scaleCall by animateFloatAsState(
-        targetValue = if (isPressedCall) 1.2f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+        targetValue = if (isMenuOpen) 0.97f else 1f,
+        animationSpec = tween(150),
         label = "ListItemScale"
     )
 
@@ -546,14 +536,17 @@ fun CallLogListItem(
         color = if (isSelected) cardColorSelected else cardColor,
         modifier = modifier
             .fillMaxWidth()
-            .scale(scale),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    interactionSource = interactionSource,
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(),
                     onClick = {
                         if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
@@ -662,9 +655,8 @@ fun CallLogListItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(28.dp)
-                    .scale(scaleCall)
                     .combinedClickable(
-                        interactionSource = interactionSourceCall,
+                        interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = false, radius = 28.dp),
                         onClick = {
                             if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
@@ -707,11 +699,9 @@ fun CallLogListItemSimple(
 ) {
     val context = LocalContext.current
     val prefs = koinInject<PreferenceManager>()
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isMenuOpen) 0.97f else if (isPressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+        targetValue = if (isMenuOpen) 0.97f else 1f,
+        animationSpec = tween(150),
         label = "ListItemScale"
     )
 
@@ -727,7 +717,7 @@ fun CallLogListItemSimple(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    interactionSource = interactionSource,
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(),
                     onClick = {
                         if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
@@ -823,11 +813,9 @@ fun RillListItem(
 ) {
     val context = LocalContext.current
     val prefs = koinInject<PreferenceManager>()
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isMenuOpen) 0.97f else if (isPressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+        targetValue = if (isMenuOpen) 0.97f else 1f,
+        animationSpec = tween(150),
         label = "ListItemScale"
     )
 
@@ -843,7 +831,7 @@ fun RillListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    interactionSource = interactionSource,
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = ripple(),
                     onClick = {
                         if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
@@ -1264,11 +1252,11 @@ fun RillFilterChip(
 
 // ─── Scroll Animated Item ─────────────────────────────────────────────────────
 
+val LocalScrollAnimationEnabled = androidx.compose.runtime.compositionLocalOf { false }
+
 /**
  * Wraps a list item with a scroll-in fade+slide animation, controlled by the
- * scroll animation preference. Uses a unique composition key so that each time
- * the item is composed (or re-composed after filter changes), the entrance
- * animation replays correctly.
+ * scroll animation preference.
  */
 @Composable
 fun RillScrollAnimatedItem(
@@ -1276,9 +1264,7 @@ fun RillScrollAnimatedItem(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
-    val prefs = remember { PreferenceManager(context) }
-    val scrollAnimEnabled = prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false)
+    val scrollAnimEnabled = LocalScrollAnimationEnabled.current
 
     if (scrollAnimEnabled) {
         val animKey = remember { Any() }

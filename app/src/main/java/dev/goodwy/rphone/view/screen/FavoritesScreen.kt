@@ -101,11 +101,12 @@ fun FavoritesScreen(navController: NavController, navigator: DestinationsNavigat
     val favorites = remember(allContacts) { allContacts.filter { it.isFavorite } }
     val scope = rememberCoroutineScope()
     val prefs = koinInject<PreferenceManager>()
-    val settingsVersion by prefs.settingsChanged.collectAsStateWithLifecycle()
     val searchEnabled = prefs.getBoolean(PreferenceManager.KEY_TAB_SHOW_SEARCH, false)
 
-    LaunchedEffect(settingsVersion) {
-        contactsVM.fetchContacts()
+    LaunchedEffect(Unit) {
+        if (allContacts.isEmpty()) {
+            contactsVM.fetchContacts()
+        }
     }
 
     // Drag-to-reorder state — declared first so LaunchedEffect can reference draggedContactId

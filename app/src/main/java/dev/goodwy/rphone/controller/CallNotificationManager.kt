@@ -61,6 +61,9 @@ class CallNotificationManager(
      */
     fun canShowIncomingCallNotification(): Boolean {
         if (!notificationManager.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (!notificationManager.canUseFullScreenIntent()) return false
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
             val channelId = if (fullscreenCalls) FULLSCREEN_INCOMING_CHANNEL_ID else INCOMING_CHANNEL_ID
@@ -167,7 +170,8 @@ class CallNotificationManager(
             context,
             1,
             answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            options
         )
 
         val declineIntent = Intent(context, CallService::class.java).apply { action = "DECLINE_CALL" }

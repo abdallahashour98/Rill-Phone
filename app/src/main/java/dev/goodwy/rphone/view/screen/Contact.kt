@@ -850,11 +850,10 @@ fun ContactContent(
             val contacts by contactsVM.filteredContacts.collectAsStateWithLifecycle()
             val groupedContacts by contactsVM.groupedContacts.collectAsStateWithLifecycle()
 
-            val prefs = koinInject<PreferenceManager>()
-            val settingsVersion by prefs.settingsChanged.collectAsStateWithLifecycle()
-
-            LaunchedEffect(settingsVersion) {
-                contactsVM.fetchContacts()
+            LaunchedEffect(Unit) {
+                if (contacts.isEmpty()) {
+                    contactsVM.fetchContacts()
+                }
             }
 
             val pullToRefreshState = rememberPullToRefreshState()

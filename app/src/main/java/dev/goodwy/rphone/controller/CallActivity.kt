@@ -530,6 +530,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         super.onStart()
         isInForeground.value = true
         callViewModel.setIsActivityVisible(true)
+        turnScreenOnAndShowWhileLocked()
     }
 
     override fun onStop() {

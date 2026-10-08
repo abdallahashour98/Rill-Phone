@@ -37,6 +37,8 @@ private fun getSharedDataStore(context: Context): DataStore<Preferences> {
     }
 }
 
+@Volatile private var _globalPrefsCache: Preferences? = null
+
 class PreferenceManager(context: Context) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -44,9 +46,9 @@ class PreferenceManager(context: Context) {
 
     // Internal cache for synchronous access
     private val _prefsCache = MutableStateFlow<Preferences>(
-        // We perform a blocking read when creating an object,
-        // so that the cache isn't empty during a cold start in onCreate()
-        runBlocking { dataStore.data.first() }
+        _globalPrefsCache ?: runBlocking {
+            dataStore.data.first().also { _globalPrefsCache = it }
+        }
     )
 
     private val _settingsChanged = MutableStateFlow(0)
@@ -55,10 +57,27 @@ class PreferenceManager(context: Context) {
     init {
         scope.launch {
             dataStore.data.collect { newPrefs ->
+                val previousPrefs = _prefsCache.value
+                _globalPrefsCache = newPrefs
                 _prefsCache.value = newPrefs
-                _settingsChanged.value += 1
+                // Restoring the last tab happens on every navigation tap. It does not
+                // change the UI configuration, so don't invalidate the whole Compose
+                // tree (including all visible list rows) just to persist that route.
+                if (settingsAffectingUiChanged(previousPrefs, newPrefs)) {
+                    _settingsChanged.value += 1
+                }
             }
         }
+    }
+
+    private fun settingsAffectingUiChanged(
+        previous: Preferences,
+        current: Preferences
+    ): Boolean {
+        fun Preferences.uiSettings() = asMap().filterKeys {
+            it.name != KEY_LAST_OPENED_TAB
+        }
+        return previous.uiSettings() != current.uiSettings()
     }
 
     /** Number of currently active SIM subscriptions (0, 1, 2+). Never throws. */

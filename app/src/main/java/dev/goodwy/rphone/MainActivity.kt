@@ -34,6 +34,9 @@ import dev.goodwy.rphone.view.components.BottomBar
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.rememberLayerBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.layerBackdrop
+import dev.goodwy.rphone.view.components.AvatarPreferences
+import dev.goodwy.rphone.view.components.LocalAvatarPreferences
+import dev.goodwy.rphone.view.components.LocalScrollAnimationEnabled
 import dev.goodwy.rphone.view.theme.Rill4Theme
 import dev.goodwy.rphone.view.theme.TabTransitionStyle
 import com.ramcosta.composedestinations.DestinationsNavHost
@@ -162,6 +165,21 @@ class MainActivity : FragmentActivity() {
                 val onboardingShown = remember { prefs.getBoolean(PreferenceManager.KEY_ONBOARDING_SHOWN, false) }
                 var showOnboarding by remember { mutableStateOf(!onboardingShown) }
                 val appLockEnabled = remember(settingsVer) { prefs.isAppLockEnabled() }
+
+                val avatarPreferences = remember(settingsVer) {
+                    AvatarPreferences(
+                        showPicture = prefs.getBoolean(PreferenceManager.KEY_SHOW_PICTURE, true),
+                        showFirstLetter = prefs.getBoolean(PreferenceManager.KEY_SHOW_FIRST_LETTER, true),
+                        colorful = prefs.getBoolean(PreferenceManager.KEY_COLORFUL_AVATARS, true),
+                        secondaryColor = prefs.getBoolean(PreferenceManager.KEY_SECONDARY_COLOR_AVATARS, false),
+                        googleContactColor = prefs.getBoolean(PreferenceManager.KEY_GOOGLE_CONTACTS_AVATARS, false),
+                        frame = prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false)
+                    )
+                }
+                val scrollAnimEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false) }
+                val liquidGlassEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_LIQUID_GLASS, false) }
+                val blurEffectsEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_BLUR_EFFECTS, false) }
+                val hasBackdrop = (liquidGlassEnabled || blurEffectsEnabled) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
                 // ── Biometric overlay (above blur, inside Box) ─────────
                 if (isAppLocked && appLockEnabled) {
@@ -365,36 +383,15 @@ class MainActivity : FragmentActivity() {
                             val isNotesSelected     = currentDest?.hierarchy?.any { it.route == NotesScreenDestination.route }      == true
 
                             fun saveCurrentTab(route: String) {
-                                when {
-                                    route.contains(FavoritesScreenDestination.route) ->
-                                        prefs.setString(
-                                            PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            FavoritesScreenDestination.route
-                                        )
-
-                                    route.contains(ContactScreenDestination.route) ->
-                                        prefs.setString(
-                                            PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            ContactScreenDestination.route
-                                        )
-
-                                    route.contains(NotesScreenDestination.route) ->
-                                        prefs.setString(
-                                            PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            NotesScreenDestination.route
-                                        )
-
-                                    route.contains(DialPadScreenDestination.baseRoute) ->
-                                        prefs.setString(
-                                            PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            DialPadScreenDestination.baseRoute
-                                        )
-
-                                    else ->
-                                        prefs.setString(
-                                            PreferenceManager.KEY_LAST_OPENED_TAB,
-                                            RecentScreenDestination.route
-                                        )
+                                val tabRoute = when {
+                                    route.contains(FavoritesScreenDestination.route) -> FavoritesScreenDestination.route
+                                    route.contains(ContactScreenDestination.route) -> ContactScreenDestination.route
+                                    route.contains(NotesScreenDestination.route) -> NotesScreenDestination.route
+                                    route.contains(DialPadScreenDestination.baseRoute) -> DialPadScreenDestination.baseRoute
+                                    else -> RecentScreenDestination.route
+                                }
+                                if (prefs.getString(PreferenceManager.KEY_LAST_OPENED_TAB, null) != tabRoute) {
+                                    prefs.setString(PreferenceManager.KEY_LAST_OPENED_TAB, tabRoute)
                                 }
                             }
 
@@ -623,7 +620,11 @@ class MainActivity : FragmentActivity() {
                                 val liquidGlassBackdrop = rememberLayerBackdrop()
                                 val showBottomBar =
                                     showFavoritesRail || showContactsRail || showDialpadRail || notesEnabled || searchEnabled || settingsEnabled
-                                CompositionLocalProvider(LocalLiquidGlassBackdrop provides liquidGlassBackdrop) {
+                                CompositionLocalProvider(
+                                    LocalLiquidGlassBackdrop provides liquidGlassBackdrop,
+                                    LocalAvatarPreferences provides avatarPreferences,
+                                    LocalScrollAnimationEnabled provides scrollAnimEnabled
+                                ) {
                                     Scaffold(
                                         bottomBar = { if (showBottomBar) BottomBar(navController) },
                                         containerColor = MaterialTheme.colorScheme.surface,
@@ -633,7 +634,7 @@ class MainActivity : FragmentActivity() {
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .padding(scaffoldPadding)
-                                                .layerBackdrop(liquidGlassBackdrop)
+                                                .then(if (hasBackdrop) Modifier.layerBackdrop(liquidGlassBackdrop) else Modifier)
                                                 .then(
                                                     if (hasOngoingCall)
                                                         Modifier.consumeWindowInsets(WindowInsets.statusBars)

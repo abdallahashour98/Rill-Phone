@@ -215,13 +215,7 @@ private class DrawBackdropElement(
 
         if (backdrop != other.backdrop) return false
         if (shapeProvider != other.shapeProvider) return false
-        if (effects != other.effects) return false
-        if (layerBlock != other.layerBlock) return false
         if (exportedBackdrop != other.exportedBackdrop) return false
-        if (onDrawBehind != other.onDrawBehind) return false
-        if (onDrawBackdrop != other.onDrawBackdrop) return false
-        if (onDrawSurface != other.onDrawSurface) return false
-        if (onDrawFront != other.onDrawFront) return false
 
         return true
     }
@@ -229,13 +223,7 @@ private class DrawBackdropElement(
     override fun hashCode(): Int {
         var result = backdrop.hashCode()
         result = 31 * result + shapeProvider.hashCode()
-        result = 31 * result + effects.hashCode()
-        result = 31 * result + (layerBlock?.hashCode() ?: 0)
         result = 31 * result + (exportedBackdrop?.hashCode() ?: 0)
-        result = 31 * result + (onDrawBehind?.hashCode() ?: 0)
-        result = 31 * result + onDrawBackdrop.hashCode()
-        result = 31 * result + (onDrawSurface?.hashCode() ?: 0)
-        result = 31 * result + (onDrawFront?.hashCode() ?: 0)
         return result
     }
 }
@@ -263,7 +251,7 @@ private class DrawBackdropNode(
     private val layoutLayerBlock: GraphicsLayerScope.() -> Unit = {
         clip = true
         shape = shapeProvider.shape
-        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Auto
     }
 
     private var layoutCoordinates: LayoutCoordinates? by mutableStateOf(null, neverEqualPolicy())

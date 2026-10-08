@@ -32,6 +32,7 @@ class CallRepositoryImpl : ICallRepository {
 
     fun bindService(service: InCallService) {
         this.inCallService = service
+        _audioState.value = service.callAudioState
     }
 
     fun unbindService() {
@@ -102,7 +103,8 @@ class CallRepositoryImpl : ICallRepository {
 
         val nextRoute = when (current) {
             CallAudioState.ROUTE_EARPIECE -> {
-                if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER
+                if ((supported and CallAudioState.ROUTE_WIRED_HEADSET) != 0) CallAudioState.ROUTE_WIRED_HEADSET
+                else if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER
                 else if ((supported and CallAudioState.ROUTE_BLUETOOTH) != 0) CallAudioState.ROUTE_BLUETOOTH
                 else current
             }
@@ -113,13 +115,15 @@ class CallRepositoryImpl : ICallRepository {
                 else current
             }
             CallAudioState.ROUTE_BLUETOOTH -> {
-                if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER
+                if ((supported and CallAudioState.ROUTE_WIRED_HEADSET) != 0) CallAudioState.ROUTE_WIRED_HEADSET
+                else if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER
                 else if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) CallAudioState.ROUTE_EARPIECE
                 else current
             }
             CallAudioState.ROUTE_WIRED_HEADSET -> {
                 if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER
                 else if ((supported and CallAudioState.ROUTE_BLUETOOTH) != 0) CallAudioState.ROUTE_BLUETOOTH
+                else if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) CallAudioState.ROUTE_EARPIECE
                 else current
             }
             else -> if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) CallAudioState.ROUTE_SPEAKER else current

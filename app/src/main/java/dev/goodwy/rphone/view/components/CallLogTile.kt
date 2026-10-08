@@ -150,11 +150,7 @@ fun CallLogTile(
             selectionMode = selectionMode,
         )
 
-        AnimatedVisibility(
-            visible = showMenu,
-            enter = slideInVertically(initialOffsetY = { -it }, animationSpec = tween(320, easing = FastOutSlowInEasing)) + fadeIn(tween(280)),
-            exit  = slideOutVertically(targetOffsetY = { -it }, animationSpec = tween(420, easing = FastOutLinearInEasing)) + fadeOut(tween(380))
-        ) {
+        if (showMenu) {
             DropdownMenu(
                 shape = MaterialTheme.shapes.large,
                 expanded = showMenu,

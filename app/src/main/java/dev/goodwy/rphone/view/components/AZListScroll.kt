@@ -172,9 +172,7 @@ fun AZListContent(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        val configuration = LocalConfiguration.current
-        val screenHeightDp = configuration.screenHeightDp.dp
-        val bottomPadding = screenHeightDp - 340.dp
+        val bottomPadding = bottomBarHeight + 32.dp
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -307,7 +305,7 @@ fun ContactListItem(
     onSelectToggle: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val prefs = remember { PreferenceManager(context) }
+    val prefs = koinInject<PreferenceManager>()
     val contactsVM: ContactsViewModel = koinActivityViewModel()
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -441,11 +439,7 @@ fun ContactListItem(
             }
         }
 
-        AnimatedVisibility(
-            visible = showMenu,
-            enter = slideInVertically(initialOffsetY = { -it }, animationSpec = tween(320, easing = FastOutSlowInEasing)) + fadeIn(tween(280)),
-            exit  = slideOutVertically(targetOffsetY = { -it }, animationSpec = tween(420, easing = FastOutLinearInEasing)) + fadeOut(tween(380))
-        ) {
+        if (showMenu) {
             DropdownMenu(
                 shape = MaterialTheme.shapes.large,
                 expanded = showMenu,

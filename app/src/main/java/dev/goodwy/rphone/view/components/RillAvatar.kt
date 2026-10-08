@@ -59,6 +59,8 @@ private val avatarColors = listOf(
     Color(0xFFFF891D), Color(0xFF26BC6D), Color(0xFFFF54BB)
 )
 
+val LocalAvatarPreferences = androidx.compose.runtime.compositionLocalOf { AvatarPreferences() }
+
 @Composable
 fun RillAvatar(
     name: String,
@@ -69,15 +71,13 @@ fun RillAvatar(
     modifier: Modifier = Modifier,
     shape: Shape = CircleShape
 ) {
-    val context = LocalContext.current
-    val prefs = remember { PreferenceManager(context) }
-
-    val showPicture     = prefs.getBoolean(PreferenceManager.KEY_SHOW_PICTURE, true)
-    val showFirstLetter = prefs.getBoolean(PreferenceManager.KEY_SHOW_FIRST_LETTER, true)
-    val colorfulAvatars = prefs.getBoolean(PreferenceManager.KEY_COLORFUL_AVATARS, true)
-    val secondaryColorAvatars = prefs.getBoolean(PreferenceManager.KEY_SECONDARY_COLOR_AVATARS, false)
-    val googleContactColorAvatars = prefs.getBoolean(PreferenceManager.KEY_GOOGLE_CONTACTS_AVATARS, false)
-    val avatarFrame     = prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false)
+    val avatarPreferences = LocalAvatarPreferences.current
+    val showPicture = avatarPreferences.showPicture
+    val showFirstLetter = avatarPreferences.showFirstLetter
+    val colorfulAvatars = avatarPreferences.colorful
+    val secondaryColorAvatars = avatarPreferences.secondaryColor
+    val googleContactColorAvatars = avatarPreferences.googleContactColor
+    val avatarFrame = avatarPreferences.frame
 
     val hasName  = name.trim().isNotEmpty()
     val isLetter  = name.trim().take(1).isLetter() || name.take(2).isEmoji()
@@ -145,3 +145,12 @@ fun RillAvatar(
         }
     }
 }
+
+data class AvatarPreferences(
+    val showPicture: Boolean = true,
+    val showFirstLetter: Boolean = true,
+    val colorful: Boolean = true,
+    val secondaryColor: Boolean = false,
+    val googleContactColor: Boolean = false,
+    val frame: Boolean = false
+)

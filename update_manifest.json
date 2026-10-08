@@ -1,14 +1,37 @@
 {
   "latestVersion": "0.6.13",
   "latestVersionCode": 73,
-  "releaseDate": "2026-10-05",
-  "releaseNotes": "fix",
+  "releaseDate": "2026-10-08",
+  "releaseNotes": "Rill-Phone v0.6.13: UI lag and scrolling optimizations, headset audio routing fixes, and updated release system",
   "fullApk": {
     "fileName": "rill-phone-73-foss-release.apk",
     "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-73-foss-release.apk",
-    "sizeBytes": 7804875,
-    "sizeFormatted": "7.44 MB",
-    "sha256": "8fa98b9c8e67f1b37fe96e4012f9af4351fde38b5823e438ff3abc706c16f697"
+    "sizeBytes": 7811203,
+    "sizeFormatted": "7.45 MB",
+    "sha256": "fda8143bf5f16392f7fdcb19e483cc6f16a90a4e89326cacd9eb0aaaf3a440f8"
   },
-  "patches": []
+  "patches": [
+    {
+      "fromVersion": "0.6.5",
+      "fromVersionCode": 65,
+      "fileName": "patch_v0.6.5_to_v0.6.13.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.5_to_v0.6.13.patch",
+      "sizeBytes": 4085448,
+      "sizeFormatted": "3.90 MB",
+      "fromSha256": "d8b11f01b400308d4a332ebfeafa2259fa3206a3bbf230cfe73ebcea9faa095c",
+      "patchSha256": "e98599bd430e498da6bccce88abbb9e72b21e094fc31a3a724e7eb1bd28920c4",
+      "targetSha256": "fda8143bf5f16392f7fdcb19e483cc6f16a90a4e89326cacd9eb0aaaf3a440f8"
+    },
+    {
+      "fromVersion": "0.6.8",
+      "fromVersionCode": 68,
+      "fileName": "patch_v0.6.8_to_v0.6.13.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.8_to_v0.6.13.patch",
+      "sizeBytes": 4085448,
+      "sizeFormatted": "3.90 MB",
+      "fromSha256": "ffa178196366c8004fa54d99ecf1892a42b9ae220adfc56c6bbfbc1fcb820f09",
+      "patchSha256": "e98599bd430e498da6bccce88abbb9e72b21e094fc31a3a724e7eb1bd28920c4",
+      "targetSha256": "fda8143bf5f16392f7fdcb19e483cc6f16a90a4e89326cacd9eb0aaaf3a440f8"
+    }
+  ]
 }

@@ -1,6 +1,9 @@
 package dev.goodwy.rphone.view.screen
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
@@ -142,9 +145,34 @@ fun ExpressiveCallScreen(
     var isEnding by remember { mutableStateOf(false) }
     var showManageSheet by remember { mutableStateOf(false) }
 
-    fun callDisconnect(isIncoming: Boolean = false) {
-        if (isIncoming) isEnding = true
+    val isIncoming = remember(call) {
+        call.details?.callDirection == Call.Details.DIRECTION_INCOMING || callState == Call.STATE_RINGING
+    }
+    var hasEverBeenActive by remember(call) {
+        mutableStateOf(callState == Call.STATE_ACTIVE)
+    }
+    LaunchedEffect(callState) {
+        if (callState == Call.STATE_ACTIVE) {
+            hasEverBeenActive = true
+        }
+    }
+    val isCallEnded = callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING
+
+    fun callDisconnect(isIncomingCall: Boolean = false) {
+        if (isIncomingCall) isEnding = true
         try { call.disconnect() } catch (_: Exception) { }
+    }
+
+    fun answerCallAction() {
+        try {
+            call.answer(VideoProfile.STATE_AUDIO_ONLY)
+        } catch (_: Exception) {}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            if (context is Activity && km?.isKeyguardLocked == true) {
+                km.requestDismissKeyguard(context, null)
+            }
+        }
     }
 
     val settingsState by preferenceManager.settingsChanged.collectAsStateWithLifecycle()
@@ -628,7 +656,10 @@ fun ExpressiveCallScreen(
             }
 
             // --- UI CONTROLS ---
-            if (callState != Call.STATE_RINGING && !isEnding) {
+            val showInCallControls = (!isIncoming || hasEverBeenActive) && (callState != Call.STATE_RINGING) && !isEnding && !isCallEnded
+            val showIncomingControls = (callState == Call.STATE_RINGING) && !isEnding && !isCallEnded
+
+            if (showInCallControls) {
                 val isDark = isSystemInDarkTheme()
                 val controlBtnColor = dialpadKeyColor
                 val controlBtnActiveColor = if (isDark) Color.White else Color.Black
@@ -1123,7 +1154,7 @@ fun ExpressiveCallScreen(
                         controlContent()
                     }
                 }
-            } else {
+            } else if (showIncomingControls) {
                 val useCustomUI = preferenceManager.getInt(PreferenceManager.KEY_INCOMING_CALL_UI_MODE, 10)
                 Column(
                     modifier = Modifier
@@ -1202,13 +1233,13 @@ fun ExpressiveCallScreen(
                             useLg = useLgCallScreen,
                             useBlur = useBlurCallScreen,
                             blurIntensity = blurIntensity,
-                            onAnswer = { try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {} },
+                            onAnswer = { answerCallAction() },
                             onDecline = { callDisconnect(true) },
                             onAnswerAndDecline = if (otherCall != null) {
                                 {
                                     try {
                                         otherCall.disconnect()
-                                        call.answer(VideoProfile.STATE_AUDIO_ONLY)
+                                        answerCallAction()
                                     } catch (_: Exception) {}
                                 }
                             } else null
@@ -1217,7 +1248,7 @@ fun ExpressiveCallScreen(
                             useLg = useLgCallScreen,
                             useBlur = useBlurCallScreen,
                             blurIntensity = blurIntensity,
-                            onAnswer = { try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {} },
+                            onAnswer = { answerCallAction() },
                             onDecline = { callDisconnect(true) },
                             onMessage = {
                                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -1235,9 +1266,9 @@ fun ExpressiveCallScreen(
                             blurIntensity = blurIntensity,
                             onAnswer = {
                                 if (callBiometricUnlocked) {
-                                    try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {}
+                                    answerCallAction()
                                 } else {
-                                    pendingAction = { try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {} }
+                                    pendingAction = { answerCallAction() }
                                     showCallBiometricUnlock = true
                                 }
                             },
@@ -1256,9 +1287,9 @@ fun ExpressiveCallScreen(
                             blurIntensity = blurIntensity,
                             onAnswer = {
                                 if (callBiometricUnlocked) {
-                                    try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {}
+                                    answerCallAction()
                                 } else {
-                                    pendingAction = { try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {} }
+                                    pendingAction = { answerCallAction() }
                                     showCallBiometricUnlock = true
                                 }
                             },
@@ -1277,9 +1308,9 @@ fun ExpressiveCallScreen(
                             blurIntensity = blurIntensity,
                             onAnswer = {
                                 if (callBiometricUnlocked) {
-                                    try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {}
+                                    answerCallAction()
                                 } else {
-                                    pendingAction = { try { call.answer(VideoProfile.STATE_AUDIO_ONLY) } catch (_: Exception) {} }
+                                    pendingAction = { answerCallAction() }
                                     showCallBiometricUnlock = true
                                 }
                             },

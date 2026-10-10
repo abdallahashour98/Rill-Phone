@@ -485,6 +485,12 @@ class CallService : InCallService() {
             notification,
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
         )
+        val isRinging = call.state == Call.STATE_RINGING || call.state == Call.STATE_SIMULATED_RINGING
+        val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
+        if (isRinging && (isHigh || fullscreenCalls) && !CallActivity.isInForeground.value) {
+            wakeUpScreen()
+            showCallActivity()
+        }
     }
 
     private fun removeForeground() {
@@ -521,6 +527,7 @@ class CallService : InCallService() {
     override fun onBringToForeground(showDialpad: Boolean) {
         super.onBringToForeground(showDialpad)
         if (callRepository.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
+            wakeUpScreen()
             showCallActivity()
         }
     }

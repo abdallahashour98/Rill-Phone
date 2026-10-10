@@ -88,6 +88,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        isFinishingCall.set(false)
         turnScreenOnAndShowWhileLocked()
         super.onCreate(savedInstanceState)
         handleCallIntent(intent)
@@ -149,6 +150,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     }
                     when (callState) {
                         Call.STATE_ACTIVE -> {
+                            requestDismissKeyguardIfLocked()
                             if (preferenceManager.getBoolean(PreferenceManager.KEY_VIBRATE_ON_ANSWER, true)) {
                                 this@CallActivity.window?.decorView?.performHapticFeedback(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -184,8 +186,16 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                 )
                             }
                             releaseProximityLock()
-                            delay(400.milliseconds)
-                            dismissCallScreen()
+                            val isUnansweredIncoming = session?.call?.let { c ->
+                                (c.details?.callDirection == Call.Details.DIRECTION_INCOMING || c.state == Call.STATE_RINGING) &&
+                                        callViewModel.allCalls.value.none { it.state == Call.STATE_ACTIVE }
+                            } ?: false
+                            if (isUnansweredIncoming) {
+                                dismissCallScreen()
+                            } else {
+                                delay(350.milliseconds)
+                                dismissCallScreen()
+                            }
                         }
 
                         else -> releaseProximityLock()
@@ -412,6 +422,10 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onResume() {
         super.onResume()
         isInForeground.value = true
+        isFinishingCall.set(false)
+        if (callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
+            turnScreenOnAndShowWhileLocked()
+        }
         val state = callViewModel.currentCallSession.value?.state
         if (state == Call.STATE_ACTIVE || state == Call.STATE_DIALING) {
             if (preferenceManager.getBoolean(PreferenceManager.KEY_PROXIMITY_SENSOR, true)) {
@@ -438,6 +452,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onDestroy() {
         releaseProximityLock()
         proximityWakeLock = null
+        isFinishingCall.set(false)
         callViewModel.setIsActivityVisible(false)
         super.onDestroy()
     }
@@ -445,10 +460,9 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        isFinishingCall.set(false)
         handleCallIntent(intent)
-        if (!isFinishingCall.get() && callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
-            turnScreenOnAndShowWhileLocked()
-        }
+        turnScreenOnAndShowWhileLocked()
     }
 
     private fun dismissCallScreen() {
@@ -478,7 +492,18 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         super.onAttachedToWindow()
         turnScreenOnAndShowWhileLocked()
     }
+
+    fun requestDismissKeyguardIfLocked() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
+            if (keyguardManager?.isKeyguardLocked == true) {
+                keyguardManager.requestDismissKeyguard(this, null)
+            }
+        }
+    }
+
     private fun turnScreenOnAndShowWhileLocked() {
+        isFinishingCall.set(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -522,6 +547,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     }
                 }
                 callViewModel.answerCall()
+                requestDismissKeyguardIfLocked()
             }
         }
     }

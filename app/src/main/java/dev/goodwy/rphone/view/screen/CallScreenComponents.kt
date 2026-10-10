@@ -782,11 +782,13 @@ fun VerticalSwipeToAnswer(
     val view = LocalView.current
     val globalBackdrop = LocalLiquidGlassBackdrop.current
 
-    val handleSize = 80.dp
-    val maxDrag = with(localDensity) { 100.dp.toPx() }
-    val triggerThreshold = maxDrag * 0.7f
+    val handleSize = 76.dp
+    val trackWidth = 84.dp
+    val trackHeight = 246.dp
+    val maxDrag = with(localDensity) { 108.dp.toPx() }
+    val triggerThreshold = maxDrag * 0.68f
 
-    val dragProgress = remember { derivedStateOf { offsetY.value / maxDrag } }
+    var hasCrossedThreshold by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -812,7 +814,7 @@ fun VerticalSwipeToAnswer(
 
     val arrowOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 12f,
+        targetValue = 8f,
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -820,91 +822,208 @@ fun VerticalSwipeToAnswer(
         label = "arrowBounce"
     )
 
+    val currentOffset = offsetY.value
+    val currentDragNormal = remember(currentOffset) {
+        (abs(currentOffset) / maxDrag).coerceIn(0f, 1f)
+    }
+
+    // Dynamic alpha and translation for answer & decline text that smoothly fade to 0 before handle can collide
+    val answerAlpha = remember(currentOffset) {
+        if (currentOffset <= 0f) {
+            // Dragging up: fade to 0 before handle reaches half distance
+            (1f - (abs(currentOffset) / (maxDrag * 0.42f))).coerceIn(0f, 0.95f)
+        } else {
+            // Dragging down: immediately fade out
+            (1f - (currentOffset / with(localDensity) { 16.dp.toPx() })).coerceIn(0f, 0.95f)
+        }
+    }
+
+    val declineAlpha = remember(currentOffset) {
+        if (currentOffset >= 0f) {
+            // Dragging down: fade to 0 before handle reaches half distance
+            (1f - (currentOffset / (maxDrag * 0.42f))).coerceIn(0f, 0.95f)
+        } else {
+            // Dragging up: immediately fade out
+            (1f - (abs(currentOffset) / with(localDensity) { 16.dp.toPx() })).coerceIn(0f, 0.95f)
+        }
+    }
+
+    val answerTranslationY = if (currentOffset < 0f) (currentOffset * 0.22f) - arrowOffset else -arrowOffset
+    val declineTranslationY = if (currentOffset > 0f) (currentOffset * 0.22f) + arrowOffset else arrowOffset
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
+            .height(280.dp)
             .navigationBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
+        // --- Visual Guide / Runway Track ---
+        val trackBgColor = if (useLg || useBlur) {
+            bottomBarColor.copy(alpha = 0.22f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        }
+
+        Surface(
+            shape = RoundedCornerShape(42.dp),
+            color = trackBgColor,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .width(trackWidth)
+                .height(trackHeight)
+                .then(
+                    if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
+                        backdrop = globalBackdrop,
+                        shape = { RoundedCornerShape(42.dp) },
+                        shadow = { Shadow(radius = 6.dp) },
+                        effects = {
+                            val d = density
+                            colorControls(saturation = 1.2f)
+                            blur(blurIntensity * d)
+                            lens(refractionHeight = 12f * d, refractionAmount = 36f * d)
+                        },
+                        highlight = { Highlight.Default }
+                    )
+                    else if (useBlur && globalBackdrop != null) Modifier.drawPlainBackdrop(
+                        backdrop = globalBackdrop,
+                        shape = { RoundedCornerShape(42.dp) },
+                        shadow = { Shadow(radius = 6.dp) },
+                        effects = { blur(blurIntensity * density) }
+                    )
+                    else Modifier
+                )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                // Upward chevrons in track
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .graphicsLayer {
+                            alpha = if (currentOffset < -10f) 0.85f else 0.35f
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = color_call_button,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                // Downward chevrons in track
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
+                        .graphicsLayer {
+                            alpha = if (currentOffset > 10f) 0.85f else 0.35f
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = color_call_end,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+        }
+
+        // --- Swipe Up to Answer Text & Arrow (Glides up and fades out before handle arrives) ---
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .offset(y = (-110).dp)
+                .offset(y = (-118).dp)
                 .graphicsLayer {
-                    alpha = (0.4f + (dragProgress.value * -1.8f)).coerceIn(0f, 1f)
-                    translationY = -arrowOffset
+                    alpha = answerAlpha
+                    translationY = answerTranslationY
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Rounded.KeyboardArrowUp, null, tint = textColor, modifier = Modifier.size(36.dp))
+            Icon(Icons.Rounded.KeyboardArrowUp, null, tint = textColor, modifier = Modifier.size(32.dp))
             Text(
                 stringResource(R.string.swipe_up_to_answer),
                 style = MaterialTheme.typography.titleMedium,
-                color = textColor.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Light,
-                fontStyle = FontStyle.Italic
+                color = textColor.copy(alpha = 0.92f),
+                fontWeight = FontWeight.Medium
             )
         }
 
+        // --- Swipe Down to Reject Text & Arrow (Glides down and fades out before handle arrives) ---
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .offset(y = 110.dp)
+                .offset(y = 118.dp)
                 .graphicsLayer {
-                    alpha = (0.4f + (dragProgress.value * 1.8f)).coerceIn(0f, 1f)
-                    translationY = arrowOffset
+                    alpha = declineAlpha
+                    translationY = declineTranslationY
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 stringResource(R.string.swipe_down_to_reject),
                 style = MaterialTheme.typography.titleMedium,
-                color = textColor.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Light,
-                fontStyle = FontStyle.Italic
+                color = textColor.copy(alpha = 0.92f),
+                fontWeight = FontWeight.Medium
             )
-            Icon(Icons.Rounded.KeyboardArrowDown, null, tint = textColor, modifier = Modifier.size(36.dp))
+            Icon(Icons.Rounded.KeyboardArrowDown, null, tint = textColor, modifier = Modifier.size(32.dp))
         }
 
+        // --- Draggable Handle ---
         Box(contentAlignment = Alignment.Center) {
-            if (abs(offsetY.value) < 5f) {
+            val pulseFade = (1f - (abs(currentOffset) / with(localDensity) { 24.dp.toPx() })).coerceIn(0f, 1f)
+            if (pulseFade > 0f) {
                 Box(
                     modifier = Modifier
                         .size(handleSize)
                         .scale(pulseScale)
-                        .background(textColor.copy(alpha = pulseAlpha * 0.4f), CircleShape)
+                        .background(textColor.copy(alpha = pulseAlpha * 0.35f * pulseFade), CircleShape)
                 )
                 Box(
                     modifier = Modifier
                         .size(handleSize)
-                        .scale(pulseScale * 1.4f)
-                        .border(1.dp, textColor.copy(alpha = pulseAlpha * 0.2f), CircleShape)
+                        .scale(pulseScale * 1.35f)
+                        .border(1.dp, textColor.copy(alpha = pulseAlpha * 0.2f * pulseFade), CircleShape)
                 )
             }
 
             val handleBgColor by animateColorAsState(
                 targetValue = when {
-                    offsetY.value < -15f -> color_call_button
-                    offsetY.value > 15f -> color_call_end
+                    currentOffset < -15f -> color_call_button
+                    currentOffset > 15f -> color_call_end
                     else -> Color.White
                 },
+                animationSpec = tween(220, easing = FastOutSlowInEasing),
                 label = "bgColor"
             )
 
             val iconTint by animateColorAsState(
-                targetValue = if (abs(offsetY.value) > 15f) Color.White else color_call_button,
+                targetValue = if (abs(currentOffset) > 15f) Color.White else color_call_button,
+                animationSpec = tween(220, easing = FastOutSlowInEasing),
                 label = "iconTint"
             )
+
+            val handleScale = 1f + (currentDragNormal * 0.08f)
+            val shadowDp = (5f + currentDragNormal * 10f).dp
+
             Surface(
                 shape           = CircleShape,
-                color           = if (useLg || useBlur) handleBgColor.copy(0.6f) else handleBgColor,
+                color           = if (useLg || useBlur) handleBgColor.copy(0.85f) else handleBgColor,
                 shadowElevation = 0.dp,
                 tonalElevation  = 0.dp,
                 modifier = Modifier
-                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                    .offset { IntOffset(0, currentOffset.roundToInt()) }
                     .size(handleSize)
-                    .shadow(if (abs(offsetY.value) > 5f) 12.dp else 4.dp, CircleShape)
+                    .scale(handleScale)
+                    .shadow(shadowDp, CircleShape)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragEnd = {
@@ -912,45 +1031,46 @@ fun VerticalSwipeToAnswer(
                                     when {
                                         offsetY.value < -triggerThreshold -> {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                                view.performHapticFeedback(
-                                                    HapticFeedbackConstants.CONFIRM
-                                                )
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                             } else {
-                                                view.performHapticFeedback(
-                                                    HapticFeedbackConstants.VIRTUAL_KEY
-                                                )
+                                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                             }
                                             onAnswer()
                                         }
 
                                         offsetY.value > triggerThreshold -> {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                                view.performHapticFeedback(
-                                                    HapticFeedbackConstants.REJECT
-                                                )
+                                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                                             } else {
-                                                view.performHapticFeedback(
-                                                    HapticFeedbackConstants.LONG_PRESS
-                                                )
+                                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                             }
                                             onDecline()
                                         }
 
-                                        else -> offsetY.animateTo(
-                                            0f,
-                                            spring(
-                                                dampingRatio = 0.7f,
-                                                stiffness = Spring.StiffnessMedium
+                                        else -> {
+                                            hasCrossedThreshold = false
+                                            offsetY.animateTo(
+                                                0f,
+                                                spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
                             },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
                                 coroutineScope.launch {
-                                    val newOffset =
-                                        (offsetY.value + dragAmount).coerceIn(-maxDrag, maxDrag)
+                                    val newOffset = (offsetY.value + dragAmount).coerceIn(-maxDrag, maxDrag)
+                                    val crossed = abs(newOffset) >= triggerThreshold
+                                    if (crossed && !hasCrossedThreshold) {
+                                        hasCrossedThreshold = true
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    } else if (!crossed && hasCrossedThreshold) {
+                                        hasCrossedThreshold = false
+                                    }
                                     offsetY.snapTo(newOffset)
                                 }
                             }
@@ -981,14 +1101,14 @@ fun VerticalSwipeToAnswer(
                 Box(
                     contentAlignment = Alignment.Center
                 ) {
-                    val icon = if (offsetY.value > 5f) Icons.Rounded.CallEnd else Icons.Rounded.Call
+                    val icon = if (currentOffset > 15f) Icons.Rounded.CallEnd else Icons.Rounded.Call
 
                     Crossfade(targetState = icon, label = "icon") { targetIcon ->
                         Icon(
                             targetIcon,
                             contentDescription = null,
                             tint = iconTint,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(34.dp)
                         )
                     }
                 }

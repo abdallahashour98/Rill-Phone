@@ -1,37 +1,37 @@
 {
-  "latestVersion": "0.6.15",
-  "latestVersionCode": 75,
-  "releaseDate": "2026-10-13",
-  "releaseNotes": "record",
+  "latestVersion": "0.6.16",
+  "latestVersionCode": 76,
+  "releaseDate": "2026-10-14",
+  "releaseNotes": "0",
   "fullApk": {
-    "fileName": "rill-phone-75-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-75-foss-release.apk",
-    "sizeBytes": 7829151,
+    "fileName": "rill-phone-76-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-76-foss-release.apk",
+    "sizeBytes": 7831503,
     "sizeFormatted": "7.47 MB",
-    "sha256": "843b18bec953c046e439505f5bdfa154fd4de2b476a3d9cae7040c0c58455124"
+    "sha256": "7426e31b5bb07117b038ef41da5831c3e3ad53ddfe7d5c22aa23425607df0fe3"
   },
   "patches": [
     {
-      "fromVersion": "0.6.13",
-      "fromVersionCode": 73,
-      "fileName": "patch_v0.6.13_to_v0.6.15.patch",
-      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.13_to_v0.6.15.patch",
-      "sizeBytes": 4094929,
-      "sizeFormatted": "3.91 MB",
-      "fromSha256": "fda8143bf5f16392f7fdcb19e483cc6f16a90a4e89326cacd9eb0aaaf3a440f8",
-      "patchSha256": "88d6521deca313ae2bb341c0ae24100b25e63fde5b8742f8c1faaf413675e2b9",
-      "targetSha256": "843b18bec953c046e439505f5bdfa154fd4de2b476a3d9cae7040c0c58455124"
-    },
-    {
       "fromVersion": "0.6.14",
       "fromVersionCode": 74,
-      "fileName": "patch_v0.6.14_to_v0.6.15.patch",
-      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.14_to_v0.6.15.patch",
-      "sizeBytes": 4091896,
+      "fileName": "patch_v0.6.14_to_v0.6.16.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.14_to_v0.6.16.patch",
+      "sizeBytes": 4094378,
       "sizeFormatted": "3.90 MB",
       "fromSha256": "2f3e6ab6accd3626024f079f71688e3a48eed77d0fe53bfe7f783f0292548f4e",
-      "patchSha256": "67d2f82f2d4ba9e33d258c23d5ea5524cf76ea68fb9e65d3b5b95da78e75d392",
-      "targetSha256": "843b18bec953c046e439505f5bdfa154fd4de2b476a3d9cae7040c0c58455124"
+      "patchSha256": "03ba66a266bea5c963b1e8dc3c5a984800b08c3d10e9f49ad3403ec83963388a",
+      "targetSha256": "7426e31b5bb07117b038ef41da5831c3e3ad53ddfe7d5c22aa23425607df0fe3"
+    },
+    {
+      "fromVersion": "0.6.15",
+      "fromVersionCode": 75,
+      "fileName": "patch_v0.6.15_to_v0.6.16.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.15_to_v0.6.16.patch",
+      "sizeBytes": 4041702,
+      "sizeFormatted": "3.85 MB",
+      "fromSha256": "843b18bec953c046e439505f5bdfa154fd4de2b476a3d9cae7040c0c58455124",
+      "patchSha256": "54939f4ec1546242a4dcaf70fb9e8e0b5ca045819a85d7b3285feef6b7b5db74",
+      "targetSha256": "7426e31b5bb07117b038ef41da5831c3e3ad53ddfe7d5c22aa23425607df0fe3"
     }
   ]
 }

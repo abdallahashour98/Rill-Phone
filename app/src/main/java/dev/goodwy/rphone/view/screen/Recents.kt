@@ -1060,6 +1060,7 @@ fun CallLogFullContent(
                                                             isSelected = isSelected,
                                                             selectionMode = selectionMode,
                                                             directCall = directCall,
+                                                            isSamsungStyle = swipeToCallEnabled && (swipeCallStyle == PreferenceManager.SWIPE_STYLE_SAMSUNG),
                                                             onTileClick = { log ->
                                                                 if (selectionMode) {
                                                                     onToggleSelection(log)

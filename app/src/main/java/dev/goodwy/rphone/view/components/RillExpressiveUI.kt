@@ -519,6 +519,7 @@ fun CallLogListItem(
     onAvatarLongClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     directCall: Boolean,
+    isSamsungStyle: Boolean = false,
     isMenuOpen: Boolean = false,
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
@@ -557,7 +558,13 @@ fun CallLogListItem(
                                 prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
                             )
                         }
-                        if (directCall) onCallClick() else onClick()
+                        if (isSamsungStyle) {
+                            onClick()
+                        } else if (directCall) {
+                            onCallClick()
+                        } else {
+                            onClick()
+                        }
                     },
                     onLongClick = onLongClick
                 )
@@ -651,7 +658,7 @@ fun CallLogListItem(
             }
 
             Icon(
-                imageVector = if (directCall) Icons.Outlined.Info else Icons.Outlined.Phone, null,
+                imageVector = if (isSamsungStyle || directCall) Icons.Outlined.Info else Icons.Outlined.Phone, null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(28.dp)
@@ -672,7 +679,7 @@ fun CallLogListItem(
                                     )
                                 )
                             }
-                            if (directCall) onClick() else onCallClick()
+                            if (isSamsungStyle || directCall) onClick() else onCallClick()
                         },
                         onLongClick = if (!selectionMode) onAvatarLongClick else onLongClick
                     )

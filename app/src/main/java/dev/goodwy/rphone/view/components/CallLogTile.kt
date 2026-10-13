@@ -110,7 +110,8 @@ fun CallLogTile(
     onShowHistory: () -> Unit,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
-    showSimLabel: Boolean
+    showSimLabel: Boolean,
+    isSamsungStyle: Boolean = false
 ) {
     val context   = LocalContext.current
     var showMenu  by remember { mutableStateOf(false) }
@@ -154,6 +155,7 @@ fun CallLogTile(
             onAvatarClick = { if (onAvatarClick != null) onAvatarClick(log) },
             onAvatarLongClick = { showMenu = true },
             directCall = directCall,
+            isSamsungStyle = isSamsungStyle,
             onLongClick = { onLongClick(log) },
             isMenuOpen  = showMenu && !selectionMode,
             onClick     = { onTileClick(log) },

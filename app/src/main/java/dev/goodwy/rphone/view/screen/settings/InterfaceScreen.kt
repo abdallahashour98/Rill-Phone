@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.BlurLinear
 import androidx.compose.material.icons.rounded.BlurOff
+import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.FontDownload
@@ -148,6 +149,7 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
     var scrollAnimation     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false)) }
     var dialpadAnimation    by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_DIALPAD_ANIMATION, true)) }
     var swipeToCall         by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true)) }
+    var swipeCallStyle      by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG)) }
     var hideVoiceSearch     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_HIDE_VOICE_SEARCH, false)) }
     var liquidGlass         by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_LIQUID_GLASS, false)) }
     var blurEffects         by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_BLUR_EFFECTS, false)) }
@@ -873,6 +875,24 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
                                         prefs.setBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, it)
                                     }
                                 )
+                                if (swipeToCall) {
+                                    RillSelectListItem(
+                                        headline = stringResource(R.string.swipe_to_call_style),
+                                        supporting = stringResource(R.string.swipe_to_call_style_subtitle),
+                                        leadingIcon = Icons.Rounded.Call,
+                                        iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
+                                        iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorGreen,
+                                        options = listOf(
+                                            stringResource(R.string.swipe_style_samsung) to PreferenceManager.SWIPE_STYLE_SAMSUNG,
+                                            stringResource(R.string.swipe_style_classic) to PreferenceManager.SWIPE_STYLE_CLASSIC
+                                        ),
+                                        selectedValue = swipeCallStyle,
+                                        onValueChange = {
+                                            swipeCallStyle = it
+                                            prefs.setInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, it)
+                                        }
+                                    )
+                                }
 //                                RillListItem(
 //                                    headline = "Calls Section Elements",
 //                                    supporting = "Toggle Today, Missed, Outgoing, Call Time cards",

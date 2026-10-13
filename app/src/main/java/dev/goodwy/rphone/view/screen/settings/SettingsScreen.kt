@@ -331,6 +331,10 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
                 stringResource(R.string.hide_voice_search_subtitle),
                 stringResource(R.string.swipe_actions),
                 stringResource(R.string.swipe_actions_subtitle),
+                stringResource(R.string.swipe_to_call_style),
+                stringResource(R.string.swipe_to_call_style_subtitle),
+                stringResource(R.string.swipe_style_samsung),
+                stringResource(R.string.swipe_style_classic),
             )
         ) { navigator.navigate(InterfaceScreenDestination) },
         SettingsSearchEntry(

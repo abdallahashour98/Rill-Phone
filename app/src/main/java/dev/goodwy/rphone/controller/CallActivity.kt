@@ -1,6 +1,5 @@
 package dev.goodwy.rphone.controller
 
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -150,7 +149,6 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     }
                     when (callState) {
                         Call.STATE_ACTIVE -> {
-                            requestDismissKeyguardIfLocked()
                             if (preferenceManager.getBoolean(PreferenceManager.KEY_VIBRATE_ON_ANSWER, true)) {
                                 this@CallActivity.window?.decorView?.performHapticFeedback(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -493,15 +491,6 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         turnScreenOnAndShowWhileLocked()
     }
 
-    fun requestDismissKeyguardIfLocked() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
-            if (keyguardManager?.isKeyguardLocked == true) {
-                keyguardManager.requestDismissKeyguard(this, null)
-            }
-        }
-    }
-
     private fun turnScreenOnAndShowWhileLocked() {
         isFinishingCall.set(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -513,8 +502,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
             WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         )
 
         try {
@@ -547,7 +535,6 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     }
                 }
                 callViewModel.answerCall()
-                requestDismissKeyguardIfLocked()
             }
         }
     }

@@ -201,6 +201,11 @@
     <string name="hide_voice_search_subtitle">يخفي زر البحث الصوتي</string>
     <string name="swipe_actions">إجراءات السحب</string>
     <string name="swipe_actions_subtitle">اسحب على إدخال سجل المكالمات الحديث لحذفه أو إرسال رسالة نصية أو إجراء مكالمة</string>
+    <string name="swipe_to_call_style">نمط السحب للاتصال</string>
+    <string name="swipe_to_call_style_subtitle">اختر أسلوب السحب لإجراء مكالمة أو إرسال رسالة في سجل المكالمات</string>
+    <string name="swipe_style_samsung">سامسونج (One UI)</string>
+    <string name="swipe_style_classic">الوضع الافتراضي القديم</string>
+    <string name="swipe_style_disabled">معطل</string>
 
     <string name="avatars_settings">إعدادات الصور الرمزية</string>
     <string name="avatars_settings_subtitle">تخصيص الألوان والإطارات والمزيد</string>

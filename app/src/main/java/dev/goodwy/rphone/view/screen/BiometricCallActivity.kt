@@ -43,8 +43,7 @@ class BiometricCallActivity : FragmentActivity() {
         window.addFlags(
             android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-            android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         )
 
         val action = intent?.getStringExtra("NOTIFICATION_PENDING_ACTION") ?: run { finish(); return }

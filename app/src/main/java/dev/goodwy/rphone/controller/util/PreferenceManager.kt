@@ -406,6 +406,10 @@ class PreferenceManager(context: Context) {
         const val KEY_DIALPAD_LAYOUT = "dialpad_layout_style"
         const val KEY_AVATAR_SHAPE = "avatar_shape"
         const val KEY_SWIPE_TO_CALL = "swipe_to_call"
+        const val KEY_SWIPE_TO_CALL_STYLE = "swipe_to_call_style"
+        const val SWIPE_STYLE_SAMSUNG = 0
+        const val SWIPE_STYLE_CLASSIC = 1
+        const val SWIPE_STYLE_DISABLED = 2
         const val KEY_DIALPAD_VIBRATION_STRENGTH = "dialpad_vibration_strength"
         const val KEY_DTMF_TONE_VOLUME = "dtmf_tone_volume"
         const val KEY_HAPTIC_LIST_SCROLL = "haptic_list_scroll"

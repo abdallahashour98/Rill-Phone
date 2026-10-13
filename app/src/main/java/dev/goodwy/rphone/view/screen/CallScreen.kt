@@ -2,7 +2,6 @@ package dev.goodwy.rphone.view.screen
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -167,12 +166,6 @@ fun ExpressiveCallScreen(
         try {
             call.answer(VideoProfile.STATE_AUDIO_ONLY)
         } catch (_: Exception) {}
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            if (context is Activity && km?.isKeyguardLocked == true) {
-                km.requestDismissKeyguard(context, null)
-            }
-        }
     }
 
     val settingsState by preferenceManager.settingsChanged.collectAsStateWithLifecycle()

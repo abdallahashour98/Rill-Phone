@@ -520,20 +520,19 @@ fun RecentScreen(navController: NavController, navigator: DestinationsNavigator)
                 onDraggingFavoriteChange = { isDraggingFavorite = it },
             )
 
-            val endPadding = if (!dialpadEnabled) 86.dp else 32.dp
+            val scrollToTopBottom = if (dialpadEnabled) {
+                if (isLandscape || !showBottomBar) 76.dp
+                else if (pillNav) 162.dp
+                else bottomBarHeight + 96.dp
+            } else {
+                if (isLandscape || !showBottomBar) 12.dp
+                else if (pillNav) 100.dp
+                else bottomBarHeight + 12.dp
+            }
             ScrollToTopButton(
                 modifier = Modifier
-                    .then(
-                        if (isLandscape || !showBottomBar) Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = 12.dp, end = endPadding)
-                        else if (pillNav) Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = 92.dp + 8.dp, end = endPadding)
-                        else Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = bottomBarHeight + 12.dp, end = endPadding)
-                    ),
+                    .navigationBarsPadding()
+                    .padding(bottom = scrollToTopBottom, end = 24.dp),
                 visible = showButton,
                 onClick = {
                     scope.launch {
@@ -649,6 +648,7 @@ fun CallLogFullContent(
         var pendingNumber by remember { mutableStateOf<String?>(null) }
         val simPref = remember(settingsState) { prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, prefs.getDefaultSimIndexDefault()) }
         val swipeToCallEnabled by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true)) }
+        val swipeCallStyle by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG)) }
 
         // Track previous filter index for slide direction
         val filterEntries = CallLogFilter.entries
@@ -1013,45 +1013,48 @@ fun CallLogFullContent(
                                     val bottomPadding = if (!isLast) cardSpacedBy else 0.dp
                                     val isSelected = selectedEntries.any { it.id == lg.id }
                                     val selectionMode = selectedEntries.isNotEmpty()
-                                        RillScrollAnimatedItem(delayMs = (index.coerceAtMost(5) * 30).toLong()) {
-                                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                                SwipeableCallLogContainer(
-                                                    enabled = swipeToCallEnabled && !selectionMode,
-                                                    haptics = haptics,
-                                                    hapticsStrength = hapticsStrength,
-                                                    hapticsIntensity = hapticsIntensity,
-                                                    onSwipeRight = {
-                                                        placeCallWithSimPreference(
-                                                            context,
-                                                            lg.number,
-                                                            simPref
-                                                        ) {
-                                                            pendingNumber =
-                                                                lg.number; showSimPicker = true
-                                                        }
-                                                    },
-                                                    onSwipeLeft = {
-                                                        val intent =
-                                                            Intent(Intent.ACTION_VIEW).apply {
-                                                                data = "sms:${lg.number}".toUri()
-                                                            }
-                                                        context.startActivity(intent)
-                                                    },
-                                                    onDelete = {
-                                                        pendingDeleteIds = lg.ids
-                                                    },
-                                                    modifier = Modifier.padding(bottom = bottomPadding)
-                                                ) {
-                                                    Surface(
-                                                        shape = RoundedCornerShape(
-                                                            topStart = if (isSelected) cardCornerExtraLarge else topStart,
-                                                            topEnd = if (isSelected) cardCornerExtraLarge else topEnd,
-                                                            bottomStart = if (isSelected) cardCornerExtraLarge else bottomStart,
-                                                            bottomEnd = if (isSelected) cardCornerExtraLarge else bottomEnd
-                                                        ),
-                                                        color = MaterialTheme.colorScheme.surface,
-                                                        modifier = Modifier.fillMaxWidth()
+                                    val itemCardShape = RoundedCornerShape(
+                                        topStart = if (isSelected) cardCornerExtraLarge else topStart,
+                                        topEnd = if (isSelected) cardCornerExtraLarge else topEnd,
+                                        bottomStart = if (isSelected) cardCornerExtraLarge else bottomStart,
+                                        bottomEnd = if (isSelected) cardCornerExtraLarge else bottomEnd
+                                    )
+                                    RillScrollAnimatedItem(delayMs = (index.coerceAtMost(5) * 30).toLong()) {
+                                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                            SwipeableCallLogContainer(
+                                                enabled = swipeToCallEnabled && !selectionMode && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                                style = swipeCallStyle,
+                                                shape = itemCardShape,
+                                                haptics = haptics,
+                                                hapticsStrength = hapticsStrength,
+                                                hapticsIntensity = hapticsIntensity,
+                                                onSwipeRight = {
+                                                    placeCallWithSimPreference(
+                                                        context,
+                                                        lg.number,
+                                                        simPref
                                                     ) {
+                                                        pendingNumber =
+                                                            lg.number; showSimPicker = true
+                                                    }
+                                                },
+                                                onSwipeLeft = {
+                                                    val intent =
+                                                        Intent(Intent.ACTION_VIEW).apply {
+                                                            data = "sms:${lg.number}".toUri()
+                                                        }
+                                                    context.startActivity(intent)
+                                                },
+                                                onDelete = {
+                                                    pendingDeleteIds = lg.ids
+                                                },
+                                                modifier = Modifier.padding(bottom = bottomPadding)
+                                            ) {
+                                                Surface(
+                                                    shape = itemCardShape,
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
                                                         CallLogTile(
                                                             log = lg,
                                                             isSelected = isSelected,

@@ -203,6 +203,11 @@
     <string name="hide_voice_search_subtitle">Hides the voice search button</string>
     <string name="swipe_actions">Swipe actions</string>
     <string name="swipe_actions_subtitle">Swipe on a recent call log entry to delete, send an SMS, or make a call</string>
+    <string name="swipe_to_call_style">Swipe to Call Style</string>
+    <string name="swipe_to_call_style_subtitle">Choose swipe action style in recent calls</string>
+    <string name="swipe_style_samsung">Samsung One UI</string>
+    <string name="swipe_style_classic">Classic Default</string>
+    <string name="swipe_style_disabled">Disabled</string>
 
     <string name="сaller_ui">Caller UI</string>
     <string name="сaller_ui_subtitle">Customize the in-call screen layout and controls</string>

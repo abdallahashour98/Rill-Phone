@@ -39,6 +39,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import dev.goodwy.rphone.controller.util.CallRecorder
+import dev.goodwy.rphone.view.components.CallRecordingPlayerCard
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.CallLogViewModel
 import dev.goodwy.rphone.controller.util.formatDateHeader
@@ -99,6 +103,7 @@ fun CallLogFullScreen(
     var showNumberPicker by remember { mutableStateOf(false) }
     var showMessagePicker by remember { mutableStateOf(false) }
     var pendingNumber by remember { mutableStateOf<String?>(null) }
+    var expandedLogId by remember { mutableStateOf<Long?>(null) }
 
     // Entrance animation
     var screenVisible by remember { mutableStateOf(false) }
@@ -308,47 +313,58 @@ fun CallLogFullScreen(
                                         .padding(horizontal = 20.dp, vertical = 8.dp))
                                 RillExpressiveCard {
                                     logsInGroup.forEachIndexed { index, lg ->
-                                        CallLogTileSimple(
-                                            log = lg,
-                                            onClick = {
-                                                if (selectedEntries.isNotEmpty()) {
-                                                    selectedEntries = if (selectedEntries.any { it.id == lg.id }) {
-                                                        selectedEntries.filter { it.id != lg.id }.toSet()
-                                                    } else {
-                                                        selectedEntries + lg
+                                        val recordingFile = remember(lg.id, lg.date) {
+                                            CallRecorder.findRecordingForCall(context, lg.number, lg.date, lg.duration)
+                                        }
+                                        val isExpanded = expandedLogId == lg.id && recordingFile != null
+
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .animateContentSize()
+                                        ) {
+                                            CallLogTileSimple(
+                                                log = lg,
+                                                onClick = {
+                                                    if (selectedEntries.isNotEmpty()) {
+                                                        selectedEntries = if (selectedEntries.any { it.id == lg.id }) {
+                                                            selectedEntries.filter { it.id != lg.id }.toSet()
+                                                        } else {
+                                                            selectedEntries + lg
+                                                        }
+                                                    } else if (recordingFile != null) {
+                                                        expandedLogId = if (expandedLogId == lg.id) null else lg.id
                                                     }
+                                                },
+                                                onLongClick = {
+                                                    if (selectedEntries.none { it.id == lg.id }) {
+                                                        selectedEntries = selectedEntries + lg
+                                                    }
+                                                },
+                                                onCallClick = {},
+                                                selected = selectedEntries.any { it.id == lg.id },
+                                                showNumber = hasMultipleNumbers,
+                                                showSimLabel = showSimLabel,
+                                                recordingFile = recordingFile
+                                            )
+
+                                            AnimatedVisibility(
+                                                visible = isExpanded && recordingFile.exists()
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                                ) {
+                                                    CallRecordingPlayerCard(
+                                                        file = recordingFile!!,
+                                                        onDeleted = {
+                                                            expandedLogId = null
+                                                        }
+                                                    )
                                                 }
-                                            },
-                                            onLongClick = {
-                                                if (selectedEntries.none { it.id == lg.id }) {
-                                                    selectedEntries = selectedEntries + lg
-                                                }
-                                            },
-                                            onCallClick = {
-//                                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-//                                                    context,
-//                                                    android.Manifest.permission.READ_PHONE_STATE
-//                                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-//
-//                                                val targetContactId = lg.contactId ?: contactId
-//
-//                                                if (hasPermission) {
-//                                                    val accounts = telecomManager.callCapablePhoneAccounts
-//                                                    if (accounts.size > 1) {
-//                                                        pendingNumber = lg.number
-//                                                        pendingContactId = targetContactId
-//                                                        showSimPicker = true
-//                                                    } else {
-//                                                        makeCall(context, lg.number, contactId = targetContactId)
-//                                                    }
-//                                                } else {
-//                                                    makeCall(context, lg.number, contactId = targetContactId)
-//                                                }
-                                            },
-                                            selected = selectedEntries.any { it.id == lg.id },
-                                            showNumber = hasMultipleNumbers,
-                                            showSimLabel = showSimLabel,
-                                        )
+                                            }
+                                        }
                                     }
                                 }
                             }

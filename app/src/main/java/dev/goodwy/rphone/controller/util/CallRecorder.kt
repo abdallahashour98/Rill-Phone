@@ -121,9 +121,232 @@ object CallRecorder {
         }
     }
 
+    fun getRecordingsDir(context: Context): File {
+        val baseDir = context.getExternalFilesDir(Environment.DIRECTORY_RECORDINGS)
+            ?: File(context.filesDir, "recordings")
+        return File(baseDir, "RillPhoneRecordings").apply {
+            if (!exists()) mkdirs()
+        }
+    }
+
+    fun findRecordingForCall(
+        context: Context,
+        phoneNumber: String,
+        callDate: Long,
+        durationSeconds: Long = 0L
+    ): File? {
+        val dir = getRecordingsDir(context)
+        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
+            ?: return null
+
+        val cleanTarget = phoneNumber.filter { it.isDigit() }
+        if (cleanTarget.isEmpty()) return null
+        val last7Target = if (cleanTarget.length >= 7) cleanTarget.takeLast(7) else cleanTarget
+
+        return files.firstOrNull { file ->
+            val nameNoExt = file.nameWithoutExtension
+            val parts = nameNoExt.split("_")
+            if (parts.size >= 3) {
+                val filePhone = parts[1].filter { it.isDigit() }
+                val fileTimestamp = parts.last().toLongOrNull() ?: 0L
+
+                val last7File = if (filePhone.length >= 7) filePhone.takeLast(7) else filePhone
+                val numberMatches = last7Target.isNotEmpty() && (last7File == last7Target || filePhone == cleanTarget)
+
+                val maxAllowedDiff = ((durationSeconds + 180).coerceAtLeast(300)) * 1000L
+                val timeDiff = kotlin.math.abs(fileTimestamp - callDate)
+                numberMatches && timeDiff <= maxAllowedDiff
+            } else false
+        }
+    }
+
+    fun getRecordingsForNumber(context: Context, phoneNumber: String): List<File> {
+        val dir = getRecordingsDir(context)
+        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
+            ?: return emptyList()
+
+        val cleanTarget = phoneNumber.filter { it.isDigit() }
+        if (cleanTarget.isEmpty()) return emptyList()
+        val last7Target = if (cleanTarget.length >= 7) cleanTarget.takeLast(7) else cleanTarget
+
+        return files.filter { file ->
+            val parts = file.nameWithoutExtension.split("_")
+            if (parts.size >= 3) {
+                val filePhone = parts[1].filter { it.isDigit() }
+                val last7File = if (filePhone.length >= 7) filePhone.takeLast(7) else filePhone
+                last7Target.isNotEmpty() && (last7File == last7Target || filePhone == cleanTarget)
+            } else false
+        }.sortedByDescending { it.lastModified() }
+    }
+
+    fun getAllRecordings(context: Context): List<File> {
+        val dir = getRecordingsDir(context)
+        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
+            ?: return emptyList()
+        return files.sortedByDescending { it.lastModified() }
+    }
+
+    fun getAudioDurationMs(file: File): Long {
+        return try {
+            val retriever = android.media.MediaMetadataRetriever()
+            retriever.setDataSource(file.absolutePath)
+            val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+            retriever.release()
+            time?.toLongOrNull() ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
     fun formatDuration(seconds: Long): String {
         val mins = seconds / 60
         val secs = seconds % 60
         return "%02d:%02d".format(mins, secs)
+    }
+}
+
+object RecordingPlayer {
+    private const val TAG = "RecordingPlayer"
+    private var mediaPlayer: android.media.MediaPlayer? = null
+
+    private val _currentPlayingFile = MutableStateFlow<File?>(null)
+    val currentPlayingFile: StateFlow<File?> = _currentPlayingFile.asStateFlow()
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    private val _currentPosition = MutableStateFlow(0)
+    val currentPosition: StateFlow<Int> = _currentPosition.asStateFlow()
+
+    private val _duration = MutableStateFlow(0)
+    val duration: StateFlow<Int> = _duration.asStateFlow()
+
+    private var progressJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    fun playOrPause(file: File) {
+        if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
+            if (_isPlaying.value) {
+                pause()
+            } else {
+                resume()
+            }
+        } else {
+            play(file)
+        }
+    }
+
+    fun play(file: File) {
+        stop()
+        try {
+            val player = android.media.MediaPlayer().apply {
+                setDataSource(file.absolutePath)
+                prepare()
+                setOnCompletionListener {
+                    _isPlaying.value = false
+                    _currentPosition.value = 0
+                    stopProgressTracking()
+                }
+                start()
+            }
+            mediaPlayer = player
+            _currentPlayingFile.value = file
+            _isPlaying.value = true
+            _duration.value = player.duration
+            _currentPosition.value = 0
+            startProgressTracking()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing recording", e)
+            stop()
+        }
+    }
+
+    fun pause() {
+        mediaPlayer?.let {
+            if (it.isPlaying) {
+                it.pause()
+                _isPlaying.value = false
+                stopProgressTracking()
+            }
+        }
+    }
+
+    fun resume() {
+        mediaPlayer?.let {
+            it.start()
+            _isPlaying.value = true
+            startProgressTracking()
+        }
+    }
+
+    fun seekTo(positionMs: Int) {
+        mediaPlayer?.let {
+            it.seekTo(positionMs)
+            _currentPosition.value = positionMs
+        }
+    }
+
+    fun stop() {
+        stopProgressTracking()
+        try {
+            mediaPlayer?.apply {
+                if (isPlaying) stop()
+                reset()
+                release()
+            }
+        } catch (_: Exception) {}
+        mediaPlayer = null
+        _isPlaying.value = false
+        _currentPlayingFile.value = null
+        _currentPosition.value = 0
+        _duration.value = 0
+    }
+
+    private fun startProgressTracking() {
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            while (_isPlaying.value) {
+                mediaPlayer?.let {
+                    if (it.isPlaying) {
+                        _currentPosition.value = it.currentPosition
+                    }
+                }
+                delay(100)
+            }
+        }
+    }
+
+    private fun stopProgressTracking() {
+        progressJob?.cancel()
+        progressJob = null
+    }
+
+    fun shareRecording(context: Context, file: File) {
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file
+            )
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "audio/*"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(intent, context.getString(dev.goodwy.rphone.R.string.share_recording)))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sharing recording", e)
+        }
+    }
+
+    fun deleteRecording(file: File): Boolean {
+        if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
+            stop()
+        }
+        return try {
+            file.delete()
+        } catch (_: Exception) {
+            false
+        }
     }
 }

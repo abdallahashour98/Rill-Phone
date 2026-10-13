@@ -748,4 +748,12 @@
     <string name="sample_caller_name">خدمة العملاء 1</string>
     <string name="sample_caller_number">111</string>
     <string name="sample_calling">جارٍ الاتصال…</string>
+    <string name="call_recording">تسجيل المكالمة</string>
+    <string name="call_recordings">تسجيلات المكالمات</string>
+    <string name="play_recording">تشغيل التسجيل</string>
+    <string name="pause_recording">إيقاف مؤقت للتسجيل</string>
+    <string name="share_recording">مشاركة التسجيل</string>
+    <string name="delete_recording">حذف التسجيل</string>
+    <string name="delete_recording_confirm">هل أنت متأكد من حذف هذا التسجيل؟</string>
+    <string name="recording_deleted">تم حذف التسجيل</string>
 </resources>

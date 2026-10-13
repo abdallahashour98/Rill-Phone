@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,8 +48,11 @@ import dev.goodwy.rphone.controller.util.formatSecondsToShortTimeString
 import dev.goodwy.rphone.controller.util.getPhoneTypeText
 import dev.goodwy.rphone.controller.util.launchInternetSearch
 import dev.goodwy.rphone.controller.util.toast
+import dev.goodwy.rphone.controller.util.CallRecorder
+import dev.goodwy.rphone.controller.util.RecordingPlayer
 import dev.goodwy.rphone.modal.data.CallLogEntry
 import dev.goodwy.rphone.view.theme.customColors
+import java.io.File
 
 @Composable
 fun CallLogTileSimple(
@@ -58,7 +62,8 @@ fun CallLogTileSimple(
     onCallClick: () -> Unit = {},
     selected: Boolean = false,
     showNumber: Boolean,
-    showSimLabel: Boolean
+    showSimLabel: Boolean,
+    recordingFile: File? = null
 ) {
     val icon = when (log.type) {
         CallLog.Calls.INCOMING_TYPE -> Icons.AutoMirrored.Filled.CallReceived
@@ -79,9 +84,10 @@ fun CallLogTileSimple(
     }
     val headlineText = if (showNumber) log.number.forceLtr() + "  •  " + typeText else typeText
     val simLabel = if (showSimLabel && log.simLabel != null) " • " + log.simLabel else ""
+    val recordingBadge = if (recordingFile != null) " • 🎙️" else ""
     CallLogListItemSimple(
         headline = headlineText,
-        supporting = context.formatDate(log.date) + simLabel,
+        supporting = context.formatDate(log.date) + simLabel + recordingBadge,
 //        trailing = if (log.duration > 0) "${android.text.format.DateUtils.formatElapsedTime(log.duration)}" else "",
         trailing = if (log.duration > 0) context.formatSecondsToShortTimeString(log.duration.toInt()) else "",
         leadingIcon = icon,
@@ -109,8 +115,13 @@ fun CallLogTile(
     val context   = LocalContext.current
     var showMenu  by remember { mutableStateOf(false) }
 
+    val recordingFile = remember(log.id, log.number, log.date) {
+        CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
+    }
+
     Box(modifier = Modifier.fillMaxWidth()) {
         val simLabel = if (showSimLabel && log.simLabel != null) " • " + log.simLabel else ""
+        val recBadge = if (recordingFile != null) " • 🎙️" else ""
         val displayName = if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
         CallLogListItem(
             headline = buildString {
@@ -120,9 +131,9 @@ fun CallLogTile(
             supporting = buildString {
                 if (log.name != null && log.name != log.number) {
                     val typeLabel = getPhoneTypeText(context, log.phoneType, log.phoneLabel)
-                    append(typeLabel + " • " + context.formatDate(log.date, true) + simLabel)
+                    append(typeLabel + " • " + context.formatDate(log.date, true) + simLabel + recBadge)
                 } else {
-                    append(context.formatDate(log.date, true) + simLabel)
+                    append(context.formatDate(log.date, true) + simLabel + recBadge)
                 }
             },
             avatarName  = displayName,
@@ -215,6 +226,17 @@ fun CallLogTile(
                         onShowHistory()
                     }
                 )
+                if (recordingFile != null) {
+                    DropdownMenuItem(
+                        contentPadding = PaddingValues(start = 20.dp, end = 26.dp),
+                        text = { Text(stringResource(R.string.share_recording)) },
+                        leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                        onClick = {
+                            showMenu = false
+                            RecordingPlayer.shareRecording(context, recordingFile)
+                        }
+                    )
+                }
                 if (log.number.isNotBlank()) {
                     DropdownMenuItem(
                         contentPadding = PaddingValues(start = 20.dp, end = 26.dp),

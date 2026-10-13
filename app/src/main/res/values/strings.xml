@@ -746,4 +746,12 @@
     <string name="sample_caller_name">Call center 1</string>
     <string name="sample_caller_number">111</string>
     <string name="sample_calling">Calling…</string>
+    <string name="call_recording">Call recording</string>
+    <string name="call_recordings">Call recordings</string>
+    <string name="play_recording">Play recording</string>
+    <string name="pause_recording">Pause recording</string>
+    <string name="share_recording">Share recording</string>
+    <string name="delete_recording">Delete recording</string>
+    <string name="delete_recording_confirm">Are you sure you want to delete this recording?</string>
+    <string name="recording_deleted">Recording deleted</string>
 </resources>

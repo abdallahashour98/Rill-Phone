@@ -782,11 +782,11 @@ fun VerticalSwipeToAnswer(
     val view = LocalView.current
     val globalBackdrop = LocalLiquidGlassBackdrop.current
 
-    val handleSize = 76.dp
-    val trackWidth = 84.dp
-    val trackHeight = 246.dp
-    val maxDrag = with(localDensity) { 108.dp.toPx() }
-    val triggerThreshold = maxDrag * 0.68f
+    val handleSize = 74.dp
+    val trackWidth = 86.dp
+    val trackHeight = 300.dp
+    val maxDrag = with(localDensity) { 124.dp.toPx() }
+    val triggerThreshold = maxDrag * 0.65f
 
     var hasCrossedThreshold by remember { mutableStateOf(false) }
 
@@ -810,16 +810,24 @@ fun VerticalSwipeToAnswer(
         label = "pulseAlpha"
     )
 
-    val textColor = MaterialTheme.colorScheme.onSurface
-
-    val arrowOffset by infiniteTransition.animateFloat(
+    val arrowBounceUp by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 8f,
+        targetValue = -6f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearOutSlowInEasing),
+            animation = tween(1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "arrowBounce"
+        label = "arrowBounceUp"
+    )
+
+    val arrowBounceDown by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "arrowBounceDown"
     )
 
     val currentOffset = offsetY.value
@@ -827,34 +835,29 @@ fun VerticalSwipeToAnswer(
         (abs(currentOffset) / maxDrag).coerceIn(0f, 1f)
     }
 
-    // Dynamic alpha and translation for answer & decline text that smoothly fade to 0 before handle can collide
-    val answerAlpha = remember(currentOffset) {
+    val isDraggingUp = currentOffset < -10f
+    val isDraggingDown = currentOffset > 10f
+
+    val topChevronsAlpha = remember(currentOffset) {
         if (currentOffset <= 0f) {
-            // Dragging up: fade to 0 before handle reaches half distance
-            (1f - (abs(currentOffset) / (maxDrag * 0.42f))).coerceIn(0f, 0.95f)
+            (0.4f + currentDragNormal * 0.6f).coerceIn(0f, 1f)
         } else {
-            // Dragging down: immediately fade out
-            (1f - (currentOffset / with(localDensity) { 16.dp.toPx() })).coerceIn(0f, 0.95f)
+            (0.4f - currentDragNormal * 1.5f).coerceIn(0f, 1f)
         }
     }
 
-    val declineAlpha = remember(currentOffset) {
+    val bottomChevronsAlpha = remember(currentOffset) {
         if (currentOffset >= 0f) {
-            // Dragging down: fade to 0 before handle reaches half distance
-            (1f - (currentOffset / (maxDrag * 0.42f))).coerceIn(0f, 0.95f)
+            (0.4f + currentDragNormal * 0.6f).coerceIn(0f, 1f)
         } else {
-            // Dragging up: immediately fade out
-            (1f - (abs(currentOffset) / with(localDensity) { 16.dp.toPx() })).coerceIn(0f, 0.95f)
+            (0.4f - currentDragNormal * 1.5f).coerceIn(0f, 1f)
         }
     }
-
-    val answerTranslationY = if (currentOffset < 0f) (currentOffset * 0.22f) - arrowOffset else -arrowOffset
-    val declineTranslationY = if (currentOffset > 0f) (currentOffset * 0.22f) + arrowOffset else arrowOffset
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(330.dp)
             .navigationBarsPadding(),
         contentAlignment = Alignment.Center
     ) {
@@ -866,7 +869,7 @@ fun VerticalSwipeToAnswer(
         }
 
         Surface(
-            shape = RoundedCornerShape(42.dp),
+            shape = RoundedCornerShape(44.dp),
             color = trackBgColor,
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
@@ -876,7 +879,7 @@ fun VerticalSwipeToAnswer(
                 .then(
                     if (useLg && globalBackdrop != null) Modifier.drawBackdrop(
                         backdrop = globalBackdrop,
-                        shape = { RoundedCornerShape(42.dp) },
+                        shape = { RoundedCornerShape(44.dp) },
                         shadow = { Shadow(radius = 6.dp) },
                         effects = {
                             val d = density
@@ -888,7 +891,7 @@ fun VerticalSwipeToAnswer(
                     )
                     else if (useBlur && globalBackdrop != null) Modifier.drawPlainBackdrop(
                         backdrop = globalBackdrop,
-                        shape = { RoundedCornerShape(42.dp) },
+                        shape = { RoundedCornerShape(44.dp) },
                         shadow = { Shadow(radius = 6.dp) },
                         effects = { blur(blurIntensity * density) }
                     )
@@ -899,15 +902,47 @@ fun VerticalSwipeToAnswer(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                // Upward chevrons in track
+                // Directional subtle glow inside track runway
+                val glowBrush = remember(currentOffset) {
+                    when {
+                        currentOffset < -15f -> Brush.verticalGradient(
+                            colors = listOf(
+                                color_call_button.copy(alpha = (currentDragNormal * 0.32f).coerceIn(0f, 0.35f)),
+                                Color.Transparent
+                            )
+                        )
+                        currentOffset > 15f -> Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                color_call_end.copy(alpha = (currentDragNormal * 0.32f).coerceIn(0f, 0.35f))
+                            )
+                        )
+                        else -> null
+                    }
+                }
+
+                if (glowBrush != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(glowBrush)
+                    )
+                }
+
+                // Upward chevrons in top part of track (Answer)
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
+                        .padding(top = 18.dp)
                         .graphicsLayer {
-                            alpha = if (currentOffset < -10f) 0.85f else 0.35f
+                            alpha = topChevronsAlpha
+                            translationY = if (!isDraggingUp) arrowBounceUp else 0f
+                            val scale = if (isDraggingUp) 1f + currentDragNormal * 0.12f else 1f
+                            scaleX = scale
+                            scaleY = scale
                         },
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy((-7).dp)
                 ) {
                     Icon(
                         Icons.Rounded.KeyboardArrowUp,
@@ -915,18 +950,35 @@ fun VerticalSwipeToAnswer(
                         tint = color_call_button,
                         modifier = Modifier.size(26.dp)
                     )
+                    Icon(
+                        Icons.Rounded.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = color_call_button.copy(alpha = 0.65f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
 
-                // Downward chevrons in track
+                // Downward chevrons in bottom part of track (Decline)
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 18.dp)
                         .graphicsLayer {
-                            alpha = if (currentOffset > 10f) 0.85f else 0.35f
+                            alpha = bottomChevronsAlpha
+                            translationY = if (!isDraggingDown) arrowBounceDown else 0f
+                            val scale = if (isDraggingDown) 1f + currentDragNormal * 0.12f else 1f
+                            scaleX = scale
+                            scaleY = scale
                         },
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy((-7).dp)
                 ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = color_call_end.copy(alpha = 0.65f),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Icon(
                         Icons.Rounded.KeyboardArrowDown,
                         contentDescription = null,
@@ -937,46 +989,6 @@ fun VerticalSwipeToAnswer(
             }
         }
 
-        // --- Swipe Up to Answer Text & Arrow (Glides up and fades out before handle arrives) ---
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = (-118).dp)
-                .graphicsLayer {
-                    alpha = answerAlpha
-                    translationY = answerTranslationY
-                },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Rounded.KeyboardArrowUp, null, tint = textColor, modifier = Modifier.size(32.dp))
-            Text(
-                stringResource(R.string.swipe_up_to_answer),
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor.copy(alpha = 0.92f),
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        // --- Swipe Down to Reject Text & Arrow (Glides down and fades out before handle arrives) ---
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = 118.dp)
-                .graphicsLayer {
-                    alpha = declineAlpha
-                    translationY = declineTranslationY
-                },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                stringResource(R.string.swipe_down_to_reject),
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor.copy(alpha = 0.92f),
-                fontWeight = FontWeight.Medium
-            )
-            Icon(Icons.Rounded.KeyboardArrowDown, null, tint = textColor, modifier = Modifier.size(32.dp))
-        }
-
         // --- Draggable Handle ---
         Box(contentAlignment = Alignment.Center) {
             val pulseFade = (1f - (abs(currentOffset) / with(localDensity) { 24.dp.toPx() })).coerceIn(0f, 1f)
@@ -985,13 +997,13 @@ fun VerticalSwipeToAnswer(
                     modifier = Modifier
                         .size(handleSize)
                         .scale(pulseScale)
-                        .background(textColor.copy(alpha = pulseAlpha * 0.35f * pulseFade), CircleShape)
+                        .background(color_call_button.copy(alpha = pulseAlpha * 0.25f * pulseFade), CircleShape)
                 )
                 Box(
                     modifier = Modifier
                         .size(handleSize)
                         .scale(pulseScale * 1.35f)
-                        .border(1.dp, textColor.copy(alpha = pulseAlpha * 0.2f * pulseFade), CircleShape)
+                        .border(1.dp, color_call_button.copy(alpha = pulseAlpha * 0.15f * pulseFade), CircleShape)
                 )
             }
 

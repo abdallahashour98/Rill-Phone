@@ -47,33 +47,55 @@ object CallRecorder {
             val fileName = "Call_${cleanPhone}_${System.currentTimeMillis()}.m4a"
             val outputFile = File(recordDir, fileName)
 
-            val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
+            // Attempt audio sources in order of preference:
+            // 1. VOICE_CALL: Native two-way call recording used by Xiaomi/system apps (requires CAPTURE_AUDIO_OUTPUT).
+            // 2. VOICE_COMMUNICATION: VoIP two-way duplex audio with echo cancellation.
+            // 3. MIC: Fallback to standard microphone.
+            val audioSources = listOf(
+                MediaRecorder.AudioSource.VOICE_CALL to "VOICE_CALL",
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
+                MediaRecorder.AudioSource.MIC to "MIC"
+            )
+
+            var activeRecorder: MediaRecorder? = null
+            for ((source, sourceName) in audioSources) {
+                val rec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaRecorder()
+                }
+
+                try {
+                    rec.apply {
+                        setAudioSource(source)
+                        setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                        setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                        setAudioEncodingBitRate(128000)
+                        setAudioSamplingRate(44100)
+                        setOutputFile(outputFile.absolutePath)
+                        prepare()
+                        start()
+                    }
+                    Log.i(TAG, "Call recording started successfully with audio source: $sourceName")
+                    activeRecorder = rec
+                    break
+                } catch (e: Exception) {
+                    Log.w(TAG, "Audio source $sourceName unavailable, trying next fallback: ${e.message}")
+                    try {
+                        rec.reset()
+                        rec.release()
+                    } catch (_: Exception) {}
+                }
             }
 
-            // Attempt VOICE_COMMUNICATION first for crystal-clear two-way audio.
-            // Fall back to MIC if the OEM or hardware blocks VOICE_COMMUNICATION.
-            try {
-                recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-            } catch (e: Exception) {
-                Log.w(TAG, "VOICE_COMMUNICATION audio source unavailable, falling back to MIC", e)
-                recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            if (activeRecorder == null) {
+                Log.e(TAG, "All audio sources failed for call recording")
+                cleanup()
+                return false
             }
 
-            recorder.apply {
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128000)
-                setAudioSamplingRate(44100)
-                setOutputFile(outputFile.absolutePath)
-                prepare()
-                start()
-            }
-
-            mediaRecorder = recorder
+            mediaRecorder = activeRecorder
             currentOutputFile = outputFile
             _isRecording.value = true
             _recordingDuration.value = 0L

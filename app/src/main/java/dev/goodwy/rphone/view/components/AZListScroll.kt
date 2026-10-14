@@ -79,6 +79,9 @@ import dev.goodwy.rphone.controller.util.forceLtr
 import dev.goodwy.rphone.modal.data.getDisplayContactInfo
 import dev.goodwy.rphone.modal.data.getDisplayName
 import dev.goodwy.rphone.view.theme.RillShapeDefaults
+import dev.goodwy.rphone.controller.util.makeCall
+import dev.goodwy.rphone.controller.util.placeCallWithSimPreference
+import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinActivityViewModel
@@ -360,6 +363,40 @@ fun ContactListItem(
         }
 
     }
+    val defaultOrFirstPhone = remember(contact) {
+        contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
+    }
+    val swipeToCallEnabled = remember { prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true) }
+    val swipeCallStyle = remember { prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG) }
+    val haptics = remember { prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true) }
+    val hapticsStrength = remember { prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light" }
+    val hapticsIntensity = remember { prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f) }
+    val simPref = remember { prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, 0) }
+
+    SwipeableCallLogContainer(
+        enabled = swipeToCallEnabled && !selectionMode && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+        style = swipeCallStyle,
+        shape = RoundedCornerShape(cardCornerExtraSmall),
+        haptics = haptics,
+        hapticsStrength = hapticsStrength,
+        hapticsIntensity = hapticsIntensity,
+        onSwipeRight = {
+            if (defaultOrFirstPhone != null) {
+                placeCallWithSimPreference(context, defaultOrFirstPhone, simPref) {
+                    makeCall(context, defaultOrFirstPhone)
+                }
+            }
+        },
+        onSwipeLeft = {
+            if (defaultOrFirstPhone != null) {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = "sms:$defaultOrFirstPhone".toUri()
+                }
+                context.startActivity(intent)
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
     Surface(
         color = if (isSelected) cardColorSelected else cardColor,
         shape = RoundedCornerShape(cardCornerExtraSmall),
@@ -531,6 +568,7 @@ fun ContactListItem(
                 )
             }
         }
+    }
     }
 } // end AZListContent
 

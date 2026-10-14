@@ -764,4 +764,7 @@
     <string name="shizuku_status_permission_needed">Shizuku is running — Tap to grant permission</string>
     <string name="shizuku_status_disconnected">Not running — Tap to open Shizuku app</string>
     <string name="shizuku_setup_tip">Shizuku allows recording both sides of the call on Android 11+ without root.</string>
+    <string name="recording_standby">Standby (starts on answer)</string>
+    <string name="recording_standby_toast">Recording will start automatically when call connects</string>
+    <string name="recording_standby_cancelled">Recording standby cancelled</string>
 </resources>

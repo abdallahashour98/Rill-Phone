@@ -58,8 +58,10 @@ import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.makeCall
 import dev.goodwy.rphone.controller.util.normalizeDigits
 import dev.goodwy.rphone.controller.util.normalizeNumberDigits
+import dev.goodwy.rphone.cardCornerExtraSmall
 import dev.goodwy.rphone.view.components.SimPickerDialog
 import dev.goodwy.rphone.view.components.SingleTile
+import dev.goodwy.rphone.view.components.SwipeableCallLogContainer
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ContactDetailsScreenDestination
@@ -371,6 +373,21 @@ fun DialPadContent(
         }
 
         val t9Enabled = prefs.getBoolean(PreferenceManager.KEY_T9_DIALING, true)
+        val swipeToCallEnabled = remember(settingsState) {
+            prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true)
+        }
+        val swipeCallStyle = remember(settingsState) {
+            prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG)
+        }
+        val swipeHaptics = remember(settingsState) {
+            prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)
+        }
+        val swipeHapticsStrength = remember(settingsState) {
+            prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light"
+        }
+        val swipeHapticsIntensity = remember(settingsState) {
+            prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
+        }
         var showSimPicker by remember { mutableStateOf(false) }
         val telecomManager =
             remember { context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager }
@@ -804,28 +821,44 @@ fun DialPadContent(
                                     ) {
                                         searchResults.forEach { contact ->
                                             val defaultOrFirstPhone = contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
-                                            SingleTile(
-                                                title = getDisplayName(contact, displayOrder), //contact.displayName,
-                                                subtitle = getDisplayContactInfo(contact),
-                                                photoUri = contact.photoUri,
-                                                phoneNumber = defaultOrFirstPhone,
-                                                trailingContent = {
-                                                    if (defaultOrFirstPhone != null) {
-                                                        IconButton(onClick = { initiateCall(defaultOrFirstPhone) }) {
-                                                            Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                            SwipeableCallLogContainer(
+                                                enabled = swipeToCallEnabled && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                                style = swipeCallStyle,
+                                                shape = RoundedCornerShape(cardCornerExtraSmall),
+                                                haptics = swipeHaptics,
+                                                hapticsStrength = swipeHapticsStrength,
+                                                hapticsIntensity = swipeHapticsIntensity,
+                                                onSwipeRight = {
+                                                    if (defaultOrFirstPhone != null) initiateCall(defaultOrFirstPhone)
+                                                },
+                                                onSwipeLeft = {
+                                                    if (defaultOrFirstPhone != null) initiateMessage(defaultOrFirstPhone)
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                SingleTile(
+                                                    title = getDisplayName(contact, displayOrder), //contact.displayName,
+                                                    subtitle = getDisplayContactInfo(contact),
+                                                    photoUri = contact.photoUri,
+                                                    phoneNumber = defaultOrFirstPhone,
+                                                    trailingContent = {
+                                                        if (defaultOrFirstPhone != null) {
+                                                            IconButton(onClick = { initiateCall(defaultOrFirstPhone) }) {
+                                                                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                            }
                                                         }
-                                                    }
-                                                },
-                                                onCall = { if (defaultOrFirstPhone != null) initiateCall(defaultOrFirstPhone) },
-                                                onClick = {
-                                                    navigator?.navigate(
-                                                        ContactDetailsScreenDestination(
-                                                            contactId = contact.id
+                                                    },
+                                                    onCall = { if (defaultOrFirstPhone != null) initiateCall(defaultOrFirstPhone) },
+                                                    onClick = {
+                                                        navigator?.navigate(
+                                                            ContactDetailsScreenDestination(
+                                                                contactId = contact.id
+                                                            )
                                                         )
-                                                    )
-                                                },
-                                                menuOffset = DpOffset(56.dp, 0.dp),
-                                            )
+                                                    },
+                                                    menuOffset = DpOffset(56.dp, 0.dp),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -868,30 +901,46 @@ fun DialPadContent(
                                     ) {
                                         filteredSearchLogsResults.forEach { log ->
                                             val displayName = if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
-                                            SingleTile(
-                                                title = displayName,
-                                                subtitle = if (log.name == log.number) null else log.number,
-                                                photoUri = log.photoUri,
-                                                phoneNumber = log.number,
-                                                trailingContent = {
-                                                    IconButton(onClick = { initiateCall(log.number) }) {
-                                                        Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
-                                                    }
+                                            SwipeableCallLogContainer(
+                                                enabled = swipeToCallEnabled && log.number.isNotBlank() && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                                style = swipeCallStyle,
+                                                shape = RoundedCornerShape(cardCornerExtraSmall),
+                                                haptics = swipeHaptics,
+                                                hapticsStrength = swipeHapticsStrength,
+                                                hapticsIntensity = swipeHapticsIntensity,
+                                                onSwipeRight = {
+                                                    initiateCall(log.number)
                                                 },
-                                                onCall = { initiateCall(log.number) },
-                                                onClick = {
-                                                    if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
-                                                        performAppHaptic(
-                                                            context,
-                                                            prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light",
-                                                            prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
-                                                        )
-                                                    }
-                                                    navigator?.navigate(ContactDetailsScreenDestination(phoneNumber = log.number))
+                                                onSwipeLeft = {
+                                                    initiateMessage(log.number)
                                                 },
-                                                showCreateContact = log.contactId == null,
-                                                menuOffset = DpOffset(56.dp, 0.dp),
-                                            )
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                SingleTile(
+                                                    title = displayName,
+                                                    subtitle = if (log.name == log.number) null else log.number,
+                                                    photoUri = log.photoUri,
+                                                    phoneNumber = log.number,
+                                                    trailingContent = {
+                                                        IconButton(onClick = { initiateCall(log.number) }) {
+                                                            Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                        }
+                                                    },
+                                                    onCall = { initiateCall(log.number) },
+                                                    onClick = {
+                                                        if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
+                                                            performAppHaptic(
+                                                                context,
+                                                                prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light",
+                                                                prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
+                                                            )
+                                                        }
+                                                        navigator?.navigate(ContactDetailsScreenDestination(phoneNumber = log.number))
+                                                    },
+                                                    showCreateContact = log.contactId == null,
+                                                    menuOffset = DpOffset(56.dp, 0.dp),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1306,45 +1355,61 @@ fun DialPadContent(
                                                     val defaultOrFirstPhone =
                                                         contact.phoneDetails.firstOrNull { it.isPrimary }?.number
                                                             ?: contact.phoneNumbers.firstOrNull()
-                                                    SingleTile(
-                                                        title = getDisplayName(
-                                                            contact,
-                                                            displayOrder
-                                                        ), //contact.displayName,
-                                                        subtitle = getDisplayContactInfo(contact),
-                                                        photoUri = contact.photoUri,
-                                                        phoneNumber = defaultOrFirstPhone,
-                                                        trailingContent = {
-                                                            if (defaultOrFirstPhone != null) {
-                                                                IconButton(onClick = {
-                                                                    initiateCall(
-                                                                        defaultOrFirstPhone
-                                                                    )
-                                                                }) {
-                                                                    Icon(
-                                                                        Icons.Outlined.Call,
-                                                                        contentDescription = stringResource(
-                                                                            R.string.call
-                                                                        ),
-                                                                        tint = MaterialTheme.colorScheme.primary
-                                                                    )
+                                                    SwipeableCallLogContainer(
+                                                        enabled = swipeToCallEnabled && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                                        style = swipeCallStyle,
+                                                        shape = RoundedCornerShape(cardCornerExtraSmall),
+                                                        haptics = swipeHaptics,
+                                                        hapticsStrength = swipeHapticsStrength,
+                                                        hapticsIntensity = swipeHapticsIntensity,
+                                                        onSwipeRight = {
+                                                            if (defaultOrFirstPhone != null) initiateCall(defaultOrFirstPhone)
+                                                        },
+                                                        onSwipeLeft = {
+                                                            if (defaultOrFirstPhone != null) initiateMessage(defaultOrFirstPhone)
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        SingleTile(
+                                                            title = getDisplayName(
+                                                                contact,
+                                                                displayOrder
+                                                            ), //contact.displayName,
+                                                            subtitle = getDisplayContactInfo(contact),
+                                                            photoUri = contact.photoUri,
+                                                            phoneNumber = defaultOrFirstPhone,
+                                                            trailingContent = {
+                                                                if (defaultOrFirstPhone != null) {
+                                                                    IconButton(onClick = {
+                                                                        initiateCall(
+                                                                            defaultOrFirstPhone
+                                                                        )
+                                                                    }) {
+                                                                        Icon(
+                                                                            Icons.Outlined.Call,
+                                                                            contentDescription = stringResource(
+                                                                                R.string.call
+                                                                            ),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
+                                                                    }
                                                                 }
-                                                            }
-                                                        },
-                                                        onCall = {
-                                                            if (defaultOrFirstPhone != null) initiateCall(
-                                                                defaultOrFirstPhone
-                                                            )
-                                                        },
-                                                        onClick = {
-                                                            navigator?.navigate(
-                                                                ContactDetailsScreenDestination(
-                                                                    contactId = contact.id
+                                                            },
+                                                            onCall = {
+                                                                if (defaultOrFirstPhone != null) initiateCall(
+                                                                    defaultOrFirstPhone
                                                                 )
-                                                            )
-                                                        },
-                                                        menuOffset = DpOffset(56.dp, 64.dp),
-                                                    )
+                                                            },
+                                                            onClick = {
+                                                                navigator?.navigate(
+                                                                    ContactDetailsScreenDestination(
+                                                                        contactId = contact.id
+                                                                    )
+                                                                )
+                                                            },
+                                                            menuOffset = DpOffset(56.dp, 64.dp),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -1409,50 +1474,66 @@ fun DialPadContent(
                                                     val displayName =
                                                         if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number }
                                                             ?: log.number.ifEmpty { "Unknown" }
-                                                    SingleTile(
-                                                        title = displayName,
-                                                        subtitle = if (log.name == log.number) null else log.number,
-                                                        photoUri = log.photoUri,
-                                                        phoneNumber = log.number,
-                                                        trailingContent = {
-                                                            IconButton(onClick = { initiateCall(log.number) }) {
-                                                                Icon(
-                                                                    Icons.Outlined.Call,
-                                                                    contentDescription = stringResource(
-                                                                        R.string.call
-                                                                    ),
-                                                                    tint = MaterialTheme.colorScheme.primary
-                                                                )
-                                                            }
+                                                    SwipeableCallLogContainer(
+                                                        enabled = swipeToCallEnabled && log.number.isNotBlank() && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                                        style = swipeCallStyle,
+                                                        shape = RoundedCornerShape(cardCornerExtraSmall),
+                                                        haptics = swipeHaptics,
+                                                        hapticsStrength = swipeHapticsStrength,
+                                                        hapticsIntensity = swipeHapticsIntensity,
+                                                        onSwipeRight = {
+                                                            initiateCall(log.number)
                                                         },
-                                                        onCall = { initiateCall(log.number) },
-                                                        onClick = {
-                                                            if (prefs.getBoolean(
-                                                                    PreferenceManager.KEY_APP_HAPTICS,
-                                                                    true
-                                                                )
-                                                            ) {
-                                                                performAppHaptic(
-                                                                    context,
-                                                                    prefs.getString(
-                                                                        PreferenceManager.KEY_APP_HAPTICS_STRENGTH,
-                                                                        "light"
-                                                                    ) ?: "light",
-                                                                    prefs.getFloat(
-                                                                        PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY,
-                                                                        0.5f
+                                                        onSwipeLeft = {
+                                                            initiateMessage(log.number)
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        SingleTile(
+                                                            title = displayName,
+                                                            subtitle = if (log.name == log.number) null else log.number,
+                                                            photoUri = log.photoUri,
+                                                            phoneNumber = log.number,
+                                                            trailingContent = {
+                                                                IconButton(onClick = { initiateCall(log.number) }) {
+                                                                    Icon(
+                                                                        Icons.Outlined.Call,
+                                                                        contentDescription = stringResource(
+                                                                            R.string.call
+                                                                        ),
+                                                                        tint = MaterialTheme.colorScheme.primary
+                                                                    )
+                                                                }
+                                                            },
+                                                            onCall = { initiateCall(log.number) },
+                                                            onClick = {
+                                                                if (prefs.getBoolean(
+                                                                        PreferenceManager.KEY_APP_HAPTICS,
+                                                                        true
+                                                                    )
+                                                                ) {
+                                                                    performAppHaptic(
+                                                                        context,
+                                                                        prefs.getString(
+                                                                            PreferenceManager.KEY_APP_HAPTICS_STRENGTH,
+                                                                            "light"
+                                                                        ) ?: "light",
+                                                                        prefs.getFloat(
+                                                                            PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY,
+                                                                            0.5f
+                                                                        )
+                                                                    )
+                                                                }
+                                                                navigator?.navigate(
+                                                                    ContactDetailsScreenDestination(
+                                                                        phoneNumber = log.number
                                                                     )
                                                                 )
-                                                            }
-                                                            navigator?.navigate(
-                                                                ContactDetailsScreenDestination(
-                                                                    phoneNumber = log.number
-                                                                )
-                                                            )
-                                                        },
-                                                        showCreateContact = log.contactId == null,
-                                                        menuOffset = DpOffset(56.dp, 64.dp),
-                                                    )
+                                                            },
+                                                            showCreateContact = log.contactId == null,
+                                                            menuOffset = DpOffset(56.dp, 64.dp),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }

@@ -150,9 +150,28 @@ fun ExpressiveCallScreen(
     var hasEverBeenActive by remember(call) {
         mutableStateOf(callState == Call.STATE_ACTIVE)
     }
+    var isPendingRecording by remember { mutableStateOf(false) }
+
     LaunchedEffect(callState) {
         if (callState == Call.STATE_ACTIVE) {
             hasEverBeenActive = true
+            if (isPendingRecording) {
+                isPendingRecording = false
+                val hasPerm = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                if (hasPerm) {
+                    val started = CallRecorder.startRecording(context, phoneNumber)
+                    if (started) {
+                        Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else if (callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) {
+            isPendingRecording = false
         }
     }
     val isCallEnded = callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING
@@ -190,11 +209,16 @@ fun ExpressiveCallScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            val started = CallRecorder.startRecording(context, phoneNumber)
-            if (started) {
-                Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+            if (callState == Call.STATE_ACTIVE) {
+                val started = CallRecorder.startRecording(context, phoneNumber)
+                if (started) {
+                    Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                }
             } else {
-                Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                isPendingRecording = true
+                Toast.makeText(context, context.getString(R.string.recording_standby_toast), Toast.LENGTH_SHORT).show()
             }
         } else {
             Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
@@ -585,13 +609,17 @@ fun ExpressiveCallScreen(
                         }
 
                         AnimatedVisibility(
-                            visible = isRecording,
+                            visible = isRecording || isPendingRecording,
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically()
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
+                                color = if (isRecording) {
+                                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                                } else {
+                                    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.9f)
+                                },
                                 modifier = Modifier.padding(top = 10.dp)
                             ) {
                                 Row(
@@ -613,13 +641,17 @@ fun ExpressiveCallScreen(
                                         modifier = Modifier
                                             .size(9.dp)
                                             .alpha(pulseAlpha)
-                                            .background(Color.Red, CircleShape)
+                                            .background(if (isRecording) Color.Red else Color(0xFFFF9800), CircleShape)
                                     )
                                     Text(
-                                        text = "REC ${CallRecorder.formatDuration(recordingDuration)}",
+                                        text = if (isRecording) {
+                                            "REC ${CallRecorder.formatDuration(recordingDuration)}"
+                                        } else {
+                                            stringResource(R.string.recording_standby)
+                                        },
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                        color = if (isRecording) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer
                                     )
                                 }
                             }
@@ -760,29 +792,41 @@ fun ExpressiveCallScreen(
                                         if (showMore) {
                                             RillExpressiveCard {
                                                 MoreItem(
-                                                    headline = if (isRecording) {
-                                                        "${stringResource(R.string.stop_recording)} (${CallRecorder.formatDuration(recordingDuration)})"
-                                                    } else {
-                                                        stringResource(R.string.record_call)
+                                                    headline = when {
+                                                        isRecording -> "${stringResource(R.string.stop_recording)} (${CallRecorder.formatDuration(recordingDuration)})"
+                                                        isPendingRecording -> stringResource(R.string.recording_standby)
+                                                        else -> stringResource(R.string.record_call)
                                                     },
-                                                    leadingIcon = if (isRecording) Icons.Rounded.StopCircle else Icons.Rounded.FiberManualRecord,
-                                                    isSelected = isRecording,
+                                                    leadingIcon = when {
+                                                        isRecording -> Icons.Rounded.StopCircle
+                                                        isPendingRecording -> Icons.Rounded.Schedule
+                                                        else -> Icons.Rounded.FiberManualRecord
+                                                    },
+                                                    isSelected = isRecording || isPendingRecording,
                                                     onClick = {
                                                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                                         if (isRecording) {
                                                             CallRecorder.stopRecording()
                                                             Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
+                                                        } else if (isPendingRecording) {
+                                                            isPendingRecording = false
+                                                            Toast.makeText(context, context.getString(R.string.recording_standby_cancelled), Toast.LENGTH_SHORT).show()
                                                         } else {
                                                             val hasPerm = ContextCompat.checkSelfPermission(
                                                                 context,
                                                                 Manifest.permission.RECORD_AUDIO
                                                             ) == PackageManager.PERMISSION_GRANTED
                                                             if (hasPerm) {
-                                                                val started = CallRecorder.startRecording(context, phoneNumber)
-                                                                if (started) {
-                                                                    Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                                if (callState == Call.STATE_ACTIVE) {
+                                                                    val started = CallRecorder.startRecording(context, phoneNumber)
+                                                                    if (started) {
+                                                                        Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                                    } else {
+                                                                        Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                                    }
                                                                 } else {
-                                                                    Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                                    isPendingRecording = true
+                                                                    Toast.makeText(context, context.getString(R.string.recording_standby_toast), Toast.LENGTH_SHORT).show()
                                                                 }
                                                             } else {
                                                                 recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)

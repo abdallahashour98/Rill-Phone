@@ -766,4 +766,7 @@
     <string name="shizuku_status_permission_needed">Shizuku قيد التشغيل — اضغط لمنح الصلاحية</string>
     <string name="shizuku_status_disconnected">غير متصل — اضغط لفتح تطبيق Shizuku</string>
     <string name="shizuku_setup_tip">يتيح Shizuku تسجيل صوت الطرفين على أندرويد 11 فما فوق بدون روت.</string>
+    <string name="recording_standby">قيد الانتظار (سيبدأ عند الرد)</string>
+    <string name="recording_standby_toast">سيبدأ تسجيل المكالمة تلقائياً بمجرد الرد</string>
+    <string name="recording_standby_cancelled">تم إلغاء وضع انتظار التسجيل</string>
 </resources>

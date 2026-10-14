@@ -761,4 +761,9 @@
     <string name="delete_recording">حذف التسجيل</string>
     <string name="delete_recording_confirm">هل أنت متأكد من حذف هذا التسجيل؟</string>
     <string name="recording_deleted">تم حذف التسجيل</string>
+    <string name="shizuku_call_recording">تسجيل الطرفين (عبر Shizuku)</string>
+    <string name="shizuku_status_connected">متصل ونشط — جاهز لتسجيل الطرفين</string>
+    <string name="shizuku_status_permission_needed">Shizuku قيد التشغيل — اضغط لمنح الصلاحية</string>
+    <string name="shizuku_status_disconnected">غير متصل — اضغط لفتح تطبيق Shizuku</string>
+    <string name="shizuku_setup_tip">يتيح Shizuku تسجيل صوت الطرفين على أندرويد 11 فما فوق بدون روت.</string>
 </resources>

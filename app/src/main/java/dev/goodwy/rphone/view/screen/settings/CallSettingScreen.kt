@@ -17,10 +17,13 @@ import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.SettingsPhone
 import androidx.compose.material.icons.rounded.SimCard
 import androidx.compose.material.icons.rounded.SpatialTracking
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.goodwy.rphone.controller.util.ShizukuManager
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,6 +64,14 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     var autoSpeaker by remember { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_AUTO_SPEAKER, false)) }
     var defaultSim by remember { mutableStateOf(prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, prefs.getDefaultSimIndexDefault())) }
     var fullscreenCalls by remember { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)) }
+
+    val isShizukuAvailable by ShizukuManager.isAvailable.collectAsStateWithLifecycle()
+    val isShizukuGranted by ShizukuManager.isPermissionGranted.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        ShizukuManager.ensureInitialized()
+        ShizukuManager.checkStatus()
+    }
 
     var visible by remember { mutableStateOf(false) }
     val screenAlpha by animateFloatAsState(
@@ -284,6 +295,51 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
 //                                    prefs.setBoolean(PreferenceManager.KEY_AUTO_SPEAKER, it)
 //                                }
 //                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Call Recording ────────────────────────────────────────────────
+            item {
+                RillAnimatedSection(delayMs = 120L) {
+                    Column {
+                        SettingsSectionLabel(stringResource(R.string.call_recording))
+                        RillExpressiveCard {
+                            val statusHeadline = stringResource(R.string.shizuku_call_recording)
+                            val statusSupporting = when {
+                                isShizukuAvailable && isShizukuGranted -> stringResource(R.string.shizuku_status_connected)
+                                isShizukuAvailable -> stringResource(R.string.shizuku_status_permission_needed)
+                                else -> stringResource(R.string.shizuku_status_disconnected)
+                            }
+                            val iconColor = when {
+                                isShizukuAvailable && isShizukuGranted -> MaterialTheme.colorScheme.customColors.colorDarkGreen
+                                isShizukuAvailable -> MaterialTheme.colorScheme.customColors.colorDarkAmber
+                                else -> MaterialTheme.colorScheme.customColors.colorDarkRed
+                            }
+                            val iconBgColor = when {
+                                isShizukuAvailable && isShizukuGranted -> MaterialTheme.colorScheme.customColors.colorGreen
+                                isShizukuAvailable -> MaterialTheme.colorScheme.customColors.colorAmber
+                                else -> MaterialTheme.colorScheme.customColors.colorRed
+                            }
+
+                            RillListItem(
+                                headline = statusHeadline,
+                                supporting = statusSupporting,
+                                leadingIcon = Icons.Rounded.Mic,
+                                iconContainerColor = iconColor,
+                                iconBgContainerColor = iconBgColor,
+                                trailingIcon = Icons.Default.ChevronRight,
+                                onClick = {
+                                    if (isShizukuAvailable && !isShizukuGranted) {
+                                        ShizukuManager.requestPermission()
+                                    } else if (!isShizukuAvailable) {
+                                        ShizukuManager.launchShizukuApp(context)
+                                    } else {
+                                        ShizukuManager.checkStatus()
+                                    }
+                                }
+                            )
                         }
                     }
                 }

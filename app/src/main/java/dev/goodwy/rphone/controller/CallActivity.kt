@@ -113,8 +113,12 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 //                val callerMetadata by callViewModel.callerMetadata.collectAsStateWithLifecycle()
 
                 var retainedSession by remember { mutableStateOf<CallSession?>(null) }
+                var hasHadCall by remember { mutableStateOf(false) }
                 LaunchedEffect(session) {
-                    session?.let { retainedSession = it }
+                    if (session != null) {
+                        hasHadCall = true
+                        retainedSession = session
+                    }
                 }
 
                 val displaySession = session ?: retainedSession
@@ -200,9 +204,17 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     }
 
                     if (session == null) {
-                        delay(400.milliseconds)
-                        if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
-                            dismissCallScreen()
+                        if (hasHadCall) {
+                            delay(400.milliseconds)
+                            if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
+                                dismissCallScreen()
+                            }
+                        } else {
+                            // Waiting for Telecom to deliver onCallAdded. Don't immediately exit and drop back to previous app!
+                            delay(5000.milliseconds)
+                            if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
+                                dismissCallScreen()
+                            }
                         }
                     }
                 }

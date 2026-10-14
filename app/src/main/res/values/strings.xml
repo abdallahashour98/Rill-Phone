@@ -759,4 +759,9 @@
     <string name="delete_recording">Delete recording</string>
     <string name="delete_recording_confirm">Are you sure you want to delete this recording?</string>
     <string name="recording_deleted">Recording deleted</string>
+    <string name="shizuku_call_recording">Two-way recording (Shizuku)</string>
+    <string name="shizuku_status_connected">Active — Two-way recording is ready</string>
+    <string name="shizuku_status_permission_needed">Shizuku is running — Tap to grant permission</string>
+    <string name="shizuku_status_disconnected">Not running — Tap to open Shizuku app</string>
+    <string name="shizuku_setup_tip">Shizuku allows recording both sides of the call on Android 11+ without root.</string>
 </resources>

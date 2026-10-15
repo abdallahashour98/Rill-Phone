@@ -1,8 +1,10 @@
 package dev.goodwy.rphone.view.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -97,72 +99,90 @@ fun RillAvatar(
     }
 
     Box(
-        modifier = modifier
-            .then(
-                if (avatarFrame) Modifier
-                    .drawBehind {
-                        val borderWidth = size.width * 0.09f
-                        drawOutline(
-                            outline = shape.createOutline(size, layoutDirection, this),
-                            color = contentColor,
-                            style = Stroke(width = borderWidth)
-                        )
-                    }
-                else Modifier
-            )
-            .background(backgroundColor, shape)
-            .clip(shape),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        val letterFontSize  = 22.sp
-        val iconSize        = 28.dp
-        val placeholderSize = 38.dp
+        // Inner Avatar Box with shape and background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (avatarFrame) Modifier
+                        .drawBehind {
+                            val borderWidth = size.width * 0.09f
+                            drawOutline(
+                                outline = shape.createOutline(size, layoutDirection, this),
+                                color = contentColor,
+                                style = Stroke(width = borderWidth)
+                            )
+                        }
+                    else Modifier
+                )
+                .then(
+                    if (hasRecording && highlightRecorded) Modifier.border(
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.65f),
+                        shape = shape
+                    )
+                    else Modifier
+                )
+                .background(backgroundColor, shape)
+                .clip(shape),
+            contentAlignment = Alignment.Center
+        ) {
+            val letterFontSize  = 22.sp
+            val iconSize        = 28.dp
+            val placeholderSize = 38.dp
 
-        when {
-            showPicture && !photoUri.isNullOrEmpty() -> {
-                AsyncImage(
-                    model = photoUri,
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            icon != null -> {
-                Icon(imageVector = icon, contentDescription = name, tint = contentColor, modifier = Modifier.size(iconSize))
-            }
-            showFirstLetter && hasName && isLetter -> {
-                val emoji = name.take(2)
-                val letter = if (emoji.isEmoji()) emoji else name.trim().take(1).uppercase()
-                Text(
-                    text = letter,
-                    fontSize = letterFontSize,
-                    color = contentColor,
-                    lineHeight = letterFontSize
-                )
-            }
-            else -> {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_person),
-                    contentDescription = name, tint = contentColor,
-                    modifier = Modifier.size(placeholderSize)
-                )
+            when {
+                showPicture && !photoUri.isNullOrEmpty() -> {
+                    AsyncImage(
+                        model = photoUri,
+                        contentDescription = name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                icon != null -> {
+                    Icon(imageVector = icon, contentDescription = name, tint = contentColor, modifier = Modifier.size(iconSize))
+                }
+                showFirstLetter && hasName && isLetter -> {
+                    val emoji = name.take(2)
+                    val letter = if (emoji.isEmoji()) emoji else name.trim().take(1).uppercase()
+                    Text(
+                        text = letter,
+                        fontSize = letterFontSize,
+                        color = contentColor,
+                        lineHeight = letterFontSize
+                    )
+                }
+                else -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_person),
+                        contentDescription = name, tint = contentColor,
+                        modifier = Modifier.size(placeholderSize)
+                    )
+                }
             }
         }
 
+        // Floating Record Badge at Bottom-End (unclipped with halo outline)
         if (hasRecording && highlightRecorded) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(2.dp)
-                    .size(14.dp)
+                    .offset(x = 1.dp, y = 1.dp)
+                    .size(16.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                    .padding(1.5.dp)
                     .background(MaterialTheme.colorScheme.error, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Rounded.Mic,
+                    imageVector = Icons.Rounded.Mic,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(9.dp)
+                    modifier = Modifier.size(9.5.dp)
                 )
             }
         }

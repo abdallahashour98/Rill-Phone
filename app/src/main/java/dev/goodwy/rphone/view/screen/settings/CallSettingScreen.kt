@@ -2,9 +2,15 @@ package dev.goodwy.rphone.view.screen.settings
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import android.telecom.TelecomManager
+import android.telephony.SubscriptionManager
 import android.view.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -64,6 +70,18 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     var autoSpeaker by remember { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_AUTO_SPEAKER, false)) }
     var defaultSim by remember { mutableStateOf(prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, prefs.getDefaultSimIndexDefault())) }
     var fullscreenCalls by remember { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)) }
+    var showWifiCallingDialog by remember { mutableStateOf(false) }
+
+    val subscriptionManager = remember {
+        context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+    }
+    val activeSubscriptions = remember {
+        try {
+            subscriptionManager?.activeSubscriptionInfoList ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     val isShizukuAvailable by ShizukuManager.isAvailable.collectAsStateWithLifecycle()
     val isShizukuGranted by ShizukuManager.isPermissionGranted.collectAsStateWithLifecycle()
@@ -171,28 +189,7 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                 iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
                                 iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
                                 trailingIcon = Icons.Default.ChevronRight,
-                                onClick = {
-                                    try {
-                                        val intent = Intent("android.settings.WIFI_CALLING_SETTINGS").apply {
-                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                        }
-                                        context.startActivity(intent)
-                                    } catch (_: Exception) {
-                                        try {
-                                            val intent = Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS).apply {
-                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                            }
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {
-                                            try {
-                                                val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS).apply {
-                                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                                }
-                                                context.startActivity(intent)
-                                            } catch (_: Exception) {}
-                                        }
-                                    }
-                                }
+                                onClick = { showWifiCallingDialog = true }
                             )
                         }
                     }
@@ -346,6 +343,238 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
             }
 
             item { SettingsBottomPadding() }
+        }
+
+        if (showWifiCallingDialog) {
+            AlertDialog(
+                onDismissRequest = { showWifiCallingDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Rounded.Wifi,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = stringResource(R.string.wifi_calling),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (activeSubscriptions.isNotEmpty()) {
+                            activeSubscriptions.forEach { sub ->
+                                val simName = sub.displayName?.toString()?.ifBlank { null }
+                                    ?: sub.carrierName?.toString()?.ifBlank { null }
+                                    ?: "SIM ${sub.simSlotIndex + 1}"
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    onClick = {
+                                        showWifiCallingDialog = false
+                                        openWifiCalling(context, sub.subscriptionId)
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Wifi,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.wifi_calling_direct, simName),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = sub.carrierName?.toString()?.ifBlank { null } ?: "Slot ${sub.simSlotIndex + 1}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                onClick = {
+                                    showWifiCallingDialog = false
+                                    openWifiCalling(context)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Wifi,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.wifi_calling),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // SIM & Mobile Network option (reliable on all OEMs)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            onClick = {
+                                showWifiCallingDialog = false
+                                openNetworkOperatorSettings(context, activeSubscriptions.firstOrNull()?.subscriptionId)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.SimCard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.wifi_calling_sim_settings),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.wifi_calling_subtitle),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        // Xiaomi carrier check hint with dial shortcut
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.wifi_calling_xiaomi_hint),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                FilledTonalButton(
+                                    onClick = {
+                                        showWifiCallingDialog = false
+                                        try {
+                                            val dialIntent = Intent(Intent.ACTION_DIAL, "tel:${Uri.encode("*#*#869434#*#*")}".toUri()).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                            }
+                                            context.startActivity(dialIntent)
+                                        } catch (_: Exception) {}
+                                    },
+                                    modifier = Modifier.align(Alignment.End),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.dial_code, "*#*#869434#*#*"),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showWifiCallingDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+    }
+}
+
+private fun openWifiCalling(context: Context, subId: Int? = null) {
+    val targetSubId = subId
+        ?: SubscriptionManager.getDefaultVoiceSubscriptionId().takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+        ?: SubscriptionManager.getDefaultSubscriptionId().takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+        ?: try {
+            val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+            subManager?.activeSubscriptionInfoList?.firstOrNull()?.subscriptionId
+        } catch (_: Exception) { null }
+
+    val intent = Intent("android.settings.WIFI_CALLING_SETTINGS").apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        if (targetSubId != null && targetSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            putExtra(Settings.EXTRA_SUB_ID, targetSubId)
+            putExtra("android.telephony.extra.SUBSCRIPTION_INDEX", targetSubId)
+            putExtra("subscription", targetSubId)
+            putExtra("subscription_id", targetSubId)
+            putExtra("sub_id", targetSubId)
+            putExtra("simId", targetSubId)
+            putExtra("slot", 0)
+        }
+    }
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        openNetworkOperatorSettings(context, targetSubId)
+    }
+}
+
+private fun openNetworkOperatorSettings(context: Context, subId: Int? = null) {
+    try {
+        val intent = Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (subId != null && subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                putExtra(Settings.EXTRA_SUB_ID, subId)
+                putExtra("android.telephony.extra.SUBSCRIPTION_INDEX", subId)
+                putExtra("subscription", subId)
+                putExtra("sub_id", subId)
+            }
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
+        } catch (_: Exception) {
+            try {
+                context.startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            } catch (_: Exception) {}
         }
     }
 }

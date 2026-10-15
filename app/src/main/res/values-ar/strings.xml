@@ -773,4 +773,8 @@
     <string name="highlight_recorded_calls_subtitle">إظهار شارة تسجيل ولون مميز للأفاتار عند وجود مكالمات مسجلة</string>
     <string name="recorded_avatar_color">لون أفاتار المكالمة المسجلة</string>
     <string name="rec_badge">تسجيل</string>
+    <string name="wifi_calling_direct">الاتصال عبر Wi-Fi مباشرة (%s)</string>
+    <string name="wifi_calling_sim_settings">إعدادات بطاقات SIM وشبكات الجوال</string>
+    <string name="wifi_calling_xiaomi_hint">لهواتف شاومي: إذا أغلقت الشاشة تلقائياً، اطلب الكود *#*#869434#*#* لتعطيل فحص المشغل (Carrier Check)، أو اضبطها من إعدادات بطاقات SIM.</string>
+    <string name="dial_code">طلب الكود %s</string>
 </resources>

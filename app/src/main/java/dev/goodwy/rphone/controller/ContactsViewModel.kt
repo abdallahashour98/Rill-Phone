@@ -65,8 +65,14 @@ class ContactsViewModel(
     private fun registerObserverIfNeeded() {
         if (!isObserverRegistered) {
             try {
-                getApplication<Application>().contentResolver.registerContentObserver(
+                val cr = getApplication<Application>().contentResolver
+                cr.registerContentObserver(
                     ContactsContract.Contacts.CONTENT_URI,
+                    true,
+                    contactsObserver
+                )
+                cr.registerContentObserver(
+                    ContactsContract.Data.CONTENT_URI,
                     true,
                     contactsObserver
                 )
@@ -312,7 +318,7 @@ class ContactsViewModel(
             preferenceManager.setString(PreferenceManager.KEY_LAST_USED_ACCOUNT_TYPE, contact.accountType ?: device_only)
         }
 
-        fetchContacts()
+        refreshContacts()
     }
 
     fun getLastUsedAccount(): Account? {
@@ -411,7 +417,7 @@ class ContactsViewModel(
                 preferenceManager.setFavoritesOrder(currentOrder)
             }
 
-            fetchContacts()
+            refreshContacts()
             fetchTrashedContacts()
         }
     }
@@ -438,7 +444,7 @@ class ContactsViewModel(
                 preferenceManager.setFavoritesOrder(currentOrder)
             }
 
-            fetchContacts()
+            refreshContacts()
             fetchTrashedContacts()
         }
     }

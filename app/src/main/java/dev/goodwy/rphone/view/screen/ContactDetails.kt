@@ -68,6 +68,7 @@ import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.automirrored.rounded.Help
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.outlined.Directions
@@ -125,6 +126,7 @@ import dev.goodwy.rphone.view.theme.MyColors.cardColor
 import dev.goodwy.rphone.view.theme.customColors
 import com.ramcosta.composedestinations.generated.destinations.CallLogFullScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ContactEditScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ContactSelectionScreenDestination
 import dev.goodwy.rphone.cardSpacedBy
 import dev.goodwy.rphone.controller.util.BlockedNumbersManager
 import dev.goodwy.rphone.controller.util.CallBackgroundStore
@@ -197,7 +199,7 @@ fun ContactDetailsScreen(
     val contactsViewModel: ContactsViewModel = koinActivityViewModel()
     val callLogViewModel: CallLogViewModel = koinActivityViewModel()
 
-//    val contacts by contactsViewModel.allContacts.collectAsStateWithLifecycle()
+    val allContacts by contactsViewModel.allContacts.collectAsStateWithLifecycle()
     val allLogs by callLogViewModel.allCallLogs.collectAsStateWithLifecycle()
     val availableAccounts = contactsViewModel.availableAccounts.collectAsStateWithLifecycle().value
     val availableAccountsForMoving = contactsViewModel.availableAccountsForMoving.collectAsStateWithLifecycle().value
@@ -237,7 +239,7 @@ fun ContactDetailsScreen(
     }
 
     val noContactsFound = stringResource(R.string.no_contacts_found)
-    LaunchedEffect(contactId, phoneNumber) {
+    LaunchedEffect(contactId, phoneNumber, allContacts) {
         isFullLoading = true
         contact = if (contactId != null && contactId != "null") {
             contactsViewModel.getFullContactById(contactId)
@@ -745,9 +747,39 @@ fun ContactDetailsScreen(
                             }
                         }) { Icon(Icons.Outlined.Edit, stringResource(R.string.edit)) }
                     } else if (phoneNumber != null && phoneNumber != unknownLabel) {
-                        IconButton(onClick = {
-                            navigator.navigate(ContactEditScreenDestination(initialPhone = phoneNumber))
-                        }) { Icon(Icons.Rounded.PersonAdd, stringResource(R.string.add_contact)) }
+                        var showAddMenu by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showAddMenu = true }) {
+                                Icon(Icons.Rounded.PersonAdd, stringResource(R.string.add_contact))
+                            }
+                            DropdownMenu(
+                                expanded = showAddMenu,
+                                onDismissRequest = { showAddMenu = false },
+                                shape = MaterialTheme.shapes.large
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.create_contact)) },
+                                    leadingIcon = { Icon(Icons.Rounded.PersonAdd, null) },
+                                    onClick = {
+                                        showAddMenu = false
+                                        navigator.navigate(ContactEditScreenDestination(initialPhone = phoneNumber))
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.add_to_contact)) },
+                                    leadingIcon = { Icon(Icons.Default.Person, null) },
+                                    onClick = {
+                                        showAddMenu = false
+                                        navigator.navigate(
+                                            ContactSelectionScreenDestination(
+                                                title = context.getString(R.string.add_to_contact),
+                                                initialPhoneToAssign = phoneNumber
+                                            )
+                                        )
+                                    }
+                                )
+                            }
+                        }
                     }
                     if (contact != null) {
                         IconButton(onClick = {

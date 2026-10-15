@@ -49,8 +49,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.view.WindowManager
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import dev.goodwy.rphone.controller.ContactsViewModel
@@ -1048,18 +1054,51 @@ fun DialPadContent(
                                         .fillMaxHeight(),
                                     visible = number.isNotEmpty()
                                 ) {
-                                    DialerActionExpressive(
-                                        onClick = {
-                                            navigator?.navigate(
-                                                ContactEditScreenDestination(
-                                                    initialPhone = number
-                                                )
+                                    var showAddContactDropdown by remember { mutableStateOf(false) }
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        DialerActionExpressive(
+                                            onClick = {
+                                                showAddContactDropdown = true
+                                            },
+                                            icon = Icons.Default.PersonAdd,
+                                            contentDescription = stringResource(R.string.create_contact),
+                                            containerColor = Color.Transparent
+                                        )
+                                        DropdownMenu(
+                                            expanded = showAddContactDropdown,
+                                            onDismissRequest = { showAddContactDropdown = false },
+                                            shape = MaterialTheme.shapes.large
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.create_contact)) },
+                                                leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+                                                onClick = {
+                                                    showAddContactDropdown = false
+                                                    navigator?.navigate(
+                                                        ContactEditScreenDestination(
+                                                            initialPhone = number
+                                                        )
+                                                    )
+                                                }
                                             )
-                                        },
-                                        icon = Icons.Default.PersonAdd,
-                                        contentDescription = stringResource(R.string.create_contact),
-                                        containerColor = Color.Transparent //MaterialTheme.colorScheme.surfaceContainerLow
-                                    )
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.add_to_contact)) },
+                                                leadingIcon = { Icon(Icons.Default.Person, null) },
+                                                onClick = {
+                                                    showAddContactDropdown = false
+                                                    navigator?.navigate(
+                                                        ContactSelectionScreenDestination(
+                                                            title = context.getString(R.string.add_to_contact),
+                                                            initialPhoneToAssign = number
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
                                 DialerActionExpressive(
                                     onClick = {
@@ -1231,7 +1270,7 @@ fun DialPadContent(
 //                                                context.startActivity(intent)
                                                 navigator?.navigate(
                                                     ContactSelectionScreenDestination(
-                                                        title = "Add to Existing Contact",
+                                                        title = context.getString(R.string.add_to_contact),
                                                         initialPhoneToAssign = number
                                                     )
                                                 )
@@ -1852,26 +1891,75 @@ fun DialPadContent(
                                                 }
 
                                                 if (number.isNotEmpty()) {
-                                                    Spacer(modifier = Modifier.height(2.dp))
-                                                    Text(
-                                                        text = stringResource(R.string.create_contact),
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontWeight = FontWeight.Medium,
-                                                            color = MaterialTheme.colorScheme.primary
-                                                        ),
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .clickable {
-                                                                val intent = Intent(Intent.ACTION_INSERT).apply {
-                                                                    type = ContactsContract.RawContacts.CONTENT_TYPE
-                                                                    putExtra(ContactsContract.Intents.Insert.PHONE, number)
-                                                                }
-                                                                try {
-                                                                    context.startActivity(intent)
-                                                                } catch (_: Exception) {}
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Surface(
+                                                            onClick = {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                navigator?.navigate(
+                                                                    ContactEditScreenDestination(
+                                                                        initialPhone = number
+                                                                    )
+                                                                )
+                                                            },
+                                                            shape = RoundedCornerShape(16.dp),
+                                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.PersonAdd,
+                                                                    contentDescription = stringResource(R.string.create_contact),
+                                                                    modifier = Modifier.size(15.dp),
+                                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
+                                                                Spacer(modifier = Modifier.width(4.dp))
+                                                                Text(
+                                                                    text = stringResource(R.string.create_contact),
+                                                                    style = MaterialTheme.typography.labelMedium,
+                                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
                                                             }
-                                                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                                                    )
+                                                        }
+
+                                                        Surface(
+                                                            onClick = {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                navigator?.navigate(
+                                                                    ContactSelectionScreenDestination(
+                                                                        title = context.getString(R.string.add_to_contact),
+                                                                        initialPhoneToAssign = number
+                                                                    )
+                                                                )
+                                                            },
+                                                            shape = RoundedCornerShape(16.dp),
+                                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Person,
+                                                                    contentDescription = stringResource(R.string.add_to_contact),
+                                                                    modifier = Modifier.size(15.dp),
+                                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
+                                                                Spacer(modifier = Modifier.width(4.dp))
+                                                                Text(
+                                                                    text = stringResource(R.string.add_to_contact),
+                                                                    style = MaterialTheme.typography.labelMedium,
+                                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
 
@@ -2356,6 +2444,19 @@ private fun DialpadNumberDisplay(
 ) {
     val isDark = isSystemInDarkTheme()
     val textColor = if (isDark) Color.White else Color.Black
+    val cursorColor = MaterialTheme.colorScheme.primary
+
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val infiniteTransition = rememberInfiniteTransition(label = "cursor")
+    val cursorAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cursorAlpha"
+    )
 
     Box(
         modifier = modifier
@@ -2363,14 +2464,29 @@ private fun DialpadNumberDisplay(
             .pointerInput(number) {
                 detectTapGestures(
                     onLongPress = { onLongPress() },
-                    onTap = { onCursorPositionChange(number.length) }
+                    onTap = { offset ->
+                        textLayoutResult?.let { layout ->
+                            val pos = layout.getOffsetForPosition(offset)
+                            onCursorPositionChange(pos.coerceIn(0, number.length))
+                        } ?: onCursorPositionChange(number.length)
+                    }
                 )
+            }
+            .pointerInput(number) {
+                detectHorizontalDragGestures { change, _ ->
+                    change.consume()
+                    textLayoutResult?.let { layout ->
+                        val pos = layout.getOffsetForPosition(change.position)
+                        onCursorPositionChange(pos.coerceIn(0, number.length))
+                    }
+                }
             },
         contentAlignment = Alignment.Center
     ) {
         if (number.isNotEmpty()) {
             Text(
                 text = number,
+                onTextLayout = { textLayoutResult = it },
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = fontSize.sp,
                     fontWeight = FontWeight.Normal,
@@ -2379,7 +2495,25 @@ private fun DialpadNumberDisplay(
                 ),
                 color = textColor,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawWithContent {
+                        drawContent()
+                        textLayoutResult?.let { layout ->
+                            val safePos = cursorPosition.coerceIn(0, number.length)
+                            val rect = layout.getCursorRect(safePos)
+                            val cursorWidth = 2.5.dp.toPx()
+                            val cursorHeight = rect.height * 0.85f
+                            val topOffset = rect.top + (rect.height - cursorHeight) / 2
+                            drawRoundRect(
+                                color = cursorColor.copy(alpha = cursorAlpha),
+                                topLeft = Offset(rect.left - cursorWidth / 2, topOffset),
+                                size = Size(cursorWidth, cursorHeight),
+                                cornerRadius = CornerRadius(cursorWidth / 2, cursorWidth / 2)
+                            )
+                        }
+                    }
             )
         }
     }

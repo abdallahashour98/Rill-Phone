@@ -6,6 +6,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog
+import android.provider.ContactsContract
 import dev.goodwy.rphone.modal.`interface`.ICallLogRepository
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -66,12 +67,34 @@ class CallLogViewModel(
         }
     }
 
+    private val contactsChangeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            debounceJob?.cancel()
+            debounceJob = viewModelScope.launch {
+                delay(300.milliseconds)
+                fetchLogs(forceRefresh = true)
+            }
+        }
+    }
+
     init {
         contentResolver.registerContentObserver(
             CallLog.Calls.CONTENT_URI,
             true,
             callLogObserver
         )
+        try {
+            contentResolver.registerContentObserver(
+                ContactsContract.Contacts.CONTENT_URI,
+                true,
+                contactsChangeObserver
+            )
+            contentResolver.registerContentObserver(
+                ContactsContract.Data.CONTENT_URI,
+                true,
+                contactsChangeObserver
+            )
+        } catch (_: Exception) {}
         // Step 1: serve disk cache immediately so UI is instant
         viewModelScope.launch {
             val diskCache = loadFromDisk()
@@ -132,6 +155,11 @@ class CallLogViewModel(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        try {
+            contentResolver.unregisterContentObserver(contactsChangeObserver)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun refreshLogs() {
@@ -174,7 +202,7 @@ class CallLogViewModel(
         for (i in oldList.indices) {
             val a = oldList[i]
             val b = newList[i]
-            if (a.id != b.id || a.number != b.number || a.date != b.date || a.type != b.type || a.name != b.name || a.isBlocked != b.isBlocked) {
+            if (a.id != b.id || a.number != b.number || a.date != b.date || a.type != b.type || a.name != b.name || a.isBlocked != b.isBlocked || a.contactId != b.contactId || a.photoUri != b.photoUri) {
                 return true
             }
         }

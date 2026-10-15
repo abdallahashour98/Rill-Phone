@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Portrait
 import androidx.compose.material.icons.rounded.RememberMe
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Title
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +57,7 @@ fun AvatarsPreferenceScreen(navigator: DestinationsNavigator) {
     var avatarFrame               by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false)) }
     var showPicture               by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SHOW_PICTURE, true)) }
     var hideAvatarWithBg          by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_HIDE_AVATAR_WITH_BACKGROUND, false)) }
+    var highlightRecordedAvatar   by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_HIGHLIGHT_RECORDED_AVATAR, true)) }
 
     val context = LocalContext.current
     val rotation =
@@ -217,6 +219,18 @@ fun AvatarsPreferenceScreen(navigator: DestinationsNavigator) {
                                 iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorOliva,
                                 checked = hideAvatarWithBg,
                                 onCheckedChange = { hideAvatarWithBg = it; prefs.setBoolean(PreferenceManager.KEY_HIDE_AVATAR_WITH_BACKGROUND, it) }
+                            )
+                            RillSwitchListItem(
+                                headline = stringResource(R.string.highlight_recorded_calls),
+                                supporting = stringResource(R.string.highlight_recorded_calls_subtitle),
+                                leadingIcon = Icons.Rounded.Mic,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkRed,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorRed,
+                                checked = highlightRecordedAvatar,
+                                onCheckedChange = {
+                                    highlightRecordedAvatar = it
+                                    prefs.setBoolean(PreferenceManager.KEY_HIGHLIGHT_RECORDED_AVATAR, it)
+                                }
                             )
                         }
                     }

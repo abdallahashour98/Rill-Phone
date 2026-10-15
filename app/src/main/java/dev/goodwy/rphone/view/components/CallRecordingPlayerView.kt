@@ -143,7 +143,7 @@ fun CallRecordingPlayerCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 FilledIconButton(
-                    onClick = { RecordingPlayer.playOrPause(file) },
+                    onClick = { RecordingPlayer.playOrPause(file, context) },
                     shape = CircleShape,
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -168,7 +168,7 @@ fun CallRecordingPlayerCard(
                             if (isThisFilePlaying) {
                                 RecordingPlayer.seekTo(seekTarget)
                             } else {
-                                RecordingPlayer.play(file)
+                                RecordingPlayer.play(file, context)
                                 RecordingPlayer.seekTo(seekTarget)
                             }
                         },

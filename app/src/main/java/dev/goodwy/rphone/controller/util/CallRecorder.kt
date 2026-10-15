@@ -48,13 +48,16 @@ object CallRecorder {
             val outputFile = File(recordDir, fileName)
 
             // Attempt audio sources in order of preference:
-            // 1. VOICE_CALL: Native two-way call recording used by Xiaomi/system apps (requires CAPTURE_AUDIO_OUTPUT).
-            // 2. VOICE_COMMUNICATION: VoIP two-way duplex audio with echo cancellation.
-            // 3. MIC: Fallback to standard microphone.
+            // 1. VOICE_RECOGNITION: Unprocessed raw mic path, not muted by telephony HAL during ongoing calls.
+            // 2. VOICE_CALL: Native two-way call recording used by system apps (requires CAPTURE_AUDIO_OUTPUT).
+            // 3. VOICE_COMMUNICATION: VoIP two-way duplex audio with echo cancellation.
+            // 4. MIC / DEFAULT: Standard microphone fallbacks.
             val audioSources = listOf(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
                 MediaRecorder.AudioSource.VOICE_CALL to "VOICE_CALL",
                 MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
-                MediaRecorder.AudioSource.MIC to "MIC"
+                MediaRecorder.AudioSource.MIC to "MIC",
+                MediaRecorder.AudioSource.DEFAULT to "DEFAULT"
             )
 
             var activeRecorder: MediaRecorder? = null
@@ -71,7 +74,8 @@ object CallRecorder {
                         setAudioSource(source)
                         setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                         setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                        setAudioEncodingBitRate(128000)
+                        setAudioChannels(1)
+                        setAudioEncodingBitRate(96000)
                         setAudioSamplingRate(44100)
                         setOutputFile(outputFile.absolutePath)
                         prepare()
@@ -246,7 +250,7 @@ object RecordingPlayer {
     private var progressJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    fun playOrPause(file: File) {
+    fun playOrPause(file: File, context: Context? = null) {
         if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
             if (_isPlaying.value) {
                 pause()
@@ -254,14 +258,26 @@ object RecordingPlayer {
                 resume()
             }
         } else {
-            play(file)
+            play(file, context)
         }
     }
 
-    fun play(file: File) {
+    fun play(file: File, context: Context? = null) {
         stop()
         try {
+            if (context != null) {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                if (audioManager?.mode != android.media.AudioManager.MODE_NORMAL) {
+                    audioManager?.mode = android.media.AudioManager.MODE_NORMAL
+                }
+            }
             val player = android.media.MediaPlayer().apply {
+                setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
                 setDataSource(file.absolutePath)
                 prepare()
                 setOnCompletionListener {

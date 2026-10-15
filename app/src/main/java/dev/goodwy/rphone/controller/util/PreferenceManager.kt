@@ -365,6 +365,8 @@ class PreferenceManager(context: Context) {
         const val KEY_GRADIENT_AVATARS      = "gradient_avatars"
         const val KEY_PRIMARY_COLOR_AVATARS = "primary_color"
         const val KEY_SECONDARY_COLOR_AVATARS = "secondary_color"
+        const val KEY_HIGHLIGHT_RECORDED_AVATAR = "highlight_recorded_avatar"
+        const val KEY_RECORDED_AVATAR_COLOR = "recorded_avatar_color"
         const val KEY_GOOGLE_CONTACTS_AVATARS      = "google_contacts_color"
         const val KEY_SHOW_PICTURE          = "show_picture"
         const val KEY_ICON_ONLY_NAV         = "icon_only_nav"

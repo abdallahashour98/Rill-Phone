@@ -59,6 +59,7 @@ import dev.goodwy.rphone.controller.util.makeCall
 import dev.goodwy.rphone.controller.util.normalizeDigits
 import dev.goodwy.rphone.controller.util.normalizeNumberDigits
 import dev.goodwy.rphone.cardCornerExtraSmall
+import dev.goodwy.rphone.controller.util.CallRecorder
 import dev.goodwy.rphone.view.components.SimPickerDialog
 import dev.goodwy.rphone.view.components.SingleTile
 import dev.goodwy.rphone.view.components.SwipeableCallLogContainer
@@ -841,13 +842,15 @@ fun DialPadContent(
                                                     subtitle = getDisplayContactInfo(contact),
                                                     photoUri = contact.photoUri,
                                                     phoneNumber = defaultOrFirstPhone,
-                                                    trailingContent = {
-                                                        if (defaultOrFirstPhone != null) {
-                                                            IconButton(onClick = { initiateCall(defaultOrFirstPhone) }) {
-                                                                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                    trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
+                                                        {
+                                                            if (defaultOrFirstPhone != null) {
+                                                                IconButton(onClick = { initiateCall(defaultOrFirstPhone) }) {
+                                                                    Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                                }
                                                             }
                                                         }
-                                                    },
+                                                    } else null,
                                                     onCall = { if (defaultOrFirstPhone != null) initiateCall(defaultOrFirstPhone) },
                                                     onClick = {
                                                         navigator?.navigate(
@@ -901,6 +904,9 @@ fun DialPadContent(
                                     ) {
                                         filteredSearchLogsResults.forEach { log ->
                                             val displayName = if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
+                                            val recFile = remember(log.id, log.number, log.date) {
+                                                CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
+                                            }
                                             SwipeableCallLogContainer(
                                                 enabled = swipeToCallEnabled && log.number.isNotBlank() && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
                                                 style = swipeCallStyle,
@@ -921,11 +927,14 @@ fun DialPadContent(
                                                     subtitle = if (log.name == log.number) null else log.number,
                                                     photoUri = log.photoUri,
                                                     phoneNumber = log.number,
-                                                    trailingContent = {
-                                                        IconButton(onClick = { initiateCall(log.number) }) {
-                                                            Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                    hasRecording = recFile != null,
+                                                    trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
+                                                        {
+                                                            IconButton(onClick = { initiateCall(log.number) }) {
+                                                                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                            }
                                                         }
-                                                    },
+                                                    } else null,
                                                     onCall = { initiateCall(log.number) },
                                                     onClick = {
                                                         if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
@@ -1378,23 +1387,25 @@ fun DialPadContent(
                                                             subtitle = getDisplayContactInfo(contact),
                                                             photoUri = contact.photoUri,
                                                             phoneNumber = defaultOrFirstPhone,
-                                                            trailingContent = {
-                                                                if (defaultOrFirstPhone != null) {
-                                                                    IconButton(onClick = {
-                                                                        initiateCall(
-                                                                            defaultOrFirstPhone
-                                                                        )
-                                                                    }) {
-                                                                        Icon(
-                                                                            Icons.Outlined.Call,
-                                                                            contentDescription = stringResource(
-                                                                                R.string.call
-                                                                            ),
-                                                                            tint = MaterialTheme.colorScheme.primary
-                                                                        )
+                                                            trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
+                                                                {
+                                                                    if (defaultOrFirstPhone != null) {
+                                                                        IconButton(onClick = {
+                                                                            initiateCall(
+                                                                                defaultOrFirstPhone
+                                                                            )
+                                                                        }) {
+                                                                            Icon(
+                                                                                Icons.Outlined.Call,
+                                                                                contentDescription = stringResource(
+                                                                                    R.string.call
+                                                                                ),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
                                                                     }
                                                                 }
-                                                            },
+                                                            } else null,
                                                             onCall = {
                                                                 if (defaultOrFirstPhone != null) initiateCall(
                                                                     defaultOrFirstPhone
@@ -1474,6 +1485,9 @@ fun DialPadContent(
                                                     val displayName =
                                                         if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number }
                                                             ?: log.number.ifEmpty { "Unknown" }
+                                                    val recFile = remember(log.id, log.number, log.date) {
+                                                        CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
+                                                    }
                                                     SwipeableCallLogContainer(
                                                         enabled = swipeToCallEnabled && log.number.isNotBlank() && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
                                                         style = swipeCallStyle,
@@ -1494,17 +1508,20 @@ fun DialPadContent(
                                                             subtitle = if (log.name == log.number) null else log.number,
                                                             photoUri = log.photoUri,
                                                             phoneNumber = log.number,
-                                                            trailingContent = {
-                                                                IconButton(onClick = { initiateCall(log.number) }) {
-                                                                    Icon(
-                                                                        Icons.Outlined.Call,
-                                                                        contentDescription = stringResource(
-                                                                            R.string.call
-                                                                        ),
-                                                                        tint = MaterialTheme.colorScheme.primary
-                                                                    )
+                                                            hasRecording = recFile != null,
+                                                            trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
+                                                                {
+                                                                    IconButton(onClick = { initiateCall(log.number) }) {
+                                                                        Icon(
+                                                                            Icons.Outlined.Call,
+                                                                            contentDescription = stringResource(
+                                                                                R.string.call
+                                                                            ),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
+                                                                    }
                                                                 }
-                                                            },
+                                                            } else null,
                                                             onCall = { initiateCall(log.number) },
                                                             onClick = {
                                                                 if (prefs.getBoolean(

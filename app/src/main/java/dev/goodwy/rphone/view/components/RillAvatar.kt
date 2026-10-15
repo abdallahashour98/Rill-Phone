@@ -3,9 +3,11 @@ package dev.goodwy.rphone.view.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Voicemail
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +70,7 @@ fun RillAvatar(
     icon: ImageVector? = null,
     /** Optional explicit tint colour for vector icon tiles. */
     iconContainerColor: Color? = null,
+    hasRecording: Boolean = false,
     modifier: Modifier = Modifier,
     shape: Shape = CircleShape
 ) {
@@ -78,12 +81,14 @@ fun RillAvatar(
     val secondaryColorAvatars = avatarPreferences.secondaryColor
     val googleContactColorAvatars = avatarPreferences.googleContactColor
     val avatarFrame = avatarPreferences.frame
+    val highlightRecorded = avatarPreferences.highlightRecorded
 
     val hasName  = name.trim().isNotEmpty()
     val isLetter  = name.trim().take(1).isLetter() || name.take(2).isEmoji()
     val colorKey = if (hasName) name else "unknown_caller"
 
     val (backgroundColor, contentColor) = when {
+        hasRecording && highlightRecorded -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.error
         iconContainerColor != null -> iconContainerColor.copy(alpha = 0.18f) to iconContainerColor
         colorfulAvatars -> avatarColors[abs(colorKey.hashCode()) % avatarColors.size] to if (avatarFrame) MaterialTheme.colorScheme.onSurface else Color.White
         googleContactColorAvatars -> Color(0xFFFFAFAB) to Color(0xFF690A08)
@@ -143,6 +148,24 @@ fun RillAvatar(
                 )
             }
         }
+
+        if (hasRecording && highlightRecorded) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(2.dp)
+                    .size(14.dp)
+                    .background(MaterialTheme.colorScheme.error, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Mic,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(9.dp)
+                )
+            }
+        }
     }
 }
 
@@ -152,5 +175,6 @@ data class AvatarPreferences(
     val colorful: Boolean = true,
     val secondaryColor: Boolean = false,
     val googleContactColor: Boolean = false,
-    val frame: Boolean = false
+    val frame: Boolean = false,
+    val highlightRecorded: Boolean = true
 )

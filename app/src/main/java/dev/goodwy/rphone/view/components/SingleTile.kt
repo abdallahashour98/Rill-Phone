@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.forceLtr
@@ -65,6 +67,7 @@ fun SingleTile(
     titleTrailing: (@Composable () -> Unit)? = null,
     isMissedCall: Boolean = false,
     phoneNumber: String? = null,
+    hasRecording: Boolean = false,
     onAvatarClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     onCall: (() -> Unit)? = null,
@@ -128,6 +131,7 @@ fun SingleTile(
                 photoUri           = photoUri,
                 icon               = icon,
                 iconContainerColor = iconContainerColor,
+                hasRecording       = hasRecording,
                 modifier           = Modifier
                     .size(42.dp)
                     .then(
@@ -171,6 +175,31 @@ fun SingleTile(
                     )
                     if (titleTrailing != null) {
                         titleTrailing()
+                    } else if (hasRecording) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Mic,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.rec_badge),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
                     }
                 }
                 if (supportingContent != null) {

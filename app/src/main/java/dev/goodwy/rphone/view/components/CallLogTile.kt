@@ -156,6 +156,7 @@ fun CallLogTile(
             onAvatarLongClick = { showMenu = true },
             directCall = directCall,
             isSamsungStyle = isSamsungStyle,
+            hasRecording = recordingFile != null,
             onLongClick = { onLongClick(log) },
             isMenuOpen  = showMenu && !selectionMode,
             onClick     = { onTileClick(log) },

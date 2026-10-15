@@ -173,7 +173,8 @@ class MainActivity : FragmentActivity() {
                         colorful = prefs.getBoolean(PreferenceManager.KEY_COLORFUL_AVATARS, true),
                         secondaryColor = prefs.getBoolean(PreferenceManager.KEY_SECONDARY_COLOR_AVATARS, false),
                         googleContactColor = prefs.getBoolean(PreferenceManager.KEY_GOOGLE_CONTACTS_AVATARS, false),
-                        frame = prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false)
+                        frame = prefs.getBoolean(PreferenceManager.KEY_AVATAR_FRAME, false),
+                        highlightRecorded = prefs.getBoolean(PreferenceManager.KEY_HIGHLIGHT_RECORDED_AVATAR, true)
                     )
                 }
                 val scrollAnimEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false) }

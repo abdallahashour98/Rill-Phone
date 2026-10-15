@@ -767,4 +767,8 @@
     <string name="recording_standby">Standby (starts on answer)</string>
     <string name="recording_standby_toast">Recording will start automatically when call connects</string>
     <string name="recording_standby_cancelled">Recording standby cancelled</string>
+    <string name="highlight_recorded_calls">Highlight recorded calls</string>
+    <string name="highlight_recorded_calls_subtitle">Show a badge and distinctive avatar color for calls with recordings</string>
+    <string name="recorded_avatar_color">Recorded call avatar color</string>
+    <string name="rec_badge">REC</string>
 </resources>

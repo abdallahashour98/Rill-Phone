@@ -769,4 +769,8 @@
     <string name="recording_standby">قيد الانتظار (سيبدأ عند الرد)</string>
     <string name="recording_standby_toast">سيبدأ تسجيل المكالمة تلقائياً بمجرد الرد</string>
     <string name="recording_standby_cancelled">تم إلغاء وضع انتظار التسجيل</string>
+    <string name="highlight_recorded_calls">تمييز المكالمات المسجلة</string>
+    <string name="highlight_recorded_calls_subtitle">إظهار شارة تسجيل ولون مميز للأفاتار عند وجود مكالمات مسجلة</string>
+    <string name="recorded_avatar_color">لون أفاتار المكالمة المسجلة</string>
+    <string name="rec_badge">تسجيل</string>
 </resources>

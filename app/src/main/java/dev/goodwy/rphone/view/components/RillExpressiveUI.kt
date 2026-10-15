@@ -47,8 +47,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -521,6 +523,7 @@ fun CallLogListItem(
     directCall: Boolean,
     isSamsungStyle: Boolean = false,
     isMenuOpen: Boolean = false,
+    hasRecording: Boolean = false,
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
@@ -597,6 +600,7 @@ fun CallLogListItem(
                 RillAvatar(
                     name = avatarName ?: "",
                     photoUri = photoUri,
+                    hasRecording = hasRecording,
                     modifier = Modifier.size(48.dp)
                         .then(
                             if (onAvatarClick != null)
@@ -626,13 +630,44 @@ fun CallLogListItem(
                     .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = headline,
-                    style = MaterialTheme.typography.bodyLarge,
-//                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = headline,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (hasRecording) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Mic,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.rec_badge),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+                }
                 if (supportingIcon != null || supporting != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (supportingIcon != null) {

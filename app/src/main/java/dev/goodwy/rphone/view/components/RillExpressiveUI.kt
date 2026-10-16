@@ -530,20 +530,20 @@ fun CallLogListItem(
 ) {
     val context = LocalContext.current
     val prefs = koinInject<PreferenceManager>()
-    val scale by animateFloatAsState(
-        targetValue = if (isMenuOpen) 0.97f else 1f,
-        animationSpec = tween(150),
-        label = "ListItemScale"
-    )
+    val surfaceModifier = if (isMenuOpen) {
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = 0.97f
+                scaleY = 0.97f
+            }
+    } else {
+        modifier.fillMaxWidth()
+    }
 
     Surface(
         color = if (isSelected) cardColorSelected else cardColor,
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            },
+        modifier = surfaceModifier,
         shadowElevation = 0.dp
     ) {
         Row(

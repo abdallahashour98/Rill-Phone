@@ -128,6 +128,14 @@ fun AZListContent(
     val sortOrder = remember(settingsState) { prefs.getInt(PreferenceManager.KEY_CONTACT_SORT_ORDER, 0) }
     val cardCornerExtraLarge  = prefs.getInt(PreferenceManager.KEY_CARD_ROUNDNESS, RillShapeDefaults.DefaultRoundness).dp
 
+    val swipeToCallEnabled = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true) }
+    val swipeCallStyle = remember(settingsState) { prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG) }
+    val haptics = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true) }
+    val hapticsStrength = remember(settingsState) { prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light" }
+    val hapticsIntensity = remember(settingsState) { prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f) }
+    val simPref = remember(settingsState) { prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, 0) }
+    val contactsVM: ContactsViewModel = koinActivityViewModel()
+
     val finalGrouped = remember(contacts, grouped) {
         if (grouped != null) return@remember grouped
 
@@ -241,6 +249,13 @@ fun AZListContent(
                                     selectionMode = selectionMode,
                                     isSelected = isSelected,
                                     displayOrder = displayOrder,
+                                    swipeToCallEnabled = swipeToCallEnabled,
+                                    swipeCallStyle = swipeCallStyle,
+                                    haptics = haptics,
+                                    hapticsStrength = hapticsStrength,
+                                    hapticsIntensity = hapticsIntensity,
+                                    simPref = simPref,
+                                    contactsVM = contactsVM,
                                     onSelectToggle = { onToggleSelection(contact.id) }
                                 )
                             }
@@ -305,11 +320,16 @@ fun ContactListItem(
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
     displayOrder: Int,
+    swipeToCallEnabled: Boolean = true,
+    swipeCallStyle: Int = PreferenceManager.SWIPE_STYLE_SAMSUNG,
+    haptics: Boolean = true,
+    hapticsStrength: String = "light",
+    hapticsIntensity: Float = 0.5f,
+    simPref: Int = 0,
+    contactsVM: ContactsViewModel = koinActivityViewModel(),
     onSelectToggle: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val prefs = koinInject<PreferenceManager>()
-    val contactsVM: ContactsViewModel = koinActivityViewModel()
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -317,6 +337,7 @@ fun ContactListItem(
 
     // Delete confirmation dialog
     if (showDeleteConfirm) {
+        val prefs = koinInject<PreferenceManager>()
         val trashEnabled = prefs.isContactsTrashEnabled()
         RillDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -352,11 +373,11 @@ fun ContactListItem(
         if (selectionMode && onSelectToggle != null) {
             onSelectToggle()
         } else {
-            if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
+            if (haptics) {
                 performAppHaptic(
                     context,
-                    prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light",
-                    prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
+                    hapticsStrength,
+                    hapticsIntensity
                 )
             }
             navigator.navigate(ContactDetailsScreenDestination(contactId = contact.id))
@@ -366,12 +387,6 @@ fun ContactListItem(
     val defaultOrFirstPhone = remember(contact) {
         contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
     }
-    val swipeToCallEnabled = remember { prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true) }
-    val swipeCallStyle = remember { prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG) }
-    val haptics = remember { prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true) }
-    val hapticsStrength = remember { prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light" }
-    val hapticsIntensity = remember { prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f) }
-    val simPref = remember { prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, 0) }
 
     SwipeableCallLogContainer(
         enabled = swipeToCallEnabled && !selectionMode && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),

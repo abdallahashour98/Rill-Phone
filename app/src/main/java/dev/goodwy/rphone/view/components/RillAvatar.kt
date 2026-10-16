@@ -85,12 +85,20 @@ fun RillAvatar(
     val avatarFrame = avatarPreferences.frame
     val highlightRecorded = avatarPreferences.highlightRecorded
 
-    val hasName  = name.trim().isNotEmpty()
-    val isLetter  = name.trim().take(1).isLetter() || name.take(2).isEmoji()
+    val showRecordBadge = hasRecording && highlightRecorded
+
+    val trimmedName = remember(name) { name.trim() }
+    val hasName = trimmedName.isNotEmpty()
+    val isLetter = remember(trimmedName) {
+        val first = trimmedName.firstOrNull()
+        if (first != null && first.isLetter()) true
+        else if (trimmedName.length >= 2 && trimmedName.take(2).isEmoji()) true
+        else false
+    }
     val colorKey = if (hasName) name else "unknown_caller"
 
     val (backgroundColor, contentColor) = when {
-        hasRecording && highlightRecorded -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.error
+        showRecordBadge -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.error
         iconContainerColor != null -> iconContainerColor.copy(alpha = 0.18f) to iconContainerColor
         colorfulAvatars -> avatarColors[abs(colorKey.hashCode()) % avatarColors.size] to if (avatarFrame) MaterialTheme.colorScheme.onSurface else Color.White
         googleContactColorAvatars -> Color(0xFFFFAFAB) to Color(0xFF690A08)
@@ -98,76 +106,86 @@ fun RillAvatar(
         else -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
     }
 
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        // Inner Avatar Box with shape and background
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (avatarFrame) Modifier
-                        .drawBehind {
-                            val borderWidth = size.width * 0.09f
-                            drawOutline(
-                                outline = shape.createOutline(size, layoutDirection, this),
-                                color = contentColor,
-                                style = Stroke(width = borderWidth)
-                            )
-                        }
-                    else Modifier
+    val avatarModifier = Modifier
+        .fillMaxSize()
+        .then(
+            if (avatarFrame) Modifier.drawBehind {
+                val borderWidth = size.width * 0.09f
+                drawOutline(
+                    outline = shape.createOutline(size, layoutDirection, this),
+                    color = contentColor,
+                    style = Stroke(width = borderWidth)
                 )
-                .then(
-                    if (hasRecording && highlightRecorded) Modifier.border(
-                        width = 1.5.dp,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.65f),
-                        shape = shape
-                    )
-                    else Modifier
-                )
-                .background(backgroundColor, shape)
-                .clip(shape),
-            contentAlignment = Alignment.Center
-        ) {
-            val letterFontSize  = 22.sp
-            val iconSize        = 28.dp
-            val placeholderSize = 38.dp
+            } else Modifier
+        )
+        .then(
+            if (showRecordBadge) Modifier.border(
+                width = 1.5.dp,
+                color = MaterialTheme.colorScheme.error.copy(alpha = 0.65f),
+                shape = shape
+            ) else Modifier
+        )
+        .background(backgroundColor, shape)
+        .clip(shape)
 
-            when {
-                showPicture && !photoUri.isNullOrEmpty() -> {
-                    AsyncImage(
-                        model = photoUri,
-                        contentDescription = name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                icon != null -> {
-                    Icon(imageVector = icon, contentDescription = name, tint = contentColor, modifier = Modifier.size(iconSize))
-                }
-                showFirstLetter && hasName && isLetter -> {
-                    val emoji = name.take(2)
-                    val letter = if (emoji.isEmoji()) emoji else name.trim().take(1).uppercase()
-                    Text(
-                        text = letter,
-                        fontSize = letterFontSize,
-                        color = contentColor,
-                        lineHeight = letterFontSize
-                    )
-                }
-                else -> {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_person),
-                        contentDescription = name, tint = contentColor,
-                        modifier = Modifier.size(placeholderSize)
-                    )
-                }
+    @Composable
+    fun AvatarInnerContent() {
+        val letterFontSize  = 22.sp
+        val iconSize        = 28.dp
+        val placeholderSize = 38.dp
+
+        when {
+            showPicture && !photoUri.isNullOrEmpty() -> {
+                AsyncImage(
+                    model = photoUri,
+                    contentDescription = name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            icon != null -> {
+                Icon(imageVector = icon, contentDescription = name, tint = contentColor, modifier = Modifier.size(iconSize))
+            }
+            showFirstLetter && hasName && isLetter -> {
+                val emoji = if (trimmedName.length >= 2) trimmedName.take(2) else ""
+                val letter = if (emoji.isEmoji()) emoji else trimmedName.take(1).uppercase()
+                Text(
+                    text = letter,
+                    fontSize = letterFontSize,
+                    color = contentColor,
+                    lineHeight = letterFontSize
+                )
+            }
+            else -> {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_person),
+                    contentDescription = name, tint = contentColor,
+                    modifier = Modifier.size(placeholderSize)
+                )
             }
         }
+    }
 
-        // Floating Record Badge at Bottom-End (unclipped with halo outline)
-        if (hasRecording && highlightRecorded) {
+    if (!showRecordBadge) {
+        Box(
+            modifier = modifier.then(avatarModifier),
+            contentAlignment = Alignment.Center
+        ) {
+            AvatarInnerContent()
+        }
+    } else {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = avatarModifier,
+                contentAlignment = Alignment.Center
+            ) {
+                AvatarInnerContent()
+            }
+
+            // Floating Record Badge at Bottom-End (unclipped with halo outline)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

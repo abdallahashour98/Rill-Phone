@@ -499,9 +499,9 @@ fun String.isLetter(): Boolean {
     return this.length == 1 && this[0].isLetter()
 }
 
-fun String.isEmoji(): Boolean {
-    return matches(
-        ("(?:[\uD83C\uDF00-\uD83D\uDDFF]|[\uD83E\uDD00-\uD83E\uDDFF]|" +
+private val EMOJI_REGEX_PATTERN by lazy {
+    java.util.regex.Pattern.compile(
+        "(?:[\uD83C\uDF00-\uD83D\uDDFF]|[\uD83E\uDD00-\uD83E\uDDFF]|" +
                 "[\uD83D\uDE00-\uD83D\uDE4F]|[\uD83D\uDE80-\uD83D\uDEFF]|" +
                 "[\u2600-\u26FF]\uFE0F?|[\u2700-\u27BF]\uFE0F?|\u24C2\uFE0F?|" +
                 "[\uD83C\uDDE6-\uD83C\uDDFF]{1,2}|" +
@@ -511,8 +511,16 @@ fun String.isEmoji(): Boolean {
                 "[\uD83C\uDE01\uD83C\uDE02\uD83C\uDE1A\uD83C\uDE2F\uD83C\uDE32-\uD83C\uDE3A\uD83C\uDE50\uD83C\uDE51]\uFE0F?|" +
                 "[\u203C\u2049]\uFE0F?|[\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE]\uFE0F?|" +
                 "[\u00A9\u00AE]\uFE0F?|[\u2122\u2139]\uFE0F?|\uD83C\uDC04\uFE0F?|\uD83C\uDCCF\uFE0F?|" +
-                "[\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA]\uFE0F?)+").toRegex()
+                "[\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA]\uFE0F?)+"
     )
+}
+
+fun String.isEmoji(): Boolean {
+    if (this.isEmpty()) return false
+    val first = this[0]
+    // Fast-path: Standard ASCII characters (digits, +, letters) are not standalone emojis
+    if (first < '\u00A9') return false
+    return EMOJI_REGEX_PATTERN.matcher(this).matches()
 }
 
 fun getPhoneTypeText(context: Context, type: Int?, label: String?): String {

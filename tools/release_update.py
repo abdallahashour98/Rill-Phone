@@ -505,8 +505,12 @@ def main():
     built_apk_path = PROJECT_ROOT / "app" / "build" / "outputs" / "apk" / "foss" / "release" / f"rill-phone-{new_code}-foss-release.apk"
 
     if not args.skip_build:
-        print_header("Building Android Release APK (assembleFossRelease)...")
-        gradle_cmd = ["cmd.exe", "/c", "gradlew.bat", "assembleFossRelease"] if sys.platform == 'win32' else ["./gradlew", "assembleFossRelease"]
+        if sys.platform == 'win32':
+            gradle_cmd = ["cmd.exe", "/c", "gradlew.bat", "assembleFossRelease"]
+        else:
+            gradle_cmd = ["./gradlew", "assembleFossRelease"]
+            if os.path.exists("/usr/lib/jvm/java-25-openjdk"):
+                gradle_cmd.insert(1, "-Dorg.gradle.java.home=/usr/lib/jvm/java-25-openjdk")
         run_cmd(gradle_cmd)
 
         if not built_apk_path.exists():

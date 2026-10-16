@@ -124,6 +124,7 @@ object CallRecorder {
     fun stopRecording(): File? {
         val file = currentOutputFile
         cleanup()
+        invalidateCache()
         Log.i(TAG, "Call recording stopped: ${file?.absolutePath}")
         return file
     }
@@ -147,6 +148,60 @@ object CallRecorder {
         }
     }
 
+    data class RecordingMeta(
+        val file: File,
+        val cleanPhone: String,
+        val last7Phone: String,
+        val timestamp: Long,
+        val lastModified: Long
+    )
+
+    private val cacheLock = Any()
+    @Volatile
+    private var cachedMeta: List<RecordingMeta>? = null
+    @Volatile
+    private var lastCacheTime = 0L
+
+    fun invalidateCache() {
+        synchronized(cacheLock) {
+            cachedMeta = null
+            lastCacheTime = 0L
+        }
+    }
+
+    private fun getCachedRecordings(context: Context): List<RecordingMeta> {
+        val now = System.currentTimeMillis()
+        val current = cachedMeta
+        if (current != null && (now - lastCacheTime) < 15_000L) {
+            return current
+        }
+
+        return synchronized(cacheLock) {
+            val doubleCheck = cachedMeta
+            if (doubleCheck != null && (now - lastCacheTime) < 15_000L) {
+                return doubleCheck
+            }
+
+            val dir = getRecordingsDir(context)
+            val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
+                ?: emptyArray()
+
+            val list = files.mapNotNull { file ->
+                val nameNoExt = file.nameWithoutExtension
+                val parts = nameNoExt.split("_")
+                if (parts.size >= 3) {
+                    val filePhone = parts[1].filter { it.isDigit() }
+                    val fileTimestamp = parts.last().toLongOrNull() ?: 0L
+                    val last7File = if (filePhone.length >= 7) filePhone.takeLast(7) else filePhone
+                    RecordingMeta(file, filePhone, last7File, fileTimestamp, file.lastModified())
+                } else null
+            }
+            cachedMeta = list
+            lastCacheTime = now
+            list
+        }
+    }
+
     fun getRecordingsDir(context: Context): File {
         val baseDir = context.getExternalFilesDir(Environment.DIRECTORY_RECORDINGS)
             ?: File(context.filesDir, "recordings")
@@ -161,55 +216,35 @@ object CallRecorder {
         callDate: Long,
         durationSeconds: Long = 0L
     ): File? {
-        val dir = getRecordingsDir(context)
-        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
-            ?: return null
-
         val cleanTarget = phoneNumber.filter { it.isDigit() }
         if (cleanTarget.isEmpty()) return null
         val last7Target = if (cleanTarget.length >= 7) cleanTarget.takeLast(7) else cleanTarget
 
-        return files.firstOrNull { file ->
-            val nameNoExt = file.nameWithoutExtension
-            val parts = nameNoExt.split("_")
-            if (parts.size >= 3) {
-                val filePhone = parts[1].filter { it.isDigit() }
-                val fileTimestamp = parts.last().toLongOrNull() ?: 0L
+        val recordings = getCachedRecordings(context)
+        if (recordings.isEmpty()) return null
 
-                val last7File = if (filePhone.length >= 7) filePhone.takeLast(7) else filePhone
-                val numberMatches = last7Target.isNotEmpty() && (last7File == last7Target || filePhone == cleanTarget)
+        val maxAllowedDiff = ((durationSeconds + 180).coerceAtLeast(300)) * 1000L
 
-                val maxAllowedDiff = ((durationSeconds + 180).coerceAtLeast(300)) * 1000L
-                val timeDiff = kotlin.math.abs(fileTimestamp - callDate)
-                numberMatches && timeDiff <= maxAllowedDiff
-            } else false
-        }
+        return recordings.firstOrNull { meta ->
+            val numberMatches = last7Target.isNotEmpty() && (meta.last7Phone == last7Target || meta.cleanPhone == cleanTarget)
+            val timeDiff = kotlin.math.abs(meta.timestamp - callDate)
+            numberMatches && timeDiff <= maxAllowedDiff
+        }?.file
     }
 
     fun getRecordingsForNumber(context: Context, phoneNumber: String): List<File> {
-        val dir = getRecordingsDir(context)
-        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
-            ?: return emptyList()
-
         val cleanTarget = phoneNumber.filter { it.isDigit() }
         if (cleanTarget.isEmpty()) return emptyList()
         val last7Target = if (cleanTarget.length >= 7) cleanTarget.takeLast(7) else cleanTarget
 
-        return files.filter { file ->
-            val parts = file.nameWithoutExtension.split("_")
-            if (parts.size >= 3) {
-                val filePhone = parts[1].filter { it.isDigit() }
-                val last7File = if (filePhone.length >= 7) filePhone.takeLast(7) else filePhone
-                last7Target.isNotEmpty() && (last7File == last7Target || filePhone == cleanTarget)
-            } else false
-        }.sortedByDescending { it.lastModified() }
+        val recordings = getCachedRecordings(context)
+        return recordings.filter { meta ->
+            last7Target.isNotEmpty() && (meta.last7Phone == last7Target || meta.cleanPhone == cleanTarget)
+        }.sortedByDescending { it.lastModified }.map { it.file }
     }
 
     fun getAllRecordings(context: Context): List<File> {
-        val dir = getRecordingsDir(context)
-        val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
-            ?: return emptyList()
-        return files.sortedByDescending { it.lastModified() }
+        return getCachedRecordings(context).sortedByDescending { it.lastModified }.map { it.file }
     }
 
     fun getAudioDurationMs(file: File): Long {
@@ -381,10 +416,14 @@ object RecordingPlayer {
         if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
             stop()
         }
-        return try {
+        val result = try {
             file.delete()
         } catch (_: Exception) {
             false
         }
+        if (result) {
+            CallRecorder.invalidateCache()
+        }
+        return result
     }
 }

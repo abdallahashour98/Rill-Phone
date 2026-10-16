@@ -58,6 +58,7 @@ import com.ramcosta.composedestinations.generated.destinations.QuickResponsesScr
 import dev.goodwy.rphone.view.components.RillSelectListItem
 import dev.goodwy.rphone.view.components.Title
 
+@android.annotation.SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
@@ -668,6 +669,7 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     }
 }
 
+@android.annotation.SuppressLint("MissingPermission")
 private fun openWifiCalling(context: Context, subId: Int? = null) {
     val targetSubId = subId
         ?: SubscriptionManager.getDefaultVoiceSubscriptionId().takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }

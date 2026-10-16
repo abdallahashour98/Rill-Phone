@@ -610,9 +610,7 @@ def main():
         print_header("1. Saving and committing project code...")
         try:
             run_cmd(["git", "config", "user.name", "abdallahashour98"])
-            run_cmd(["git", "config", "user.email", "abdallahashour98@users.noreply.github.com"])
-            run_cmd(["git", "add", "-u"])
-            run_cmd(["git", "add", "tools/", "release.bat", "release.sh"])
+            run_cmd(["git", "add", "-A"])
             clean_notes = notes.replace("&", "and").replace('"', "'")
             commit_msg = f"Release v{new_version}: {clean_notes}"
             run_cmd(["git", "commit", "-m", commit_msg], check=False)

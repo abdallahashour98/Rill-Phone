@@ -87,6 +87,7 @@ class FlipToSilenceManager(private val context: Context) : SensorEventListener {
         }
     }
 
+    @android.annotation.SuppressLint("MissingPermission")
     private fun triggerSilence() {
         stopListening()
 

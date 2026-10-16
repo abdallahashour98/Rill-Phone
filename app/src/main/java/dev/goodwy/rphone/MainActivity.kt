@@ -701,7 +701,7 @@ class MainActivity : FragmentActivity() {
         purchaseHelper.handleNewIntent(intent, this)
     }
 
-    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    @android.annotation.SuppressLint("MissingPermission")
     private fun handleIntent(intent: Intent?, navController: androidx.navigation.NavController) {
         intent ?: return
         val target = mainViewModel.getNavigationTarget(intent, this)

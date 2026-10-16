@@ -163,6 +163,5 @@ dependencies {
 
     // Goodwy
     gplayImplementation 'com.android.billingclient:billing:8.0.0'
-    rustoreImplementation 'ru.rustore.sdk:bom:2026.04.01'
     rustoreImplementation 'ru.rustore.sdk:pay:10.3.1'
 }

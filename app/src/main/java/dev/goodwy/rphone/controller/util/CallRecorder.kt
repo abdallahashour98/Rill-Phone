@@ -58,12 +58,8 @@ object CallRecorder {
         if (_isRecording.value) return true
 
         return try {
-            // Store recordings in app-specific external files dir or public recordings dir
-            val baseDir = context.getExternalFilesDir(Environment.DIRECTORY_RECORDINGS)
-                ?: File(context.filesDir, "recordings")
-            val recordDir = File(baseDir, "RillPhoneRecordings").apply {
-                if (!exists()) mkdirs()
-            }
+            // Store recordings in app-specific external files dir or internal files dir
+            val recordDir = getRecordingsDir(context)
 
             val cleanPhone = phoneNumber.filter { it.isDigit() || it == '+' }.ifEmpty { "unknown" }
             val fileName = "Call_${cleanPhone}_${System.currentTimeMillis()}.m4a"
@@ -275,7 +271,12 @@ object CallRecorder {
     }
 
     fun getRecordingsDir(context: Context): File {
-        val baseDir = context.getExternalFilesDir(Environment.DIRECTORY_RECORDINGS)
+        val dirType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Environment.DIRECTORY_RECORDINGS
+        } else {
+            "Recordings"
+        }
+        val baseDir = context.getExternalFilesDir(dirType)
             ?: File(context.filesDir, "recordings")
         return File(baseDir, "RillPhoneRecordings").apply {
             if (!exists()) mkdirs()

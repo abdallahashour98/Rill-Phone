@@ -75,7 +75,12 @@ object CallRecorder {
             if (isShizukuReady) {
                 Log.i(TAG, "Shizuku ready. Attempting two-way call recording via Shizuku engine...")
                 val prefs = PreferenceManager(context)
-                val audioSourceKey = prefs.getString("call_recording_audio_source", "mic-voice-communication") ?: "mic-voice-communication"
+                val savedSource = prefs.getString("call_recording_audio_source", "voice-call") ?: "voice-call"
+                val audioSourceKey = if (savedSource == "mic-voice-communication" && !prefs.getBoolean("call_recording_audio_source_explicit_comm", false)) {
+                    "voice-call"
+                } else {
+                    savedSource
+                }
                 val audioSource = ScrcpyAudioSource.fromKey(audioSourceKey)
 
                 val shizukuStarted = ShizukuCallRecorderEngine.startRecording(
@@ -107,9 +112,9 @@ object CallRecorder {
 
             // Fallback: standard MediaRecorder on background thread
             val audioSources = listOf(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
                 MediaRecorder.AudioSource.VOICE_CALL to "VOICE_CALL",
                 MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
+                MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
                 MediaRecorder.AudioSource.MIC to "MIC",
                 MediaRecorder.AudioSource.DEFAULT to "DEFAULT"
             )

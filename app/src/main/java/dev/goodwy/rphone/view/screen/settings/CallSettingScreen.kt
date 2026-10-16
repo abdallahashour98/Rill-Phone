@@ -90,7 +90,13 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
 
     var showAudioSourceDialog by remember { mutableStateOf(false) }
     var currentAudioSource by remember {
-        mutableStateOf(prefs.getString("call_recording_audio_source", "mic-voice-communication"))
+        val saved = prefs.getString("call_recording_audio_source", "voice-call") ?: "voice-call"
+        val effective = if (saved == "mic-voice-communication" && !prefs.getBoolean("call_recording_audio_source_explicit_comm", false)) {
+            "voice-call"
+        } else {
+            saved
+        }
+        mutableStateOf(effective)
     }
     var redialUnanswered by remember {
         mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true))
@@ -363,6 +369,8 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                             val statusHeadline = stringResource(R.string.shizuku_call_recording)
                             val sourceName = when (currentAudioSource) {
                                 "voice-call" -> stringResource(R.string.audio_source_voice_call)
+                                "voice-call-downlink" -> stringResource(R.string.audio_source_voice_call_downlink)
+                                "voice-call-uplink" -> stringResource(R.string.audio_source_voice_call_uplink)
                                 "mic" -> stringResource(R.string.audio_source_mic)
                                 else -> stringResource(R.string.audio_source_voice_comm)
                             }
@@ -600,8 +608,10 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(
-                            "mic-voice-communication" to stringResource(R.string.audio_source_voice_comm),
                             "voice-call" to stringResource(R.string.audio_source_voice_call),
+                            "voice-call-downlink" to stringResource(R.string.audio_source_voice_call_downlink),
+                            "voice-call-uplink" to stringResource(R.string.audio_source_voice_call_uplink),
+                            "mic-voice-communication" to stringResource(R.string.audio_source_voice_comm),
                             "mic" to stringResource(R.string.audio_source_mic)
                         ).forEach { (key, label) ->
                             Surface(
@@ -613,6 +623,9 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                 onClick = {
                                     currentAudioSource = key
                                     prefs.setString("call_recording_audio_source", key)
+                                    if (key == "mic-voice-communication") {
+                                        prefs.setBoolean("call_recording_audio_source_explicit_comm", true)
+                                    }
                                     showAudioSourceDialog = false
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -628,6 +641,9 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                         onClick = {
                                             currentAudioSource = key
                                             prefs.setString("call_recording_audio_source", key)
+                                            if (key == "mic-voice-communication") {
+                                                prefs.setBoolean("call_recording_audio_source_explicit_comm", true)
+                                            }
                                             showAudioSourceDialog = false
                                         }
                                     )

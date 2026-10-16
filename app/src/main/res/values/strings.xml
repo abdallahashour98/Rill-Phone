@@ -790,7 +790,9 @@
     <string name="wifi_calling_xiaomi_hint">On Xiaomi devices: If the window closes immediately, dial *#*#869434#*#* to disable carrier check, or configure it via SIM Settings.</string>
     <string name="dial_code">Dial %s</string>
     <string name="call_recording_audio_source">Recording audio source</string>
-    <string name="audio_source_voice_comm">Voice Communication (Recommended - Two-way)</string>
-    <string name="audio_source_voice_call">Voice Call (System)</string>
-    <string name="audio_source_mic">Microphone</string>
+    <string name="audio_source_voice_call">Voice Call (Recommended - Both Sides: You &amp; Caller)</string>
+    <string name="audio_source_voice_call_downlink">Caller Voice Only (Downlink)</string>
+    <string name="audio_source_voice_call_uplink">My Voice Only (Uplink)</string>
+    <string name="audio_source_voice_comm">Voice Communication (Mic with Echo Cancellation)</string>
+    <string name="audio_source_mic">Standard Microphone</string>
 </resources>

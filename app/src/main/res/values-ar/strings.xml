@@ -792,7 +792,9 @@
     <string name="wifi_calling_xiaomi_hint">لهواتف شاومي: إذا أغلقت الشاشة تلقائياً، اطلب الكود *#*#869434#*#* لتعطيل فحص المشغل (Carrier Check)، أو اضبطها من إعدادات بطاقات SIM.</string>
     <string name="dial_code">طلب الكود %s</string>
     <string name="call_recording_audio_source">مصدر صوت التسجيل</string>
-    <string name="audio_source_voice_comm">محادثة صوتية (موصى به - صوت الطرفين)</string>
-    <string name="audio_source_voice_call">مكالمة هاتفية (صوت النظام)</string>
-    <string name="audio_source_mic">الميكروفون فقط</string>
+    <string name="audio_source_voice_call">تسجيل المكالمة (موصى به - صوت الطرفين: أنت والمتصل)</string>
+    <string name="audio_source_voice_call_downlink">صوت الطرف الآخر فقط (Downlink)</string>
+    <string name="audio_source_voice_call_uplink">صوتي أنا فقط (Uplink)</string>
+    <string name="audio_source_voice_comm">ميكروفون محادثة (عزل الصدى - ميكروفونك فقط)</string>
+    <string name="audio_source_mic">الميكروفون العادي (المايك فقط)</string>
 </resources>

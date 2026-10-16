@@ -1,37 +1,37 @@
 {
-  "latestVersion": "0.6.33",
-  "latestVersionCode": 93,
+  "latestVersion": "0.6.34",
+  "latestVersionCode": 94,
   "releaseDate": "2026-10-16",
-  "releaseNotes": "حل مشكلة خروج صوتك من فوق وصوت الطرف التاني من الاسبيكر",
+  "releaseNotes": "شاشة الحماية",
   "fullApk": {
-    "fileName": "rill-phone-93-foss-release.apk",
-    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-93-foss-release.apk",
-    "sizeBytes": 8724081,
-    "sizeFormatted": "8.32 MB",
-    "sha256": "4170121097e27eec144280cee0cb28f0e8fe2abed0bda1ed7a0d64334a625121"
+    "fileName": "rill-phone-94-foss-release.apk",
+    "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/rill-phone-94-foss-release.apk",
+    "sizeBytes": 8747437,
+    "sizeFormatted": "8.34 MB",
+    "sha256": "f19f7a38a36244f5ee496dda735e2deb0a6697eaf2e09ee3f3764cdea1c6c3d7"
   },
   "patches": [
     {
-      "fromVersion": "0.6.31",
-      "fromVersionCode": 91,
-      "fileName": "patch_v0.6.31_to_v0.6.33.patch",
-      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.31_to_v0.6.33.patch",
-      "sizeBytes": 4914481,
-      "sizeFormatted": "4.69 MB",
-      "fromSha256": "cef10ded76824f0573736e5314f7daf3c42c79fccd6351f22fc7d60c51baa8a8",
-      "patchSha256": "a70cc74e72f1a6ee6eac8c4ccba6300e49ffa5acba6232bc188457b0f33ab827",
-      "targetSha256": "4170121097e27eec144280cee0cb28f0e8fe2abed0bda1ed7a0d64334a625121"
-    },
-    {
       "fromVersion": "0.6.32",
       "fromVersionCode": 92,
-      "fileName": "patch_v0.6.32_to_v0.6.33.patch",
-      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.32_to_v0.6.33.patch",
-      "sizeBytes": 4914465,
-      "sizeFormatted": "4.69 MB",
+      "fileName": "patch_v0.6.32_to_v0.6.34.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.32_to_v0.6.34.patch",
+      "sizeBytes": 4924478,
+      "sizeFormatted": "4.70 MB",
       "fromSha256": "51972376e4c9c2a62a8a10ddb8b0e3e2d3a1982fa7d8cdf62c3c21c6782f7d89",
-      "patchSha256": "309516030eb7d51177b981cbd51b18cdd30e6c9c5da656c844d0bddb5e6657b4",
-      "targetSha256": "4170121097e27eec144280cee0cb28f0e8fe2abed0bda1ed7a0d64334a625121"
+      "patchSha256": "05bb2ba4abb07326e2adac8ac003d89e626d6c25aa5fc6b38ef3f679abf8f49f",
+      "targetSha256": "f19f7a38a36244f5ee496dda735e2deb0a6697eaf2e09ee3f3764cdea1c6c3d7"
+    },
+    {
+      "fromVersion": "0.6.33",
+      "fromVersionCode": 93,
+      "fileName": "patch_v0.6.33_to_v0.6.34.patch",
+      "url": "https://github.com/abdallahashour98/Rill-Phone/releases/latest/download/patch_v0.6.33_to_v0.6.34.patch",
+      "sizeBytes": 4138071,
+      "sizeFormatted": "3.95 MB",
+      "fromSha256": "4170121097e27eec144280cee0cb28f0e8fe2abed0bda1ed7a0d64334a625121",
+      "patchSha256": "5891d9af15d214cde7e9ae7bb1f7adf4feb490c4c2948a8ce9ecb772cedb948b",
+      "targetSha256": "f19f7a38a36244f5ee496dda735e2deb0a6697eaf2e09ee3f3764cdea1c6c3d7"
     }
   ]
 }

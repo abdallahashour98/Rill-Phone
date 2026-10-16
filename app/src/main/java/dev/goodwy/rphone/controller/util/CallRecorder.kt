@@ -5,6 +5,9 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
 import android.util.Log
+import dev.goodwy.rphone.controller.util.shizuku.ScrcpyAudioCodec
+import dev.goodwy.rphone.controller.util.shizuku.ScrcpyAudioSource
+import dev.goodwy.rphone.controller.util.shizuku.ShizukuCallRecorderEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +24,7 @@ object CallRecorder {
 
     private var mediaRecorder: MediaRecorder? = null
     private var currentOutputFile: File? = null
+    private var isUsingShizukuEngine = false
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
@@ -47,11 +51,43 @@ object CallRecorder {
             val fileName = "Call_${cleanPhone}_${System.currentTimeMillis()}.m4a"
             val outputFile = File(recordDir, fileName)
 
-            // Attempt audio sources in order of preference:
-            // 1. VOICE_RECOGNITION: Unprocessed raw mic path, not muted by telephony HAL during ongoing calls.
-            // 2. VOICE_CALL: Native two-way call recording used by system apps (requires CAPTURE_AUDIO_OUTPUT).
-            // 3. VOICE_COMMUNICATION: VoIP two-way duplex audio with echo cancellation.
-            // 4. MIC / DEFAULT: Standard microphone fallbacks.
+            // Check if Shizuku elevated engine is available for two-way recording
+            ShizukuManager.ensureInitialized()
+            val isShizukuReady = ShizukuManager.isAvailable.value && ShizukuManager.isPermissionGranted.value
+            if (isShizukuReady) {
+                Log.i(TAG, "Shizuku ready. Attempting two-way call recording via Shizuku engine...")
+                val prefs = PreferenceManager(context)
+                val audioSourceKey = prefs.getString("call_recording_audio_source", "mic-voice-communication") ?: "mic-voice-communication"
+                val audioSource = ScrcpyAudioSource.fromKey(audioSourceKey)
+
+                val shizukuStarted = ShizukuCallRecorderEngine.startRecording(
+                    context = context,
+                    outputFile = outputFile,
+                    audioSource = audioSource,
+                    codec = ScrcpyAudioCodec.AAC,
+                    bitRate = 96000
+                )
+                if (shizukuStarted) {
+                    isUsingShizukuEngine = true
+                    currentOutputFile = outputFile
+                    _isRecording.value = true
+                    _recordingDuration.value = 0L
+
+                    timerJob?.cancel()
+                    timerJob = scope.launch {
+                        while (_isRecording.value) {
+                            delay(1000)
+                            _recordingDuration.value += 1
+                        }
+                    }
+                    Log.i(TAG, "Call recording started via Shizuku engine: ${outputFile.absolutePath}")
+                    return true
+                } else {
+                    Log.w(TAG, "Shizuku engine start failed, falling back to standard MediaRecorder")
+                }
+            }
+
+            // Fallback: standard MediaRecorder
             val audioSources = listOf(
                 MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
                 MediaRecorder.AudioSource.VOICE_CALL to "VOICE_CALL",
@@ -132,6 +168,17 @@ object CallRecorder {
     private fun cleanup() {
         timerJob?.cancel()
         timerJob = null
+
+        if (isUsingShizukuEngine) {
+            try {
+                ShizukuCallRecorderEngine.stopRecording()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error stopping Shizuku engine", e)
+            } finally {
+                isUsingShizukuEngine = false
+            }
+        }
+
         try {
             mediaRecorder?.apply {
                 try { stop() } catch (_: Exception) {}
@@ -183,8 +230,10 @@ object CallRecorder {
             }
 
             val dir = getRecordingsDir(context)
-            val files = dir.listFiles { f -> f.isFile && f.name.startsWith("Call_") && f.name.endsWith(".m4a") }
-                ?: emptyArray()
+            val files = dir.listFiles { f ->
+                f.isFile && f.name.startsWith("Call_") &&
+                (f.name.endsWith(".m4a") || f.name.endsWith(".ogg") || f.name.endsWith(".aac"))
+            } ?: emptyArray()
 
             val list = files.mapNotNull { file ->
                 val nameNoExt = file.nameWithoutExtension

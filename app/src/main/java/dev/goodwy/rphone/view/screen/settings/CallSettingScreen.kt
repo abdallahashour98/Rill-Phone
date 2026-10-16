@@ -86,9 +86,25 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     val isShizukuAvailable by ShizukuManager.isAvailable.collectAsStateWithLifecycle()
     val isShizukuGranted by ShizukuManager.isPermissionGranted.collectAsStateWithLifecycle()
 
+    var showAudioSourceDialog by remember { mutableStateOf(false) }
+    var currentAudioSource by remember {
+        mutableStateOf(prefs.getString("call_recording_audio_source", "mic-voice-communication"))
+    }
+
     LaunchedEffect(Unit) {
         ShizukuManager.ensureInitialized()
         ShizukuManager.checkStatus()
+    }
+
+    LaunchedEffect(isShizukuAvailable, isShizukuGranted) {
+        if (isShizukuAvailable && isShizukuGranted) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val serverPath = dev.goodwy.rphone.controller.util.shizuku.ScrcpyConfig.getServerPath(context)
+                    dev.goodwy.rphone.controller.util.shizuku.ServerExtractor.ensureServerFile(context, serverPath)
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     var visible by remember { mutableStateOf(false) }
@@ -304,8 +320,13 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                         SettingsSectionLabel(stringResource(R.string.call_recording))
                         RillExpressiveCard {
                             val statusHeadline = stringResource(R.string.shizuku_call_recording)
+                            val sourceName = when (currentAudioSource) {
+                                "voice-call" -> stringResource(R.string.audio_source_voice_call)
+                                "mic" -> stringResource(R.string.audio_source_mic)
+                                else -> stringResource(R.string.audio_source_voice_comm)
+                            }
                             val statusSupporting = when {
-                                isShizukuAvailable && isShizukuGranted -> stringResource(R.string.shizuku_status_connected)
+                                isShizukuAvailable && isShizukuGranted -> "${stringResource(R.string.shizuku_status_connected)} • $sourceName"
                                 isShizukuAvailable -> stringResource(R.string.shizuku_status_permission_needed)
                                 else -> stringResource(R.string.shizuku_status_disconnected)
                             }
@@ -333,7 +354,7 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                     } else if (!isShizukuAvailable) {
                                         ShizukuManager.launchShizukuApp(context)
                                     } else {
-                                        ShizukuManager.checkStatus()
+                                        showAudioSourceDialog = true
                                     }
                                 }
                             )
@@ -516,6 +537,72 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                 },
                 confirmButton = {
                     TextButton(onClick = { showWifiCallingDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showAudioSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showAudioSourceDialog = false },
+                title = {
+                    Text(
+                        text = stringResource(R.string.call_recording_audio_source),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "mic-voice-communication" to stringResource(R.string.audio_source_voice_comm),
+                            "voice-call" to stringResource(R.string.audio_source_voice_call),
+                            "mic" to stringResource(R.string.audio_source_mic)
+                        ).forEach { (key, label) ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (currentAudioSource == key)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                onClick = {
+                                    currentAudioSource = key
+                                    prefs.setString("call_recording_audio_source", key)
+                                    showAudioSourceDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = currentAudioSource == key,
+                                        onClick = {
+                                            currentAudioSource = key
+                                            prefs.setString("call_recording_audio_source", key)
+                                            showAudioSourceDialog = false
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (currentAudioSource == key) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAudioSourceDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }

@@ -43,3 +43,14 @@
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     <init>();
 }
+
+# Shizuku User Service & AIDL rules
+-keep class dev.goodwy.rphone.controller.util.shizuku.ShellService {
+    <init>(...);
+    *;
+}
+-keep class dev.goodwy.rphone.IShellService { *; }
+-keep interface dev.goodwy.rphone.IShellService { *; }
+-keep class dev.goodwy.rphone.IShellService$* { *; }
+-keep class dev.goodwy.rphone.controller.util.shizuku.** { *; }
+-keep class rikka.shizuku.** { *; }

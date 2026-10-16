@@ -23,8 +23,8 @@ android {
         applicationId = "dev.goodwy.rphone"
         minSdk = 29
         targetSdk = 37
-        versionCode = 88
-        versionName = "0.6.28"
+        versionCode = 89
+        versionName = "0.6.29"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -90,6 +90,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig true
+        aidl true
     }
 
     androidResources {

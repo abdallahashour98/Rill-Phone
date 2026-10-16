@@ -777,4 +777,8 @@
     <string name="wifi_calling_sim_settings">إعدادات بطاقات SIM وشبكات الجوال</string>
     <string name="wifi_calling_xiaomi_hint">لهواتف شاومي: إذا أغلقت الشاشة تلقائياً، اطلب الكود *#*#869434#*#* لتعطيل فحص المشغل (Carrier Check)، أو اضبطها من إعدادات بطاقات SIM.</string>
     <string name="dial_code">طلب الكود %s</string>
+    <string name="call_recording_audio_source">مصدر صوت التسجيل</string>
+    <string name="audio_source_voice_comm">محادثة صوتية (موصى به - صوت الطرفين)</string>
+    <string name="audio_source_voice_call">مكالمة هاتفية (صوت النظام)</string>
+    <string name="audio_source_mic">الميكروفون فقط</string>
 </resources>

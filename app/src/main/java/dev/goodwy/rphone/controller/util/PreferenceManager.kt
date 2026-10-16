@@ -459,6 +459,8 @@ class PreferenceManager(context: Context) {
         const val KEY_RECENTS_FAVORITES_COLLAPSED = "recents_favorites_collapsed"
         const val KEY_IS_SUPPORTER = "is_supporter"
         const val KEY_POST_CALL_SCREEN = "post_call_screen"
+        const val KEY_REDIAL_UNANSWERED = "redial_unanswered"
+        const val KEY_REDIAL_AUTO_CALL = "redial_auto_call"
         const val KEY_NAV_BAR_STYLE = "nav_bar_style"
         const val NAV_BAR_STYLE_STANDARD = 0
         const val NAV_BAR_STYLE_TOOLBAR = 1

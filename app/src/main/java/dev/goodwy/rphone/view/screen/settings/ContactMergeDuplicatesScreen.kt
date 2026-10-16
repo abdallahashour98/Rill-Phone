@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +64,8 @@ fun ContactMergeDuplicatesScreen(
     val viewModel: ContactsViewModel = koinActivityViewModel()
     var duplicateGroups by remember { mutableStateOf<List<List<Contact>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isMergingAll by remember { mutableStateOf(false) }
+    var showMergeAllConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.findDuplicates { groups ->
@@ -111,14 +114,47 @@ fun ContactMergeDuplicatesScreen(
                 title = { Title(stringResource(R.string.merging_contacts)) },
                 navigationIcon = {
                     NavigationIcon(onClick = { navigateBack() })
+                },
+                actions = {
+                    if (duplicateGroups.isNotEmpty() && !isLoading && !isMergingAll) {
+                        TextButton(
+                            onClick = { showMergeAllConfirm = true }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.merge_all),
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             )
         }
     ) { padding ->
         BackHandler { navigateBack() }
         ScrollHapticsEffect(listState = listState)
-        if (isLoading) {
-            RillLoadingIndicatorView()
+        if (isLoading || isMergingAll) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding()),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    RillLoadingIndicatorView()
+                    if (isMergingAll) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.merging),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         } else {
             LazyColumn(
                 state = listState,
@@ -147,8 +183,29 @@ fun ContactMergeDuplicatesScreen(
                             stringResource(R.string.merging_contacts_description),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 16.dp)
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                         )
+                    }
+
+                    item {
+                        Button(
+                            onClick = { showMergeAllConfirm = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(Icons.Rounded.Merge, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.merge_all_duplicates, duplicateGroups.size),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
 
                     items(
@@ -170,6 +227,40 @@ fun ContactMergeDuplicatesScreen(
                 item { SettingsBottomPadding() }
             }
         }
+    }
+
+    if (showMergeAllConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!isMergingAll) showMergeAllConfirm = false },
+            title = { Text(stringResource(R.string.merge_all_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.merge_all_confirm_message, duplicateGroups.size))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMergeAllConfirm = false
+                        isMergingAll = true
+                        val groupsToMerge = duplicateGroups
+                        viewModel.mergeAllDuplicates(groupsToMerge) {
+                            duplicateGroups = emptyList()
+                            isMergingAll = false
+                        }
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.merge_all),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeAllConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
@@ -202,14 +293,6 @@ fun DuplicateGroupCard(
             .alpha(alpha)
     ) {
         group.forEachIndexed { index, contact ->
-//            val displayName = getDisplayName(contact, displayOrder)
-//            RillListItem(
-//                headline = displayName,
-//                supporting = if (contact.phoneNumbers.isNotEmpty()) contact.phoneNumbers.joinToString(", ") else null,
-//                avatarName = displayName,
-//                photoUri = contact.photoUri,
-//                onClick = { }
-//            )
             ContactListItem(
                 contact = contact,
                 navigator = navigator,
@@ -219,9 +302,6 @@ fun DuplicateGroupCard(
 
         Button(
             onClick = {
-                // Target contact—first in the group
-//                onMerge(group.first(), group.drop(1))
-
                 isUnmerging = true
                 scope.launch {
                     delay(300.milliseconds)
@@ -248,7 +328,7 @@ fun DuplicateGroupCard(
                     strokeWidth = 2.dp
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Unmerging...")
+                Text(stringResource(R.string.merging))
             } else {
                 Icon(Icons.Rounded.Merge, null)
                 Spacer(Modifier.width(8.dp))

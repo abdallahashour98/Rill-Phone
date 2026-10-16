@@ -104,6 +104,7 @@ fun CallLogFullScreen(
     var showMessagePicker by remember { mutableStateOf(false) }
     var pendingNumber by remember { mutableStateOf<String?>(null) }
     var expandedLogId by remember { mutableStateOf<Long?>(null) }
+    var recordingUpdateKey by remember { mutableStateOf(0) }
 
     // Entrance animation
     var screenVisible by remember { mutableStateOf(false) }
@@ -313,10 +314,10 @@ fun CallLogFullScreen(
                                         .padding(horizontal = 20.dp, vertical = 8.dp))
                                 RillExpressiveCard {
                                     logsInGroup.forEachIndexed { index, lg ->
-                                        val recordingFile = remember(lg.id, lg.date) {
+                                        val recordingFile = remember(lg.id, lg.date, recordingUpdateKey) {
                                             CallRecorder.findRecordingForCall(context, lg.number, lg.date, lg.duration)
                                         }
-                                        val isExpanded = expandedLogId == lg.id && recordingFile != null
+                                        val isExpanded = expandedLogId == lg.id && recordingFile?.exists() == true
 
                                         Column(
                                             modifier = Modifier
@@ -332,7 +333,7 @@ fun CallLogFullScreen(
                                                         } else {
                                                             selectedEntries + lg
                                                         }
-                                                    } else if (recordingFile != null) {
+                                                    } else if (recordingFile != null && recordingFile.exists()) {
                                                         expandedLogId = if (expandedLogId == lg.id) null else lg.id
                                                     }
                                                 },
@@ -348,20 +349,24 @@ fun CallLogFullScreen(
                                                 recordingFile = recordingFile
                                             )
 
-                                            AnimatedVisibility(
-                                                visible = isExpanded && recordingFile.exists()
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            val currentRecFile = recordingFile
+                                            if (currentRecFile != null) {
+                                                AnimatedVisibility(
+                                                    visible = isExpanded && currentRecFile.exists()
                                                 ) {
-                                                    CallRecordingPlayerCard(
-                                                        file = recordingFile!!,
-                                                        onDeleted = {
-                                                            expandedLogId = null
-                                                        }
-                                                    )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                                    ) {
+                                                        CallRecordingPlayerCard(
+                                                            file = currentRecFile,
+                                                            onDeleted = {
+                                                                expandedLogId = null
+                                                                recordingUpdateKey++
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }

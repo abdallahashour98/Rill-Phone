@@ -413,6 +413,11 @@
     <string name="no_duplicates_found">لم يتم العثور على مكررات</string>
     <string name="duplicates_in">المكررات في: %s</string>
     <string name="merge_duplicates">دمج المكررات (%s جهة اتصال)</string>
+    <string name="merge_all">دمج الكل</string>
+    <string name="merge_all_duplicates">دمج جميع المكررات (%1$d)</string>
+    <string name="merge_all_confirm_title">دمج جميع جهات الاتصال المكررة؟</string>
+    <string name="merge_all_confirm_message">سيتم دمج %1$d مجموعة مكررة في جهات اتصال موحدة.</string>
+    <string name="merging">جارٍ الدمج…</string>
 
     <string name="unmerging_contacts">فك ارتباط جهات الاتصال</string>
     <string name="unmerging_contacts_subtitle">البحث عن جهات الاتصال المدمجة وفك ارتباطها</string>
@@ -480,6 +485,15 @@
     <string name="call_status_calling">جاري الاتصال…</string>
     <string name="call_status_incoming">مكالمة واردة</string>
     <string name="call_status_connecting">جاري الاتصال…</string>
+    <string name="call_status_unanswered">لم يتم الرد</string>
+    <string name="call_status_busy">الرقم مشغول</string>
+    <string name="call_status_rejected">تم رفض المكالمة</string>
+    <string name="redial_unanswered">إعادة الاتصال عند عدم الرد</string>
+    <string name="redial_unanswered_subtitle">إظهار شاشة اتصال لمدة 5 ثوانٍ عند عدم الرد على المكالمة الصادرة</string>
+    <string name="redial_auto_call">إعادة الاتصال التلقائي</string>
+    <string name="redial_auto_call_subtitle">إعادة الاتصال بالرقم تلقائياً عند انتهاء العد التنازلي (5 ثوانٍ)</string>
+    <string name="redialing_in">إعادة الاتصال خلال %1$d ثوانٍ…</string>
+    <string name="call_now">اتصال الآن</string>
     <string name="slide_to_answer">اسحب للرد</string>
     <string name="swipe_up_to_answer">اسحب لأعلى للرد</string>
     <string name="swipe_down_to_reject">اسحب لأسفل للرفض</string>

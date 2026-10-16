@@ -1398,7 +1398,7 @@ fun ContactDetailsScreen(
                                                 val recFile = remember(log.id, log.date, refreshRecordingsTrigger) {
                                                     CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
                                                 }
-                                                val isExpanded = expandedLogId == log.id && recFile != null
+                                                val isExpanded = expandedLogId == log.id && recFile?.exists() == true
 
                                                 Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
                                                     CallLogTileSimple(
@@ -1407,20 +1407,22 @@ fun ContactDetailsScreen(
                                                         showSimLabel = showSimLabel,
                                                         recordingFile = recFile,
                                                         onClick = {
-                                                            if (recFile != null) {
+                                                            if (recFile != null && recFile.exists()) {
                                                                 expandedLogId = if (expandedLogId == log.id) null else log.id
                                                             }
                                                         }
                                                     )
-                                                    AnimatedVisibility(visible = isExpanded && recFile.exists()) {
-                                                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                                            CallRecordingPlayerCard(
-                                                                file = recFile!!,
-                                                                onDeleted = {
-                                                                    expandedLogId = null
-                                                                    refreshRecordingsTrigger++
-                                                                }
-                                                            )
+                                                    if (recFile != null) {
+                                                        AnimatedVisibility(visible = isExpanded && recFile.exists()) {
+                                                            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                                                CallRecordingPlayerCard(
+                                                                    file = recFile,
+                                                                    onDeleted = {
+                                                                        expandedLogId = null
+                                                                        refreshRecordingsTrigger++
+                                                                    }
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1475,12 +1477,14 @@ fun ContactDetailsScreen(
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             allContactRecordings.forEach { recFile ->
-                                                CallRecordingPlayerCard(
-                                                    file = recFile,
-                                                    onDeleted = {
-                                                        refreshRecordingsTrigger++
-                                                    }
-                                                )
+                                                androidx.compose.runtime.key(recFile.absolutePath) {
+                                                    CallRecordingPlayerCard(
+                                                        file = recFile,
+                                                        onDeleted = {
+                                                            refreshRecordingsTrigger++
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -2328,7 +2332,7 @@ fun ContactDetailsScreen(
                                             val recFile = remember(log.id, log.date, refreshRecordingsTrigger) {
                                                 CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
                                             }
-                                            val isExpanded = expandedLogId == log.id && recFile != null
+                                            val isExpanded = expandedLogId == log.id && recFile?.exists() == true
 
                                             Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
                                                 CallLogTileSimple(
@@ -2337,20 +2341,22 @@ fun ContactDetailsScreen(
                                                     showSimLabel = showSimLabel,
                                                     recordingFile = recFile,
                                                     onClick = {
-                                                        if (recFile != null) {
+                                                        if (recFile != null && recFile.exists()) {
                                                             expandedLogId = if (expandedLogId == log.id) null else log.id
                                                         }
                                                     }
                                                 )
-                                                AnimatedVisibility(visible = isExpanded && recFile.exists()) {
-                                                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                                        CallRecordingPlayerCard(
-                                                            file = recFile!!,
-                                                            onDeleted = {
-                                                                expandedLogId = null
-                                                                refreshRecordingsTrigger++
-                                                            }
-                                                        )
+                                                if (recFile != null) {
+                                                    AnimatedVisibility(visible = isExpanded && recFile.exists()) {
+                                                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                                            CallRecordingPlayerCard(
+                                                                file = recFile,
+                                                                onDeleted = {
+                                                                    expandedLogId = null
+                                                                    refreshRecordingsTrigger++
+                                                                }
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -2404,12 +2410,14 @@ fun ContactDetailsScreen(
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             allContactRecordings.forEach { recFile ->
-                                                CallRecordingPlayerCard(
-                                                    file = recFile,
-                                                    onDeleted = {
-                                                        refreshRecordingsTrigger++
-                                                    }
-                                                )
+                                                androidx.compose.runtime.key(recFile.absolutePath) {
+                                                    CallRecordingPlayerCard(
+                                                        file = recFile,
+                                                        onDeleted = {
+                                                            refreshRecordingsTrigger++
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }

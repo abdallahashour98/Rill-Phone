@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.SettingsPhone
 import androidx.compose.material.icons.rounded.SimCard
 import androidx.compose.material.icons.rounded.SpatialTracking
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PhoneCallback
+import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.*
@@ -89,6 +91,12 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     var showAudioSourceDialog by remember { mutableStateOf(false) }
     var currentAudioSource by remember {
         mutableStateOf(prefs.getString("call_recording_audio_source", "mic-voice-communication"))
+    }
+    var redialUnanswered by remember {
+        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true))
+    }
+    var redialAutoCall by remember {
+        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, true))
     }
 
     LaunchedEffect(Unit) {
@@ -308,6 +316,39 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
 //                                    prefs.setBoolean(PreferenceManager.KEY_AUTO_SPEAKER, it)
 //                                }
 //                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Redial on Unanswered Call ──────────────────────────────────────
+            item {
+                RillAnimatedSection(delayMs = 110L) {
+                    Column {
+                        SettingsSectionLabel(stringResource(R.string.redial_unanswered))
+                        RillExpressiveCard {
+                            RillSwitchListItem(
+                                headline = stringResource(R.string.redial_unanswered),
+                                supporting = stringResource(R.string.redial_unanswered_subtitle),
+                                leadingIcon = Icons.Rounded.PhoneCallback,
+                                checked = redialUnanswered,
+                                onCheckedChange = {
+                                    redialUnanswered = it
+                                    prefs.setBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, it)
+                                }
+                            )
+                            if (redialUnanswered) {
+                                RillSwitchListItem(
+                                    headline = stringResource(R.string.redial_auto_call),
+                                    supporting = stringResource(R.string.redial_auto_call_subtitle),
+                                    leadingIcon = Icons.Rounded.Autorenew,
+                                    checked = redialAutoCall,
+                                    onCheckedChange = {
+                                        redialAutoCall = it
+                                        prefs.setBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, it)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

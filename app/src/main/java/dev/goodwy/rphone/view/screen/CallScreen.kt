@@ -162,11 +162,12 @@ fun ExpressiveCallScreen(
                     Manifest.permission.RECORD_AUDIO
                 ) == PackageManager.PERMISSION_GRANTED
                 if (hasPerm) {
-                    val started = CallRecorder.startRecording(context, phoneNumber)
-                    if (started) {
-                        Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                    CallRecorder.startRecording(context, phoneNumber) { started ->
+                        if (started) {
+                            Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
@@ -210,11 +211,12 @@ fun ExpressiveCallScreen(
     ) { isGranted ->
         if (isGranted) {
             if (callState == Call.STATE_ACTIVE) {
-                val started = CallRecorder.startRecording(context, phoneNumber)
-                if (started) {
-                    Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                CallRecorder.startRecording(context, phoneNumber) { started ->
+                    if (started) {
+                        Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                    }
                 }
             } else {
                 isPendingRecording = true
@@ -818,11 +820,12 @@ fun ExpressiveCallScreen(
                                                             ) == PackageManager.PERMISSION_GRANTED
                                                             if (hasPerm) {
                                                                 if (callState == Call.STATE_ACTIVE) {
-                                                                    val started = CallRecorder.startRecording(context, phoneNumber)
-                                                                    if (started) {
-                                                                        Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
-                                                                    } else {
-                                                                        Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                                    CallRecorder.startRecording(context, phoneNumber) { started ->
+                                                                        if (started) {
+                                                                            Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                                        } else {
+                                                                            Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                                        }
                                                                     }
                                                                 } else {
                                                                     isPendingRecording = true

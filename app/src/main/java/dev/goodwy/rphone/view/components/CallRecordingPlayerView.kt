@@ -39,6 +39,8 @@ fun CallRecordingPlayerCard(
     modifier: Modifier = Modifier,
     onDeleted: () -> Unit = {}
 ) {
+    if (!file.exists()) return
+
     val context = LocalContext.current
     val currentPlayingFile by RecordingPlayer.currentPlayingFile.collectAsStateWithLifecycle()
     val isPlaying by RecordingPlayer.isPlaying.collectAsStateWithLifecycle()
@@ -48,8 +50,10 @@ fun CallRecordingPlayerCard(
     val isThisFilePlaying = currentPlayingFile?.absolutePath == file.absolutePath
     val isActive = isThisFilePlaying && isPlaying
 
-    val effectiveDurationMs = remember(file.lastModified(), totalDurationMs, isThisFilePlaying) {
-        if (isThisFilePlaying && totalDurationMs > 0) {
+    val effectiveDurationMs = remember(file.absolutePath, file.exists(), totalDurationMs, isThisFilePlaying) {
+        if (!file.exists()) {
+            0
+        } else if (isThisFilePlaying && totalDurationMs > 0) {
             totalDurationMs
         } else {
             CallRecorder.getAudioDurationMs(file).toInt().coerceAtLeast(1000)
@@ -213,9 +217,13 @@ fun CallRecordingPlayerCard(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val deleted = RecordingPlayer.deleteRecording(file)
                         showDeleteConfirm = false
-                        if (deleted) onDeleted()
+                        try {
+                            val deleted = RecordingPlayer.deleteRecording(file)
+                            if (deleted) onDeleted()
+                        } catch (e: Exception) {
+                            android.util.Log.e("CallRecordingPlayer", "Error deleting recording", e)
+                        }
                     }
                 ) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)

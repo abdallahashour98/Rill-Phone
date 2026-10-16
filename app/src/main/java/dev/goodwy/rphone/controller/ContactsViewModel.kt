@@ -472,6 +472,22 @@ class ContactsViewModel(
         }
     }
 
+    fun mergeAllDuplicates(groups: List<List<Contact>>, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                groups.forEach { group ->
+                    if (group.size > 1) {
+                        val targetId = group.first().id
+                        val sourceIds = group.drop(1).map { it.id }
+                        contactsRepo.mergeContacts(targetId, sourceIds)
+                    }
+                }
+            }
+            fetchContacts()
+            onComplete()
+        }
+    }
+
     fun setCustomRingtone(contactId: String, ringtoneUri: String?) {
         viewModelScope.launch {
             contactsRepo.setCustomRingtone(contactId, ringtoneUri)

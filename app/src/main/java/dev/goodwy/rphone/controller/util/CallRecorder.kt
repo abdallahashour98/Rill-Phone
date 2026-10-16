@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 object CallRecorder {
@@ -35,8 +36,25 @@ object CallRecorder {
     private var timerJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    @Synchronized
-    fun startRecording(context: Context, phoneNumber: String): Boolean {
+    fun startRecording(context: Context, phoneNumber: String, onResult: ((Boolean) -> Unit)? = null) {
+        if (_isRecording.value) {
+            onResult?.invoke(true)
+            return
+        }
+
+        scope.launch(Dispatchers.IO) {
+            val started = doStartRecording(context, phoneNumber)
+            withContext(Dispatchers.Main) {
+                onResult?.invoke(started)
+            }
+        }
+    }
+
+    suspend fun startRecordingSuspend(context: Context, phoneNumber: String): Boolean = withContext(Dispatchers.IO) {
+        doStartRecording(context, phoneNumber)
+    }
+
+    private suspend fun doStartRecording(context: Context, phoneNumber: String): Boolean {
         if (_isRecording.value) return true
 
         return try {
@@ -74,7 +92,7 @@ object CallRecorder {
                     _recordingDuration.value = 0L
 
                     timerJob?.cancel()
-                    timerJob = scope.launch {
+                    timerJob = scope.launch(Dispatchers.Main) {
                         while (_isRecording.value) {
                             delay(1000)
                             _recordingDuration.value += 1
@@ -87,7 +105,7 @@ object CallRecorder {
                 }
             }
 
-            // Fallback: standard MediaRecorder
+            // Fallback: standard MediaRecorder on background thread
             val audioSources = listOf(
                 MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
                 MediaRecorder.AudioSource.VOICE_CALL to "VOICE_CALL",
@@ -141,7 +159,7 @@ object CallRecorder {
             _recordingDuration.value = 0L
 
             timerJob?.cancel()
-            timerJob = scope.launch {
+            timerJob = scope.launch(Dispatchers.Main) {
                 while (_isRecording.value) {
                     delay(1000)
                     _recordingDuration.value += 1
@@ -297,14 +315,18 @@ object CallRecorder {
     }
 
     fun getAudioDurationMs(file: File): Long {
+        if (!file.exists() || file.length() == 0L) return 0L
+        val retriever = android.media.MediaMetadataRetriever()
         return try {
-            val retriever = android.media.MediaMetadataRetriever()
             retriever.setDataSource(file.absolutePath)
             val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-            retriever.release()
             time?.toLongOrNull() ?: 0L
         } catch (_: Exception) {
             0L
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {}
         }
     }
 
@@ -428,10 +450,15 @@ object RecordingPlayer {
         progressJob?.cancel()
         progressJob = scope.launch {
             while (_isPlaying.value) {
-                mediaPlayer?.let {
-                    if (it.isPlaying) {
-                        _currentPosition.value = it.currentPosition
+                try {
+                    val player = mediaPlayer
+                    if (player != null && player.isPlaying) {
+                        _currentPosition.value = player.currentPosition
+                    } else {
+                        break
                     }
+                } catch (_: Exception) {
+                    break
                 }
                 delay(100)
             }
@@ -462,17 +489,22 @@ object RecordingPlayer {
     }
 
     fun deleteRecording(file: File): Boolean {
-        if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
-            stop()
+        try {
+            if (_currentPlayingFile.value?.absolutePath == file.absolutePath) {
+                stop()
+            }
+            val result = if (file.exists()) {
+                file.delete()
+            } else {
+                true
+            }
+            if (result) {
+                CallRecorder.invalidateCache()
+            }
+            return result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting recording", e)
+            return false
         }
-        val result = try {
-            file.delete()
-        } catch (_: Exception) {
-            false
-        }
-        if (result) {
-            CallRecorder.invalidateCache()
-        }
-        return result
     }
 }

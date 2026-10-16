@@ -415,6 +415,11 @@
     <string name="no_duplicates_found">No duplicates found</string>
     <string name="duplicates_in">Duplicates in: %s</string>
     <string name="merge_duplicates">Merge duplicates (%s contacts)</string>
+    <string name="merge_all">Merge all</string>
+    <string name="merge_all_duplicates">Merge all duplicates (%1$d)</string>
+    <string name="merge_all_confirm_title">Merge all duplicate contacts?</string>
+    <string name="merge_all_confirm_message">This will merge %1$d duplicate groups into unified contacts.</string>
+    <string name="merging">Merging…</string>
 
     <string name="unmerging_contacts">Unlink Contacts</string>
     <string name="unmerging_contacts_subtitle">Finding for and unlink merged contacts</string>
@@ -482,6 +487,15 @@
     <string name="call_status_calling">Calling…</string>
     <string name="call_status_incoming">Incoming call</string>
     <string name="call_status_connecting">Connecting…</string>
+    <string name="call_status_unanswered">No answer</string>
+    <string name="call_status_busy">Line busy</string>
+    <string name="call_status_rejected">Call declined</string>
+    <string name="redial_unanswered">Redial on unanswered call</string>
+    <string name="redial_unanswered_subtitle">Show a 5-second redial prompt when an outgoing call is not answered</string>
+    <string name="redial_auto_call">Auto-redial after countdown</string>
+    <string name="redial_auto_call_subtitle">Automatically call the number when the 5-second countdown finishes</string>
+    <string name="redialing_in">Calling again in %1$d…</string>
+    <string name="call_now">Call now</string>
     <string name="slide_to_answer">slide to answer</string>
     <string name="swipe_up_to_answer">Swipe up to answer</string>
     <string name="swipe_down_to_reject">Swipe down to reject</string>

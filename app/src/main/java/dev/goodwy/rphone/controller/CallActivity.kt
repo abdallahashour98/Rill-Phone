@@ -114,10 +114,23 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
                 var retainedSession by remember { mutableStateOf<CallSession?>(null) }
                 var hasHadCall by remember { mutableStateOf(false) }
+                var hasEverBeenActive by remember { mutableStateOf(false) }
+                var redialTarget by remember { mutableStateOf<dev.goodwy.rphone.view.components.RedialTarget?>(null) }
+
                 LaunchedEffect(session) {
                     if (session != null) {
                         hasHadCall = true
                         retainedSession = session
+                        if (session!!.state != Call.STATE_DISCONNECTED) {
+                            redialTarget = null
+                        }
+                    }
+                }
+
+                LaunchedEffect(callViewModel.currentCallSession.value?.state) {
+                    val s = callViewModel.currentCallSession.value?.state
+                    if (s == Call.STATE_ACTIVE) {
+                        hasEverBeenActive = true
                     }
                 }
 
@@ -192,18 +205,41 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                 (c.details?.callDirection == Call.Details.DIRECTION_INCOMING || c.state == Call.STATE_RINGING) &&
                                         callViewModel.allCalls.value.none { it.state == Call.STATE_ACTIVE }
                             } ?: false
-                            if (isUnansweredIncoming) {
-                                dismissCallScreen()
+
+                            val isOutgoing = displayCall?.details?.callDirection == Call.Details.DIRECTION_OUTGOING
+                            val isUnansweredOutgoing = isOutgoing && !hasEverBeenActive && (displayCall?.details?.connectTimeMillis ?: 0L) == 0L
+                            val hasNoOtherCalls = callViewModel.allCalls.value.none { it != displayCall && it.state != Call.STATE_DISCONNECTED }
+                            val redialEnabled = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true)
+
+                            if (isUnansweredOutgoing && hasNoOtherCalls && redialEnabled && identity != null && identity.number.isNotBlank()) {
+                                val disconnectCauseCode = displayCall?.details?.disconnectCause?.code
+                                val reasonText = when (disconnectCauseCode) {
+                                    android.telecom.DisconnectCause.BUSY -> getString(R.string.call_status_busy)
+                                    android.telecom.DisconnectCause.REJECTED -> getString(R.string.call_status_rejected)
+                                    else -> getString(R.string.call_status_unanswered)
+                                }
+                                redialTarget = dev.goodwy.rphone.view.components.RedialTarget(
+                                    name = identity.name,
+                                    number = identity.number,
+                                    photoUri = identity.photoUri,
+                                    backgroundUri = identity.backgroundUri,
+                                    phoneAccountHandle = displayCall?.details?.accountHandle,
+                                    reason = reasonText
+                                )
                             } else {
-                                delay(350.milliseconds)
-                                dismissCallScreen()
+                                if (isUnansweredIncoming) {
+                                    dismissCallScreen()
+                                } else {
+                                    delay(350.milliseconds)
+                                    dismissCallScreen()
+                                }
                             }
                         }
 
                         else -> releaseProximityLock()
                     }
 
-                    if (session == null) {
+                    if (session == null && redialTarget == null) {
                         if (hasHadCall) {
                             delay(400.milliseconds)
                             if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
@@ -273,6 +309,26 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                 )
                             }
                         }
+                    }
+
+                    val targetForRedial = redialTarget
+                    if (targetForRedial != null) {
+                        val autoCall = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, true)
+                        dev.goodwy.rphone.view.components.RedialPromptScreen(
+                            target = targetForRedial,
+                            autoCallEnabled = autoCall,
+                            onRedial = { rTarget ->
+                                val num = rTarget.number
+                                val account = rTarget.phoneAccountHandle
+                                redialTarget = null
+                                hasEverBeenActive = false
+                                dev.goodwy.rphone.controller.util.makeCall(this@CallActivity, num, account)
+                            },
+                            onDismiss = {
+                                redialTarget = null
+                                dismissCallScreen()
+                            }
+                        )
                     }
                 }
             }

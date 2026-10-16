@@ -810,5 +810,6 @@
     <string name="call_screen_locked_title">Screen Locked</string>
     <string name="call_screen_locked_subtitle">Touch is disabled to prevent accidental touches</string>
     <string name="call_screen_slide_to_unlock">Slide to unlock</string>
-    <string name="call_screen_double_tap_to_unlock">Double tap to unlock</string>
+    <string name="call_screen_double_tap_to_unlock">Double tap or slide to unlock</string>
+    <string name="call_screen_unlock_action">Unlock</string>
 </resources>

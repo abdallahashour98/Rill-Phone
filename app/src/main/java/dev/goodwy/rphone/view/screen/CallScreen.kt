@@ -606,37 +606,6 @@ fun ExpressiveCallScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                                if (lockButtonEnabled && (callState == Call.STATE_ACTIVE || callState == Call.STATE_HOLDING)) {
-                                    Surface(
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            isScreenLocked = true
-                                        },
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.padding(top = 8.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Rounded.Lock,
-                                                contentDescription = stringResource(R.string.call_screen_lock),
-                                                modifier = Modifier.size(13.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.call_screen_lock),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         } else {
                             Surface(
@@ -1023,7 +992,11 @@ fun ExpressiveCallScreen(
                                             }
                                         }
                                         Spacer(modifier = Modifier.height(24.dp))
-                               val isSubPanelOpen = showKeypad || showNoteWindow || showMore || showAudioPicker
+                                    }
+                                }
+                            }
+
+                            val isSubPanelOpen = showKeypad || showNoteWindow || showMore || showAudioPicker
 
                             val audioRoute = audioState?.route ?: CallAudioState.ROUTE_EARPIECE
                             val audioIcon = when (audioRoute) {
@@ -1466,8 +1439,6 @@ fun ExpressiveCallScreen(
                                             }
                                         }
                                     }
-                                }
-                            }                                   }
                                 }
                             }
                         }

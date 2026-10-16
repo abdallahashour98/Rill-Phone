@@ -2109,7 +2109,7 @@ fun CallScreenLockOverlay(
         label = "pulseScale"
     )
     val textAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
+        initialValue = 0.6f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = LinearEasing),
@@ -2118,15 +2118,19 @@ fun CallScreenLockOverlay(
         label = "textAlpha"
     )
 
+    // Semi-transparent overlay preserving call screen visibility underneath while intercepting touches
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.94f))
+            .background(Color.Black.copy(alpha = 0.52f))
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         onUnlock()
+                    },
+                    onTap = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     }
                 )
             },
@@ -2137,98 +2141,117 @@ fun CallScreenLockOverlay(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Lock Status
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 40.dp)
+            // Top live call indicator
+            Surface(
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                modifier = Modifier.padding(top = 16.dp)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                    modifier = Modifier
-                        .size(80.dp)
-                        .scale(pulseScale)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Lock,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(38.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
-                Text(
-                    text = stringResource(R.string.call_screen_locked_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.call_screen_locked_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // Middle Call Info
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = contactName.ifBlank { phoneNumber },
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.12f)
-                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFF4CAF50), CircleShape)
+                    )
                     Text(
                         text = dev.goodwy.rphone.controller.util.formatDuration(callDuration),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-                }
-                Spacer(Modifier.height(20.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.alpha(textAlpha)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.TouchApp,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.call_screen_double_tap_to_unlock),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }
 
-            // Bottom Slider (Slide to Unlock)
+            // Center Floating Shield Card (Samsung Duos style frosted glass)
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFF1E2128).copy(alpha = 0.88f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                shadowElevation = 12.dp,
+                modifier = Modifier
+                    .fillMaxWidth(0.88f)
+                    .padding(vertical = 16.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        modifier = Modifier
+                            .size(68.dp)
+                            .scale(pulseScale)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Lock,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(34.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(R.string.call_screen_locked_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.call_screen_double_tap_to_unlock),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.72f),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    FilledTonalButton(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onUnlock()
+                        },
+                        shape = CircleShape,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.LockOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.call_screen_unlock_action),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Bottom Slider (Slide to Unlock - bidirectional)
             Box(
                 modifier = Modifier
-                    .padding(bottom = 32.dp)
+                    .padding(bottom = 24.dp)
                     .width(280.dp)
-                    .height(62.dp)
+                    .height(64.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.14f)),
+                    .background(Color.White.copy(alpha = 0.16f))
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.CenterStart
             ) {
                 // Slider Track Label
@@ -2254,13 +2277,13 @@ fun CallScreenLockOverlay(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .padding(start = 5.dp)
+                        .padding(start = 6.dp)
                         .offset { IntOffset(x = animatedOffset.toInt(), y = 0) }
                         .size(52.dp)
                         .pointerInput(maxOffsetPx) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (dragOffsetPx >= maxOffsetPx * 0.75f) {
+                                    if (abs(dragOffsetPx) >= maxOffsetPx * 0.4f) {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onUnlock()
                                     }
@@ -2270,7 +2293,7 @@ fun CallScreenLockOverlay(
                                 onHorizontalDrag = { _, dragAmount ->
                                     val newOffset = (dragOffsetPx + dragAmount).coerceIn(0f, maxOffsetPx)
                                     dragOffsetPx = newOffset
-                                    if (newOffset >= maxOffsetPx) {
+                                    if (newOffset >= maxOffsetPx * 0.7f) {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onUnlock()
                                     }

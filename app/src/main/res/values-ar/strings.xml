@@ -812,5 +812,6 @@
     <string name="call_screen_locked_title">الشاشة مقفلة</string>
     <string name="call_screen_locked_subtitle">تم تعطيل اللمس لمنع الضغطات غير المقصودة</string>
     <string name="call_screen_slide_to_unlock">اسحب لإلغاء القفل</string>
-    <string name="call_screen_double_tap_to_unlock">انقر مرتين لإلغاء القفل</string>
+    <string name="call_screen_double_tap_to_unlock">انقر مرتين أو اسحب لفك القفل</string>
+    <string name="call_screen_unlock_action">إلغاء القفل</string>
 </resources>

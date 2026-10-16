@@ -708,21 +708,28 @@ fun ExpressiveCallScreen(
                 val controlBtnFg = MaterialTheme.colorScheme.onSurface
 
                 val controlContent: @Composable () -> Unit = {
+                    val isModern = callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_IOS ||
+                            callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_ONEUI
+                    val isSub = showKeypad || showNoteWindow || showMore || showAudioPicker
+
                     Row(
                         modifier = Modifier
-                            .padding(horizontal = 9.dp, vertical = 8.dp),
+                            .padding(
+                                horizontal = if (isModern && !isSub) 0.dp else 9.dp,
+                                vertical = if (isModern && !isSub) 0.dp else 8.dp
+                            ),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .navigationBarsPadding()
+                                .then(if (!isModern || isSub) Modifier.navigationBarsPadding() else Modifier)
                                 .padding(
-                                    start = 20.dp,
-                                    end = 20.dp,
-                                    top = if (showKeypad || showNoteWindow || showMore || showAudioPicker) 20.dp else 22.dp,
-                                    bottom = 20.dp
+                                    start = if (isModern && !isSub) 0.dp else 20.dp,
+                                    end = if (isModern && !isSub) 0.dp else 20.dp,
+                                    top = if (isSub) 20.dp else (if (isModern) 0.dp else 22.dp),
+                                    bottom = if (isModern && !isSub) 4.dp else 20.dp
                                 ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -1445,53 +1452,67 @@ fun ExpressiveCallScreen(
                     }
                 }
 
-                val controlShape = MaterialTheme.shapes.extraExtraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
+                val isSubPanelActive = showKeypad || showNoteWindow || showMore || showAudioPicker
+                val isModernStyle = callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_IOS ||
+                        callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_ONEUI
 
-                if (useLgCallScreen) {
-                    Surface(
-                        shape           = controlShape,
-                        color           = bottomBarColor.copy(alpha = 0.35f),
-                        shadowElevation = 0.dp,
-                        tonalElevation  = 0.dp,
+                if (isModernStyle && !isSubPanelActive) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .drawBackdrop(
-                                backdrop = globalBackdrop,
-                                shape = { controlShape },
-                                effects = {
-                                    val d = density
-                                    colorControls(saturation = 1.4f)
-                                    blur(blurIntensity * d)
-                                    lens(
-                                        refractionHeight = 23f * d,
-                                        refractionAmount = 64f * d
-                                    )
-                                },
-                                highlight = { Highlight.Default }
-                            )
-                    ) { controlContent() }
-                } else if (useBlurCallScreen && globalBackdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    Surface(
-                        shape           = controlShape,
-                        color           = bottomBarColor.copy(alpha = 0.72f),
-                        shadowElevation = 0.dp,
-                        tonalElevation  = 0.dp,
-                        modifier        = Modifier
-                            .fillMaxWidth()
-                            .drawPlainBackdrop(
-                                backdrop = globalBackdrop,
-                                shape = { controlShape },
-                                effects = { blur(blurIntensity * density) }
-                            )
-                    ) { controlContent() }
-                } else {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(controlShape),
-                        color = bottomBarColor
+                            .navigationBarsPadding()
                     ) {
                         controlContent()
+                    }
+                } else {
+                    val controlShape = MaterialTheme.shapes.extraExtraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
+
+                    if (useLgCallScreen) {
+                        Surface(
+                            shape           = controlShape,
+                            color           = bottomBarColor.copy(alpha = 0.35f),
+                            shadowElevation = 0.dp,
+                            tonalElevation  = 0.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .drawBackdrop(
+                                    backdrop = globalBackdrop,
+                                    shape = { controlShape },
+                                    effects = {
+                                        val d = density
+                                        colorControls(saturation = 1.4f)
+                                        blur(blurIntensity * d)
+                                        lens(
+                                            refractionHeight = 23f * d,
+                                            refractionAmount = 64f * d
+                                        )
+                                    },
+                                    highlight = { Highlight.Default }
+                                )
+                        ) { controlContent() }
+                    } else if (useBlurCallScreen && globalBackdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        Surface(
+                            shape           = controlShape,
+                            color           = bottomBarColor.copy(alpha = 0.72f),
+                            shadowElevation = 0.dp,
+                            tonalElevation  = 0.dp,
+                            modifier        = Modifier
+                                .fillMaxWidth()
+                                .drawPlainBackdrop(
+                                    backdrop = globalBackdrop,
+                                    shape = { controlShape },
+                                    effects = { blur(blurIntensity * density) }
+                                )
+                        ) { controlContent() }
+                    } else {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(controlShape),
+                            color = bottomBarColor
+                        ) {
+                            controlContent()
+                        }
                     }
                 }
             } else if (showIncomingControls) {
@@ -1784,6 +1805,15 @@ fun ExpressiveCallScreen(
                 )
             }
         }
+
+        if (isScreenLocked) {
+            CallScreenLockOverlay(
+                contactName = contactName,
+                phoneNumber = phoneNumber,
+                callDuration = callDuration,
+                onUnlock = { isScreenLocked = false }
+            )
+        }
     }
 
     if (showManageSheet) {
@@ -1902,15 +1932,6 @@ fun ExpressiveCallScreen(
                     }
                 }
             }
-        }
-
-        if (isScreenLocked) {
-            CallScreenLockOverlay(
-                contactName = contactName,
-                phoneNumber = phoneNumber,
-                callDuration = callDuration,
-                onUnlock = { isScreenLocked = false }
-            )
         }
     }
 }

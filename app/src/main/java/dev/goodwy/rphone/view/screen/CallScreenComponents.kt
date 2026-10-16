@@ -2332,11 +2332,6 @@ fun IOSCallButton(
         spring(stiffness = Spring.StiffnessMedium),
         label = "iosBtnScale"
     )
-    val isDark = isSystemInDarkTheme()
-    val baseBgColor = if (isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.7f)
-    val activeBgColor = if (isDark) Color.White else Color.Black
-    val baseFgColor = if (isDark) Color.White else Color.Black
-    val activeFgColor = if (isDark) Color.Black else Color.White
 
     Column(
         modifier = modifier,
@@ -2346,26 +2341,27 @@ fun IOSCallButton(
             onClick = onClick,
             enabled = enabled,
             shape = CircleShape,
-            color = if (isActive) activeBgColor else baseBgColor,
+            color = if (isActive) Color.White else Color.White.copy(alpha = 0.20f),
+            border = if (!isActive) BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)) else null,
             interactionSource = interaction,
             modifier = Modifier
-                .size(68.dp)
+                .size(75.dp)
                 .scale(scale)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    tint = (if (isActive) activeFgColor else baseFgColor).copy(alpha = if (enabled) 1f else 0.4f),
-                    modifier = Modifier.size(28.dp)
+                    tint = if (isActive) Color.Black else Color.White.copy(alpha = if (enabled) 1f else 0.4f),
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = baseFgColor.copy(alpha = if (enabled) 0.85f else 0.4f),
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Normal),
+            color = Color.White.copy(alpha = if (enabled) 0.92f else 0.4f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -2373,7 +2369,7 @@ fun IOSCallButton(
     }
 }
 
-// ── iOS Call Controls (3x2 Circular Grid + Red Hangup) ───────────────────────
+// ── iOS Call Controls (Authentic 3x2 Circular Frosted Grid + Red Hangup) ─────
 @Composable
 fun CallControlsIOS(
     onKeypadClick: () -> Unit,
@@ -2399,14 +2395,13 @@ fun CallControlsIOS(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 20.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 3x2 Grid
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
             // Row 1: Mute | Keypad | Audio
             Row(
@@ -2484,21 +2479,22 @@ fun CallControlsIOS(
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(34.dp))
 
-        // Large circular red End Call button (iOS signature)
+        // Large circular red End Call button (75dp, iOS signature #EB5545)
         Surface(
             onClick = onHangupClick,
             shape = CircleShape,
-            color = color_call_end,
-            modifier = Modifier.size(74.dp)
+            color = Color(0xFFEB5545),
+            modifier = Modifier.size(75.dp),
+            shadowElevation = 4.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Rounded.CallEnd,
                     contentDescription = stringResource(R.string.end_call),
                     tint = Color.White,
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
         }
@@ -2516,12 +2512,13 @@ fun OneUICallButton(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(22.dp)
-    val isDark = isSystemInDarkTheme()
-    val baseBgColor = if (isDark) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
-    val activeBgColor = MaterialTheme.colorScheme.primaryContainer
-    val baseFgColor = MaterialTheme.colorScheme.onSurface
-    val activeFgColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val shape = RoundedCornerShape(24.dp)
+    val isPressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        spring(stiffness = Spring.StiffnessMedium),
+        label = "oneuiBtnScale"
+    )
 
     Column(
         modifier = modifier,
@@ -2531,24 +2528,27 @@ fun OneUICallButton(
             onClick = onClick,
             enabled = enabled,
             shape = shape,
-            color = if (isActive) activeBgColor else baseBgColor,
+            color = if (isActive) Color(0xFF2C74FF) else Color(0xFF2C2F36).copy(alpha = 0.90f),
+            border = if (!isActive) BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)) else null,
             interactionSource = interaction,
-            modifier = Modifier.size(66.dp)
+            modifier = Modifier
+                .size(68.dp)
+                .scale(scale)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    tint = (if (isActive) activeFgColor else baseFgColor).copy(alpha = if (enabled) 1f else 0.4f),
-                    modifier = Modifier.size(28.dp)
+                    tint = Color.White.copy(alpha = if (enabled) 1f else 0.4f),
+                    modifier = Modifier.size(30.dp)
                 )
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = baseFgColor.copy(alpha = if (enabled) 0.85f else 0.4f),
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp),
+            color = Color.White.copy(alpha = if (enabled) 0.88f else 0.4f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -2556,7 +2556,7 @@ fun OneUICallButton(
     }
 }
 
-// ── One UI Call Controls (Samsung Squircle Grid + Pill Hangup) ───────────────
+// ── One UI Call Controls (Samsung Squircle Grid + Iconic Wide Pill Hangup) ───
 @Composable
 fun CallControlsOneUI(
     onKeypadClick: () -> Unit,
@@ -2582,14 +2582,13 @@ fun CallControlsOneUI(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 3x2 Squircle Grid
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2665,16 +2664,17 @@ fun CallControlsOneUI(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // Samsung Pill End Call button
+        // Samsung Iconic Wide Pill End Call button (One UI signature)
         Surface(
             onClick = onHangupClick,
-            shape = RoundedCornerShape(32.dp),
-            color = color_call_end,
+            shape = CircleShape,
+            color = Color(0xFFE53935),
+            shadowElevation = 4.dp,
             modifier = Modifier
-                .fillMaxWidth(0.76f)
-                .height(62.dp)
+                .fillMaxWidth(0.72f)
+                .height(64.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Row(
@@ -2685,13 +2685,13 @@ fun CallControlsOneUI(
                         imageVector = Icons.Rounded.CallEnd,
                         contentDescription = stringResource(R.string.end_call),
                         tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                     Text(
                         text = stringResource(R.string.end_call),
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

@@ -48,6 +48,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.BlurLinear
 import androidx.compose.material.icons.rounded.BlurOff
 import androidx.compose.material.icons.rounded.Call
@@ -146,6 +147,7 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
     var dynamicColors       by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_DYNAMIC_COLORS, true)) }
     var customPrimaryColor  by remember(settingsState) { mutableStateOf(prefs.getInt("custom_primary_color", color_default_primary.toArgb())) }
     var incomingCallUI      by remember(settingsState) { mutableStateOf(prefs.getInt(PreferenceManager.KEY_INCOMING_CALL_UI_MODE, 10)) }
+    var callScreenStyle     by remember(settingsState) { mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, PreferenceManager.CALL_SCREEN_STYLE_DEFAULT)) }
     var scrollAnimation     by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SCROLL_ANIMATION, false)) }
     var dialpadAnimation    by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_DIALPAD_ANIMATION, true)) }
     var swipeToCall         by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true)) }
@@ -850,6 +852,25 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
                                     onValueChange = {
                                         incomingCallUI = it
                                         prefs.setInt(PreferenceManager.KEY_INCOMING_CALL_UI_MODE, it)
+                                    }
+                                )
+
+                                RillSelectListItem(
+                                    headline = stringResource(R.string.call_screen_style),
+                                    supporting = stringResource(R.string.call_screen_style_subtitle),
+                                    leadingIcon = Icons.Rounded.Smartphone,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorGreen,
+                                    options = listOf(
+                                        stringResource(R.string.call_screen_style_default) to PreferenceManager.CALL_SCREEN_STYLE_DEFAULT,
+                                        stringResource(R.string.call_screen_style_ios) to PreferenceManager.CALL_SCREEN_STYLE_IOS,
+                                        stringResource(R.string.call_screen_style_oneui) to PreferenceManager.CALL_SCREEN_STYLE_ONEUI,
+                                        stringResource(R.string.call_screen_style_minimal) to PreferenceManager.CALL_SCREEN_STYLE_MINIMAL
+                                    ),
+                                    selectedValue = callScreenStyle,
+                                    onValueChange = {
+                                        callScreenStyle = it
+                                        prefs.setInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, it)
                                     }
                                 )
 

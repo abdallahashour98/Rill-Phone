@@ -2,9 +2,11 @@ package dev.goodwy.rphone.view.screen
 
 import android.os.Build
 import android.telecom.Call
+import android.telecom.CallAudioState
 import android.view.HapticFeedbackConstants
 import android.media.AudioManager
 import android.media.ToneGenerator
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -2075,6 +2077,716 @@ fun InCallKeypad(
                             }
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+// ── In-Call Screen Lock Overlay (Samsung Duos / Anti-Touch Protection) ────────
+@Composable
+fun CallScreenLockOverlay(
+    contactName: String,
+    phoneNumber: String,
+    callDuration: Long,
+    onUnlock: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val maxSliderOffset = 210.dp
+    val maxOffsetPx = with(density) { maxSliderOffset.toPx() }
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "lockPulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+    val textAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "textAlpha"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.94f))
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        onUnlock()
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Top Lock Status
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 40.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                    modifier = Modifier
+                        .size(80.dp)
+                        .scale(pulseScale)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    text = stringResource(R.string.call_screen_locked_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.call_screen_locked_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.65f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            // Middle Call Info
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = contactName.ifBlank { phoneNumber },
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = dev.goodwy.rphone.controller.util.formatDuration(callDuration),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.alpha(textAlpha)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.TouchApp,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.call_screen_double_tap_to_unlock),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            // Bottom Slider (Slide to Unlock)
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    .width(280.dp)
+                    .height(62.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                // Slider Track Label
+                Text(
+                    text = stringResource(R.string.call_screen_slide_to_unlock),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = textAlpha),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 28.dp),
+                    textAlign = TextAlign.Center
+                )
+
+                // Drag Thumb
+                val animatedOffset by animateFloatAsState(
+                    targetValue = dragOffsetPx,
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    label = "thumbOffset"
+                )
+
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(start = 5.dp)
+                        .offset { IntOffset(x = animatedOffset.toInt(), y = 0) }
+                        .size(52.dp)
+                        .pointerInput(maxOffsetPx) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (dragOffsetPx >= maxOffsetPx * 0.75f) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        onUnlock()
+                                    }
+                                    dragOffsetPx = 0f
+                                },
+                                onDragCancel = { dragOffsetPx = 0f },
+                                onHorizontalDrag = { _, dragAmount ->
+                                    val newOffset = (dragOffsetPx + dragAmount).coerceIn(0f, maxOffsetPx)
+                                    dragOffsetPx = newOffset
+                                    if (newOffset >= maxOffsetPx) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        onUnlock()
+                                    }
+                                }
+                            )
+                        }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.LockOpen,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── iOS Style Button ─────────────────────────────────────────────────────────
+@Composable
+fun IOSCallButton(
+    icon: ImageVector,
+    label: String,
+    isActive: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        spring(stiffness = Spring.StiffnessMedium),
+        label = "iosBtnScale"
+    )
+    val isDark = isSystemInDarkTheme()
+    val baseBgColor = if (isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.7f)
+    val activeBgColor = if (isDark) Color.White else Color.Black
+    val baseFgColor = if (isDark) Color.White else Color.Black
+    val activeFgColor = if (isDark) Color.Black else Color.White
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            onClick = onClick,
+            enabled = enabled,
+            shape = CircleShape,
+            color = if (isActive) activeBgColor else baseBgColor,
+            interactionSource = interaction,
+            modifier = Modifier
+                .size(68.dp)
+                .scale(scale)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = (if (isActive) activeFgColor else baseFgColor).copy(alpha = if (enabled) 1f else 0.4f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = baseFgColor.copy(alpha = if (enabled) 0.85f else 0.4f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ── iOS Call Controls (3x2 Circular Grid + Red Hangup) ───────────────────────
+@Composable
+fun CallControlsIOS(
+    onKeypadClick: () -> Unit,
+    onMuteClick: () -> Unit,
+    onAudioClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    onRecordClick: () -> Unit,
+    onAddCallClick: () -> Unit,
+    onLockClick: () -> Unit,
+    onHangupClick: () -> Unit,
+    showKeypad: Boolean,
+    isMuted: Boolean,
+    audioRoute: Int,
+    audioIcon: ImageVector,
+    audioLabel: String,
+    isRecording: Boolean,
+    isPendingRecording: Boolean,
+    recordingDuration: Long,
+    canAddCall: Boolean,
+    lockButtonEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 3x2 Grid
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Row 1: Mute | Keypad | Audio
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                IOSCallButton(
+                    icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                    label = stringResource(R.string.mute),
+                    isActive = isMuted,
+                    onClick = onMuteClick,
+                    modifier = Modifier.weight(1f)
+                )
+                IOSCallButton(
+                    icon = Icons.Rounded.Dialpad,
+                    label = stringResource(R.string.keypad),
+                    isActive = showKeypad,
+                    onClick = onKeypadClick,
+                    modifier = Modifier.weight(1f)
+                )
+                val isSpeakerActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
+                        audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
+                        audioRoute == CallAudioState.ROUTE_WIRED_HEADSET
+                IOSCallButton(
+                    icon = audioIcon,
+                    label = audioLabel,
+                    isActive = isSpeakerActive,
+                    onClick = onAudioClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Row 2: Add Call | Record | Lock Screen (or More)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                IOSCallButton(
+                    icon = Icons.Rounded.Add,
+                    label = stringResource(R.string.add_call),
+                    enabled = canAddCall,
+                    onClick = onAddCallClick,
+                    modifier = Modifier.weight(1f)
+                )
+                IOSCallButton(
+                    icon = when {
+                        isRecording -> Icons.Rounded.StopCircle
+                        isPendingRecording -> Icons.Rounded.Schedule
+                        else -> Icons.Rounded.FiberManualRecord
+                    },
+                    label = when {
+                        isRecording -> dev.goodwy.rphone.controller.util.CallRecorder.formatDuration(recordingDuration)
+                        isPendingRecording -> stringResource(R.string.recording_standby)
+                        else -> stringResource(R.string.record_call)
+                    },
+                    isActive = isRecording || isPendingRecording,
+                    onClick = onRecordClick,
+                    modifier = Modifier.weight(1f)
+                )
+                if (lockButtonEnabled) {
+                    IOSCallButton(
+                        icon = Icons.Rounded.Lock,
+                        label = stringResource(R.string.call_screen_lock),
+                        onClick = onLockClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    IOSCallButton(
+                        icon = Icons.Default.MoreVert,
+                        label = stringResource(R.string.more),
+                        onClick = onMoreClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Large circular red End Call button (iOS signature)
+        Surface(
+            onClick = onHangupClick,
+            shape = CircleShape,
+            color = color_call_end,
+            modifier = Modifier.size(74.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Rounded.CallEnd,
+                    contentDescription = stringResource(R.string.end_call),
+                    tint = Color.White,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── One UI Style Button ──────────────────────────────────────────────────────
+@Composable
+fun OneUICallButton(
+    icon: ImageVector,
+    label: String,
+    isActive: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(22.dp)
+    val isDark = isSystemInDarkTheme()
+    val baseBgColor = if (isDark) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+    val activeBgColor = MaterialTheme.colorScheme.primaryContainer
+    val baseFgColor = MaterialTheme.colorScheme.onSurface
+    val activeFgColor = MaterialTheme.colorScheme.onPrimaryContainer
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            onClick = onClick,
+            enabled = enabled,
+            shape = shape,
+            color = if (isActive) activeBgColor else baseBgColor,
+            interactionSource = interaction,
+            modifier = Modifier.size(66.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = (if (isActive) activeFgColor else baseFgColor).copy(alpha = if (enabled) 1f else 0.4f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = baseFgColor.copy(alpha = if (enabled) 0.85f else 0.4f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ── One UI Call Controls (Samsung Squircle Grid + Pill Hangup) ───────────────
+@Composable
+fun CallControlsOneUI(
+    onKeypadClick: () -> Unit,
+    onMuteClick: () -> Unit,
+    onAudioClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    onRecordClick: () -> Unit,
+    onAddCallClick: () -> Unit,
+    onLockClick: () -> Unit,
+    onHangupClick: () -> Unit,
+    showKeypad: Boolean,
+    isMuted: Boolean,
+    audioRoute: Int,
+    audioIcon: ImageVector,
+    audioLabel: String,
+    isRecording: Boolean,
+    isPendingRecording: Boolean,
+    recordingDuration: Long,
+    canAddCall: Boolean,
+    lockButtonEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 3x2 Squircle Grid
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                OneUICallButton(
+                    icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                    label = stringResource(R.string.mute),
+                    isActive = isMuted,
+                    onClick = onMuteClick,
+                    modifier = Modifier.weight(1f)
+                )
+                OneUICallButton(
+                    icon = Icons.Rounded.Dialpad,
+                    label = stringResource(R.string.keypad),
+                    isActive = showKeypad,
+                    onClick = onKeypadClick,
+                    modifier = Modifier.weight(1f)
+                )
+                val isSpeakerActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
+                        audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
+                        audioRoute == CallAudioState.ROUTE_WIRED_HEADSET
+                OneUICallButton(
+                    icon = audioIcon,
+                    label = audioLabel,
+                    isActive = isSpeakerActive,
+                    onClick = onAudioClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                OneUICallButton(
+                    icon = Icons.Rounded.Add,
+                    label = stringResource(R.string.add_call),
+                    enabled = canAddCall,
+                    onClick = onAddCallClick,
+                    modifier = Modifier.weight(1f)
+                )
+                OneUICallButton(
+                    icon = when {
+                        isRecording -> Icons.Rounded.StopCircle
+                        isPendingRecording -> Icons.Rounded.Schedule
+                        else -> Icons.Rounded.FiberManualRecord
+                    },
+                    label = when {
+                        isRecording -> dev.goodwy.rphone.controller.util.CallRecorder.formatDuration(recordingDuration)
+                        isPendingRecording -> stringResource(R.string.recording_standby)
+                        else -> stringResource(R.string.record_call)
+                    },
+                    isActive = isRecording || isPendingRecording,
+                    onClick = onRecordClick,
+                    modifier = Modifier.weight(1f)
+                )
+                if (lockButtonEnabled) {
+                    OneUICallButton(
+                        icon = Icons.Rounded.Lock,
+                        label = stringResource(R.string.call_screen_lock),
+                        onClick = onLockClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    OneUICallButton(
+                        icon = Icons.Default.MoreVert,
+                        label = stringResource(R.string.more),
+                        onClick = onMoreClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Samsung Pill End Call button
+        Surface(
+            onClick = onHangupClick,
+            shape = RoundedCornerShape(32.dp),
+            color = color_call_end,
+            modifier = Modifier
+                .fillMaxWidth(0.76f)
+                .height(62.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CallEnd,
+                        contentDescription = stringResource(R.string.end_call),
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.end_call),
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Minimal Floating Call Controls ───────────────────────────────────────────
+@Composable
+fun CallControlsMinimal(
+    onKeypadClick: () -> Unit,
+    onMuteClick: () -> Unit,
+    onAudioClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    onLockClick: () -> Unit,
+    onHangupClick: () -> Unit,
+    showKeypad: Boolean,
+    isMuted: Boolean,
+    audioRoute: Int,
+    audioIcon: ImageVector,
+    lockButtonEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(36.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+        tonalElevation = 6.dp,
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IconButton(
+                onClick = onMuteClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (isMuted) Color.White else Color.Transparent,
+                    contentColor = if (isMuted) Color.Black else MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.size(50.dp)
+            ) {
+                Icon(
+                    imageVector = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                    contentDescription = stringResource(R.string.mute),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            IconButton(
+                onClick = onKeypadClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (showKeypad) Color.White else Color.Transparent,
+                    contentColor = if (showKeypad) Color.Black else MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.size(50.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Dialpad,
+                    contentDescription = stringResource(R.string.keypad),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            val isSpeakerActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
+                    audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
+                    audioRoute == CallAudioState.ROUTE_WIRED_HEADSET
+            IconButton(
+                onClick = onAudioClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (isSpeakerActive) Color.White else Color.Transparent,
+                    contentColor = if (isSpeakerActive) Color.Black else MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.size(50.dp)
+            ) {
+                Icon(
+                    imageVector = audioIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            if (lockButtonEnabled) {
+                IconButton(
+                    onClick = onLockClick,
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Lock,
+                        contentDescription = stringResource(R.string.call_screen_lock),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onMoreClick,
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.more),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Surface(
+                onClick = onHangupClick,
+                shape = CircleShape,
+                color = color_call_end,
+                modifier = Modifier.size(50.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.CallEnd,
+                        contentDescription = stringResource(R.string.end_call),
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
                 }
             }
         }

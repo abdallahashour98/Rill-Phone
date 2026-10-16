@@ -204,6 +204,20 @@ fun ExpressiveCallScreen(
         preferenceManager.getInt(PreferenceManager.KEY_CALLER_NUMBER_SIZE, 0)
     }
 
+    val callScreenStyle = remember(settingsState) {
+        preferenceManager.getInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, PreferenceManager.CALL_SCREEN_STYLE_DEFAULT)
+    }
+    val lockButtonEnabled = remember(settingsState) {
+        preferenceManager.getBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, true)
+    }
+    var isScreenLocked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(callState) {
+        if (callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) {
+            isScreenLocked = false
+        }
+    }
+
     val isRecording by CallRecorder.isRecording.collectAsStateWithLifecycle()
     val recordingDuration by CallRecorder.recordingDuration.collectAsStateWithLifecycle()
     val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
@@ -592,6 +606,37 @@ fun ExpressiveCallScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                                if (lockButtonEnabled && (callState == Call.STATE_ACTIVE || callState == Call.STATE_HOLDING)) {
+                                    Surface(
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                            isScreenLocked = true
+                                        },
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Lock,
+                                                contentDescription = stringResource(R.string.call_screen_lock),
+                                                modifier = Modifier.size(13.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.call_screen_lock),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         } else {
                             Surface(
@@ -848,6 +893,20 @@ fun ExpressiveCallScreen(
                                                         showAudioPicker = false
                                                     }
                                                 )
+                                                if (lockButtonEnabled) {
+                                                    MoreItem(
+                                                        headline = stringResource(R.string.call_screen_lock),
+                                                        leadingIcon = Icons.Rounded.Lock,
+                                                        onClick = {
+                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                            showMore = false
+                                                            showKeypad = false
+                                                            showNoteWindow = false
+                                                            showAudioPicker = false
+                                                            isScreenLocked = true
+                                                        }
+                                                    )
+                                                }
                                                 MoreItem(
                                                     headline = stringResource(R.string.message),
                                                     leadingIcon = ImageVector.vectorResource(id = R.drawable.ic_message_outline),
@@ -964,143 +1023,120 @@ fun ExpressiveCallScreen(
                                             }
                                         }
                                         Spacer(modifier = Modifier.height(24.dp))
-                                    }
-                                }
+                               val isSubPanelOpen = showKeypad || showNoteWindow || showMore || showAudioPicker
+
+                            val audioRoute = audioState?.route ?: CallAudioState.ROUTE_EARPIECE
+                            val audioIcon = when (audioRoute) {
+                                CallAudioState.ROUTE_SPEAKER -> Icons.AutoMirrored.Rounded.VolumeUp
+                                CallAudioState.ROUTE_BLUETOOTH -> Icons.Rounded.Bluetooth
+                                CallAudioState.ROUTE_WIRED_HEADSET -> Icons.Rounded.Headset
+                                else -> Icons.AutoMirrored.Rounded.VolumeDown
                             }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AnimatedCallButton(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Rounded.Dialpad,
-                                    isActive = showKeypad,
-                                    label = stringResource(R.string.keypad),
-                                    btnColor = controlBtnColor,
-                                    activeBtnColor = controlBtnActiveColor,
-                                    fgColor = controlBtnFg,
-                                    activeFgColor = controlBtnActiveFg
-                                ) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    showKeypad = !showKeypad
-                                    showNoteWindow = false
-                                    showMore = false
-                                    showAudioPicker = false
+                            val bluetoothLabel = stringResource(R.string.audio_route_bluetooth)
+                            val audioLabel = when (audioRoute) {
+                                CallAudioState.ROUTE_SPEAKER -> stringResource(R.string.audio_route_speaker)
+                                CallAudioState.ROUTE_BLUETOOTH -> try {
+                                    audioState?.activeBluetoothDevice?.name ?: bluetoothLabel
+                                } catch (e: SecurityException) {
+                                    bluetoothLabel
                                 }
+                                CallAudioState.ROUTE_WIRED_HEADSET -> stringResource(R.string.audio_route_headset)
+                                else -> stringResource(R.string.audio_route_handset)
+                            }
 
-                                AnimatedCallButton(
-                                    modifier = Modifier.weight(1f),
-                                    icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
-                                    isActive = isMuted,
-                                    label = stringResource(R.string.mute),
-                                    btnColor = controlBtnColor,
-                                    activeBtnColor = controlBtnActiveColor,
-                                    fgColor = controlBtnFg,
-                                    activeFgColor = controlBtnActiveFg
-                                ) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    callViewModel.toggleMute()
-                                }
+                            val hasExternalRoutes = remember(audioState) {
+                                val supported = audioState?.supportedRouteMask ?: 0
+                                (supported and CallAudioState.ROUTE_BLUETOOTH) != 0 ||
+                                        (supported and CallAudioState.ROUTE_WIRED_HEADSET) != 0
+                            }
 
-                                val audioRoute = audioState?.route ?: CallAudioState.ROUTE_EARPIECE
-                                val audioIcon = when (audioRoute) {
-                                    CallAudioState.ROUTE_SPEAKER -> Icons.AutoMirrored.Rounded.VolumeUp
-                                    CallAudioState.ROUTE_BLUETOOTH -> Icons.Rounded.Bluetooth
-                                    CallAudioState.ROUTE_WIRED_HEADSET -> Icons.Rounded.Headset
-                                    else -> Icons.AutoMirrored.Rounded.VolumeDown
-                                }
-
-                                val bluetoothLabel = stringResource(R.string.audio_route_bluetooth)
-                                val audioLabel = when (audioRoute) {
-                                    CallAudioState.ROUTE_SPEAKER -> stringResource(R.string.audio_route_speaker)
-                                    CallAudioState.ROUTE_BLUETOOTH -> try {
-                                        audioState?.activeBluetoothDevice?.name ?: bluetoothLabel
-                                    } catch (e: SecurityException) {
-                                        bluetoothLabel
-                                    }
-                                    CallAudioState.ROUTE_WIRED_HEADSET -> stringResource(R.string.audio_route_headset)
-                                    else -> stringResource(R.string.audio_route_handset)
-                                }
-
-                                val hasExternalRoutes = remember(audioState) {
-                                    val supported = audioState?.supportedRouteMask ?: 0
-                                    (supported and CallAudioState.ROUTE_BLUETOOTH) != 0 ||
-                                            (supported and CallAudioState.ROUTE_WIRED_HEADSET) != 0
-                                }
-                                AnimatedCallButton(
-                                    modifier = Modifier.weight(1f),
-                                    icon = audioIcon,
-                                    isActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
-                                            audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
-                                            audioRoute == CallAudioState.ROUTE_WIRED_HEADSET,
-                                    label = audioLabel,
-                                    btnColor = controlBtnColor,
-                                    activeBtnColor = controlBtnActiveColor,
-                                    fgColor = controlBtnFg,
-                                    activeFgColor = controlBtnActiveFg
-                                ) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-//                                    callViewModel.cycleAudioRoute()
-
-                                    if (hasExternalRoutes) {
-                                        showAudioPicker = !showAudioPicker
-                                        showMore = false
+                            if (!isSubPanelOpen && callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_IOS) {
+                                CallControlsIOS(
+                                    onKeypadClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showKeypad = true
                                         showNoteWindow = false
-                                        showKeypad = false
-                                    } else {
-                                        val supported = audioState?.supportedRouteMask ?: 0
-                                        if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
-                                            if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
-                                                callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-                                            }
+                                        showMore = false
+                                        showAudioPicker = false
+                                    },
+                                    onMuteClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        callViewModel.toggleMute()
+                                    },
+                                    onAudioClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (hasExternalRoutes) {
+                                            showAudioPicker = true
+                                            showMore = false
+                                            showNoteWindow = false
+                                            showKeypad = false
                                         } else {
-                                            if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
-                                                callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                            val supported = audioState?.supportedRouteMask ?: 0
+                                            if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
+                                                if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                                                }
+                                            } else {
+                                                if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                                }
                                             }
                                         }
-                                    }
-                                }
-
-                                AnimatedCallButton(
-                                    modifier = Modifier.weight(1f),
-                                    icon = Icons.Default.MoreVert,
-                                    isActive = showMore,
-                                    label = stringResource(R.string.more),
-                                    btnColor = controlBtnColor,
-                                    activeBtnColor = controlBtnActiveColor,
-                                    fgColor = controlBtnFg,
-                                    activeFgColor = controlBtnActiveFg
-                                ) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                    showMore = !showMore
-                                    showNoteWindow = false
-                                    showKeypad = false
-                                    showAudioPicker = false
-                                }
-                            }
-
-                            val hangupWidthFraction =
-                                preferenceManager.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f)
-                            val endInteraction = remember { MutableInteractionSource() }
-                            val endPressed by endInteraction.collectIsPressedAsState()
-                            val endRadius by animateDpAsState(
-                                if (endPressed) 20.dp else 42.dp,
-                                spring(stiffness = Spring.StiffnessMedium),
-                                label = "endRadius"
-                            )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val isCircleHangup = hangupWidthFraction <= 0.1f
-                                Surface(
-                                    onClick = {
+                                    },
+                                    onMoreClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showMore = true
+                                    },
+                                    onRecordClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (isRecording) {
+                                            CallRecorder.stopRecording()
+                                            Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
+                                        } else if (isPendingRecording) {
+                                            isPendingRecording = false
+                                            Toast.makeText(context, context.getString(R.string.recording_standby_cancelled), Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            val hasPerm = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (hasPerm) {
+                                                if (callState == Call.STATE_ACTIVE) {
+                                                    CallRecorder.startRecording(context, phoneNumber) { started ->
+                                                        if (started) {
+                                                            Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                        } else {
+                                                            Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                } else {
+                                                    isPendingRecording = true
+                                                    Toast.makeText(context, context.getString(R.string.recording_standby_toast), Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            }
+                                        }
+                                    },
+                                    onAddCallClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        val canMerge = otherCall != null || (try { call.details.can(Call.Details.CAPABILITY_MERGE_CONFERENCE) } catch (_: Exception) { false })
+                                        if (!isConference && canMerge) {
+                                            callViewModel.mergeCalls()
+                                        } else {
+                                            if (callState != Call.STATE_HOLDING) {
+                                                try { call.hold() } catch (_: Exception) {}
+                                            }
+                                            val intent = Intent(Intent.ACTION_DIAL)
+                                            context.startActivity(intent)
+                                        }
+                                    },
+                                    onLockClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        isScreenLocked = true
+                                    },
+                                    onHangupClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                                         if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
                                             scope.launch(Dispatchers.IO) {
@@ -1109,36 +1145,329 @@ fun ExpressiveCallScreen(
                                         }
                                         callDisconnect()
                                     },
-                                    modifier = if (isCircleHangup) Modifier.size(76.dp)
-                                    else Modifier
-                                        .fillMaxWidth(hangupWidthFraction.coerceIn(0.1f, 1.0f))
-                                        .height(68.dp),
-                                    shape = if (isCircleHangup) CircleShape else RoundedCornerShape(endRadius),
-                                    color = color_call_end,
-                                    interactionSource = endInteraction
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    showKeypad = showKeypad,
+                                    isMuted = isMuted,
+                                    audioRoute = audioRoute,
+                                    audioIcon = audioIcon,
+                                    audioLabel = audioLabel,
+                                    isRecording = isRecording,
+                                    isPendingRecording = isPendingRecording,
+                                    recordingDuration = recordingDuration,
+                                    canAddCall = otherCall == null && callState != Call.STATE_DIALING,
+                                    lockButtonEnabled = lockButtonEnabled
+                                )
+                            } else if (!isSubPanelOpen && callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_ONEUI) {
+                                CallControlsOneUI(
+                                    onKeypadClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showKeypad = true
+                                        showNoteWindow = false
+                                        showMore = false
+                                        showAudioPicker = false
+                                    },
+                                    onMuteClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        callViewModel.toggleMute()
+                                    },
+                                    onAudioClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (hasExternalRoutes) {
+                                            showAudioPicker = true
+                                            showMore = false
+                                            showNoteWindow = false
+                                            showKeypad = false
+                                        } else {
+                                            val supported = audioState?.supportedRouteMask ?: 0
+                                            if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
+                                                if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                                                }
+                                            } else {
+                                                if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onMoreClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showMore = true
+                                    },
+                                    onRecordClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (isRecording) {
+                                            CallRecorder.stopRecording()
+                                            Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
+                                        } else if (isPendingRecording) {
+                                            isPendingRecording = false
+                                            Toast.makeText(context, context.getString(R.string.recording_standby_cancelled), Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            val hasPerm = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (hasPerm) {
+                                                if (callState == Call.STATE_ACTIVE) {
+                                                    CallRecorder.startRecording(context, phoneNumber) { started ->
+                                                        if (started) {
+                                                            Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_SHORT).show()
+                                                        } else {
+                                                            Toast.makeText(context, context.getString(R.string.recording_error), Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                } else {
+                                                    isPendingRecording = true
+                                                    Toast.makeText(context, context.getString(R.string.recording_standby_toast), Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            }
+                                        }
+                                    },
+                                    onAddCallClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        val canMerge = otherCall != null || (try { call.details.can(Call.Details.CAPABILITY_MERGE_CONFERENCE) } catch (_: Exception) { false })
+                                        if (!isConference && canMerge) {
+                                            callViewModel.mergeCalls()
+                                        } else {
+                                            if (callState != Call.STATE_HOLDING) {
+                                                try { call.hold() } catch (_: Exception) {}
+                                            }
+                                            val intent = Intent(Intent.ACTION_DIAL)
+                                            context.startActivity(intent)
+                                        }
+                                    },
+                                    onLockClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        isScreenLocked = true
+                                    },
+                                    onHangupClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                                        if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
+                                            scope.launch(Dispatchers.IO) {
+                                                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                            }
+                                        }
+                                        callDisconnect()
+                                    },
+                                    showKeypad = showKeypad,
+                                    isMuted = isMuted,
+                                    audioRoute = audioRoute,
+                                    audioIcon = audioIcon,
+                                    audioLabel = audioLabel,
+                                    isRecording = isRecording,
+                                    isPendingRecording = isPendingRecording,
+                                    recordingDuration = recordingDuration,
+                                    canAddCall = otherCall == null && callState != Call.STATE_DIALING,
+                                    lockButtonEnabled = lockButtonEnabled
+                                )
+                            } else if (!isSubPanelOpen && callScreenStyle == PreferenceManager.CALL_SCREEN_STYLE_MINIMAL) {
+                                CallControlsMinimal(
+                                    onKeypadClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showKeypad = true
+                                        showNoteWindow = false
+                                        showMore = false
+                                        showAudioPicker = false
+                                    },
+                                    onMuteClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        callViewModel.toggleMute()
+                                    },
+                                    onAudioClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (hasExternalRoutes) {
+                                            showAudioPicker = true
+                                            showMore = false
+                                            showNoteWindow = false
+                                            showKeypad = false
+                                        } else {
+                                            val supported = audioState?.supportedRouteMask ?: 0
+                                            if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
+                                                if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                                                }
+                                            } else {
+                                                if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
+                                                    callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onMoreClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        showMore = true
+                                    },
+                                    onLockClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        isScreenLocked = true
+                                    },
+                                    onHangupClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                                        if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
+                                            scope.launch(Dispatchers.IO) {
+                                                NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                            }
+                                        }
+                                        callDisconnect()
+                                    },
+                                    showKeypad = showKeypad,
+                                    isMuted = isMuted,
+                                    audioRoute = audioRoute,
+                                    audioIcon = audioIcon,
+                                    lockButtonEnabled = lockButtonEnabled
+                                )
+                            } else {
+                                // Classic Rill controls (and panel hangup button)
+                                if (!isSubPanelOpen) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AnimatedCallButton(
+                                            modifier = Modifier.weight(1f),
+                                            icon = Icons.Rounded.Dialpad,
+                                            isActive = showKeypad,
+                                            label = stringResource(R.string.keypad),
+                                            btnColor = controlBtnColor,
+                                            activeBtnColor = controlBtnActiveColor,
+                                            fgColor = controlBtnFg,
+                                            activeFgColor = controlBtnActiveFg
                                         ) {
-                                            val showText = hangupWidthFraction > 0.5f
-                                            Icon(
-                                                Icons.Rounded.CallEnd,
-                                                stringResource(R.string.end_call),
-                                                tint = Color.White,
-                                                modifier = Modifier.size(if (showText) 26.dp else 32.dp)
-                                            )
-                                            if (showText) {
-                                                Text(
+                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                            showKeypad = !showKeypad
+                                            showNoteWindow = false
+                                            showMore = false
+                                            showAudioPicker = false
+                                        }
+
+                                        AnimatedCallButton(
+                                            modifier = Modifier.weight(1f),
+                                            icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                                            isActive = isMuted,
+                                            label = stringResource(R.string.mute),
+                                            btnColor = controlBtnColor,
+                                            activeBtnColor = controlBtnActiveColor,
+                                            fgColor = controlBtnFg,
+                                            activeFgColor = controlBtnActiveFg
+                                        ) {
+                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                            callViewModel.toggleMute()
+                                        }
+
+                                        AnimatedCallButton(
+                                            modifier = Modifier.weight(1f),
+                                            icon = audioIcon,
+                                            isActive = audioRoute == CallAudioState.ROUTE_SPEAKER ||
+                                                    audioRoute == CallAudioState.ROUTE_BLUETOOTH ||
+                                                    audioRoute == CallAudioState.ROUTE_WIRED_HEADSET,
+                                            label = audioLabel,
+                                            btnColor = controlBtnColor,
+                                            activeBtnColor = controlBtnActiveColor,
+                                            fgColor = controlBtnFg,
+                                            activeFgColor = controlBtnActiveFg
+                                        ) {
+                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                            if (hasExternalRoutes) {
+                                                showAudioPicker = !showAudioPicker
+                                                showMore = false
+                                                showNoteWindow = false
+                                                showKeypad = false
+                                            } else {
+                                                val supported = audioState?.supportedRouteMask ?: 0
+                                                if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
+                                                    if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
+                                                        callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                                                    }
+                                                } else {
+                                                    if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
+                                                        callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        AnimatedCallButton(
+                                            modifier = Modifier.weight(1f),
+                                            icon = Icons.Default.MoreVert,
+                                            isActive = showMore,
+                                            label = stringResource(R.string.more),
+                                            btnColor = controlBtnColor,
+                                            activeBtnColor = controlBtnActiveColor,
+                                            fgColor = controlBtnFg,
+                                            activeFgColor = controlBtnActiveFg
+                                        ) {
+                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                            showMore = !showMore
+                                            showNoteWindow = false
+                                            showKeypad = false
+                                            showAudioPicker = false
+                                        }
+                                    }
+                                }
+
+                                val hangupWidthFraction =
+                                    preferenceManager.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f)
+                                val endInteraction = remember { MutableInteractionSource() }
+                                val endPressed by endInteraction.collectIsPressedAsState()
+                                val endRadius by animateDpAsState(
+                                    if (endPressed) 20.dp else 42.dp,
+                                    spring(stiffness = Spring.StiffnessMedium),
+                                    label = "endRadius"
+                                )
+
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val isCircleHangup = hangupWidthFraction <= 0.1f
+                                    Surface(
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                                            if (noteText.isNotBlank() && phoneNumber.isNotEmpty()) {
+                                                scope.launch(Dispatchers.IO) {
+                                                    NoteManager.writeNote(context, contactName, phoneNumber, noteText)
+                                                }
+                                            }
+                                            callDisconnect()
+                                        },
+                                        modifier = if (isCircleHangup) Modifier.size(76.dp)
+                                        else Modifier
+                                            .fillMaxWidth(hangupWidthFraction.coerceIn(0.1f, 1.0f))
+                                            .height(68.dp),
+                                        shape = if (isCircleHangup) CircleShape else RoundedCornerShape(endRadius),
+                                        color = color_call_end,
+                                        interactionSource = endInteraction
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                val showText = hangupWidthFraction > 0.5f
+                                                Icon(
+                                                    Icons.Rounded.CallEnd,
                                                     stringResource(R.string.end_call),
-                                                    color = Color.White,
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    fontWeight = FontWeight.SemiBold
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(if (showText) 26.dp else 32.dp)
                                                 )
+                                                if (showText) {
+                                                    Text(
+                                                        stringResource(R.string.end_call),
+                                                        color = Color.White,
+                                                        style = MaterialTheme.typography.labelLarge,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                }
                                             }
                                         }
                                     }
+                                }
+                            }                                   }
                                 }
                             }
                         }
@@ -1602,6 +1931,15 @@ fun ExpressiveCallScreen(
                     }
                 }
             }
+        }
+
+        if (isScreenLocked) {
+            CallScreenLockOverlay(
+                contactName = contactName,
+                phoneNumber = phoneNumber,
+                callDuration = callDuration,
+                onUnlock = { isScreenLocked = false }
+            )
         }
     }
 }

@@ -795,4 +795,20 @@
     <string name="audio_source_voice_call_uplink">My Voice Only (Uplink)</string>
     <string name="audio_source_voice_comm">Voice Communication (Mic with Echo Cancellation)</string>
     <string name="audio_source_mic">Standard Microphone</string>
+
+    <!-- In-Call Screen Styles & Screen Lock -->
+    <string name="call_screen_style">In-Call Screen Style</string>
+    <string name="call_screen_style_subtitle">Choose the layout and style of the active call screen</string>
+    <string name="call_screen_style_default">Classic Rill</string>
+    <string name="call_screen_style_ios">iOS (iPhone)</string>
+    <string name="call_screen_style_oneui">Samsung (One UI)</string>
+    <string name="call_screen_style_minimal">Minimal</string>
+    <string name="call_screen_lock_section">Screen Lock During Calls</string>
+    <string name="call_screen_lock_button_title">Show Lock Button in Calls</string>
+    <string name="call_screen_lock_button_subtitle">Lock screen touch to prevent accidental ear or cheek touches (useful if proximity sensor is faulty)</string>
+    <string name="call_screen_lock">Lock Screen</string>
+    <string name="call_screen_locked_title">Screen Locked</string>
+    <string name="call_screen_locked_subtitle">Touch is disabled to prevent accidental touches</string>
+    <string name="call_screen_slide_to_unlock">Slide to unlock</string>
+    <string name="call_screen_double_tap_to_unlock">Double tap to unlock</string>
 </resources>

@@ -797,4 +797,20 @@
     <string name="audio_source_voice_call_uplink">صوتي أنا فقط (Uplink)</string>
     <string name="audio_source_voice_comm">ميكروفون محادثة (عزل الصدى - ميكروفونك فقط)</string>
     <string name="audio_source_mic">الميكروفون العادي (المايك فقط)</string>
+
+    <!-- In-Call Screen Styles & Screen Lock -->
+    <string name="call_screen_style">نمط شاشة المكالمة</string>
+    <string name="call_screen_style_subtitle">اختر مظهر وتنسيق شاشة المكالمات الجارية</string>
+    <string name="call_screen_style_default">ريل الكلاسيكي</string>
+    <string name="call_screen_style_ios">آيفون (iOS)</string>
+    <string name="call_screen_style_oneui">سامسونج (One UI)</string>
+    <string name="call_screen_style_minimal">مبسط</string>
+    <string name="call_screen_lock_section">قفل الشاشة أثناء المكالمة</string>
+    <string name="call_screen_lock_button_title">إظهار زر قفل الشاشة</string>
+    <string name="call_screen_lock_button_subtitle">قفل لمس الشاشة لمنع الضغط بالخطأ بواسطة الأذن أو الوجه (مفيد عند تعطل مستشعر القرب)</string>
+    <string name="call_screen_lock">قفل الشاشة</string>
+    <string name="call_screen_locked_title">الشاشة مقفلة</string>
+    <string name="call_screen_locked_subtitle">تم تعطيل اللمس لمنع الضغطات غير المقصودة</string>
+    <string name="call_screen_slide_to_unlock">اسحب لإلغاء القفل</string>
+    <string name="call_screen_double_tap_to_unlock">انقر مرتين لإلغاء القفل</string>
 </resources>

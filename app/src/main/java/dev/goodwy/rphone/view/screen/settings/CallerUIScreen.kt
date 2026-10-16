@@ -22,7 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.FormatSize
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,6 +62,7 @@ import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.view.components.SupportProjectItem
 import dev.goodwy.rphone.view.components.Title
 import dev.goodwy.rphone.view.components.RillSelectListItem
+import dev.goodwy.rphone.view.components.RillSwitchListItem
 import dev.goodwy.rphone.view.components.shake
 import dev.goodwy.rphone.view.theme.customColors
 import kotlinx.coroutines.delay
@@ -96,6 +99,12 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
 
     var themeMode   by remember(settingsState) { mutableStateOf(prefs.getString(PreferenceManager.KEY_THEME_MODE, "auto") ?: "auto") }
     var hangupWidth by remember(settingsState) { mutableFloatStateOf(prefs.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f).coerceIn(0.1f, 1.0f)) }
+    var callScreenStyle by remember(settingsState) {
+        mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, PreferenceManager.CALL_SCREEN_STYLE_DEFAULT))
+    }
+    var callScreenLockButton by remember(settingsState) {
+        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, true))
+    }
     val rawCallerNameSize = prefs.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 28)
     val initialCallerNameSize = when (rawCallerNameSize) {
         0 -> 28
@@ -675,6 +684,58 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // ── Call Screen Style ──────────────────────────────────────
+                item {
+                    RillAnimatedSection(delayMs = 70L) {
+                        Column {
+                            SettingsSectionLabel(stringResource(R.string.call_screen_style))
+                            RillExpressiveCard {
+                                RillSelectListItem(
+                                    headline = stringResource(R.string.call_screen_style),
+                                    supporting = stringResource(R.string.call_screen_style_subtitle),
+                                    leadingIcon = Icons.Rounded.Smartphone,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                    options = listOf(
+                                        stringResource(R.string.call_screen_style_default) to PreferenceManager.CALL_SCREEN_STYLE_DEFAULT,
+                                        stringResource(R.string.call_screen_style_ios) to PreferenceManager.CALL_SCREEN_STYLE_IOS,
+                                        stringResource(R.string.call_screen_style_oneui) to PreferenceManager.CALL_SCREEN_STYLE_ONEUI,
+                                        stringResource(R.string.call_screen_style_minimal) to PreferenceManager.CALL_SCREEN_STYLE_MINIMAL
+                                    ),
+                                    selectedValue = callScreenStyle,
+                                    onValueChange = {
+                                        callScreenStyle = it
+                                        prefs.setInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, it)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── In-Call Screen Lock ───────────────────────────────────
+                item {
+                    RillAnimatedSection(delayMs = 80L) {
+                        Column {
+                            SettingsSectionLabel(stringResource(R.string.call_screen_lock_section))
+                            RillExpressiveCard {
+                                RillSwitchListItem(
+                                    headline = stringResource(R.string.call_screen_lock_button_title),
+                                    supporting = stringResource(R.string.call_screen_lock_button_subtitle),
+                                    leadingIcon = Icons.Rounded.Lock,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkPurple,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorPurple,
+                                    checked = callScreenLockButton,
+                                    onCheckedChange = {
+                                        callScreenLockButton = it
+                                        prefs.setBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, it)
+                                    }
+                                )
                             }
                         }
                     }

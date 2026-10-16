@@ -443,6 +443,14 @@ class PreferenceManager(context: Context) {
         const val RECORD_FILTER_UNKNOWN_ONLY = 3
         const val RECORD_FILTER_CONTACTS_ONLY = 4
 
+        const val KEY_CALL_SCREEN_STYLE = "call_screen_style"
+        const val CALL_SCREEN_STYLE_DEFAULT = 0
+        const val CALL_SCREEN_STYLE_IOS = 1
+        const val CALL_SCREEN_STYLE_ONEUI = 2
+        const val CALL_SCREEN_STYLE_MINIMAL = 3
+
+        const val KEY_CALL_SCREEN_LOCK_BUTTON = "call_screen_lock_button"
+
         const val KEY_POCKET_MODE = "pocket_mode"
         const val KEY_VOLUME_SQUEEZE_DND = "volume_squeeze_dnd"
         const val KEY_QUICK_RESPONSES = "custom_quick_responses"
@@ -696,6 +704,12 @@ class PreferenceManager(context: Context) {
 
     fun isContactsTrashEnabled(): Boolean = getBoolean(KEY_CONTACTS_TRASH_ENABLED, true)
     fun setContactsTrashEnabled(enabled: Boolean) = setBoolean(KEY_CONTACTS_TRASH_ENABLED, enabled)
+
+    fun getCallScreenStyle(): Int = getInt(KEY_CALL_SCREEN_STYLE, CALL_SCREEN_STYLE_DEFAULT)
+    fun setCallScreenStyle(style: Int) = setInt(KEY_CALL_SCREEN_STYLE, style)
+
+    fun isCallScreenLockButtonEnabled(): Boolean = getBoolean(KEY_CALL_SCREEN_LOCK_BUTTON, true)
+    fun setCallScreenLockButtonEnabled(enabled: Boolean) = setBoolean(KEY_CALL_SCREEN_LOCK_BUTTON, enabled)
 
     fun resetSwipeActions() {
         setBoolean(KEY_SWIPE_ACTIONS_ENABLED, false)

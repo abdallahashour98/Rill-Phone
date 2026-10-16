@@ -58,6 +58,11 @@ import dev.goodwy.rphone.view.theme.customColors
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.rounded.Timer
+import dev.goodwy.rphone.controller.util.forceLtr
+
 data class RedialTarget(
     val name: String,
     val number: String,
@@ -109,8 +114,8 @@ fun RedialPromptScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
-            .padding(24.dp),
+            .background(Color.Black.copy(alpha = 0.72f))
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
         AnimatedVisibility(
@@ -119,25 +124,26 @@ fun RedialPromptScreen(
             exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.95f, animationSpec = tween(200))
         ) {
             Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
                 tonalElevation = 6.dp,
-                shadowElevation = 12.dp,
+                shadowElevation = 16.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 4.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     // Reason pill chip
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -147,7 +153,7 @@ fun RedialPromptScreen(
                                 imageVector = Icons.Rounded.PhoneCallback,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
@@ -165,15 +171,15 @@ fun RedialPromptScreen(
                     RillAvatar(
                         name = target.name,
                         photoUri = target.photoUri,
-                        modifier = Modifier.size(84.dp)
+                        modifier = Modifier.size(88.dp)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Contact Name
                     Text(
-                        text = target.name.ifEmpty { target.number },
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = target.name.ifEmpty { target.number.forceLtr() },
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
@@ -185,42 +191,54 @@ fun RedialPromptScreen(
                     if (target.name.isNotEmpty() && target.name != target.number) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = target.number,
+                            text = target.number.forceLtr(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
                     // Linear countdown progress bar
                     LinearProgressIndicator(
                         progress = { animatedProgress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(6.dp)
+                            .height(8.dp)
                             .clip(CircleShape),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Countdown text
-                    Text(
-                        text = stringResource(R.string.redialing_in, remainingSeconds),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Countdown text with icon
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Timer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.redialing_in, remainingSeconds),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(26.dp))
 
-                    // Action buttons
+                    // Action buttons with equal weights and single-line protection
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Cancel / Decline button
@@ -231,14 +249,30 @@ fun RedialPromptScreen(
                                     onDismiss()
                                 }
                             },
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(52.dp)
+                                .height(54.dp)
                         ) {
-                            Icon(Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.cancel), fontWeight = FontWeight.SemiBold)
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.cancel),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         // Call Now button
@@ -249,18 +283,30 @@ fun RedialPromptScreen(
                                     onRedial(target)
                                 }
                             },
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
                                 contentColor = Color.White
                             ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             modifier = Modifier
-                                .weight(1.3f)
-                                .height(52.dp)
+                                .weight(1f)
+                                .height(54.dp)
                         ) {
-                            Icon(Icons.Rounded.Call, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.call_now), fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Rounded.Call,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.call_now),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }

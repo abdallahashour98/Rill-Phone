@@ -2101,8 +2101,14 @@ fun CallScreenLockOverlay(
     val view = LocalView.current
     val density = LocalDensity.current
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val maxSliderOffset = 210.dp
-    val maxOffsetPx = with(density) { maxSliderOffset.toPx() }
+
+    var trackWidthPx by remember { mutableFloatStateOf(0f) }
+    val thumbSizeDp = 48.dp
+    val thumbPaddingDp = 5.dp
+    val thumbSizePx = with(density) { thumbSizeDp.toPx() }
+    val thumbPaddingPx = with(density) { thumbPaddingDp.toPx() }
+    val maxOffsetPx = (trackWidthPx - thumbSizePx - (thumbPaddingPx * 2)).coerceAtLeast(1f)
+
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "lockPulse")
@@ -2116,8 +2122,8 @@ fun CallScreenLockOverlay(
         label = "pulseScale"
     )
     val textAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
+        initialValue = 0.50f,
+        targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
@@ -2130,24 +2136,13 @@ fun CallScreenLockOverlay(
         modifier = modifier
             .fillMaxSize()
             .zIndex(100f)
-            .background(Color.Black.copy(alpha = 0.52f))
+            .background(Color.Black.copy(alpha = 0.58f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
-                // Intercept any clicks on background and provide tactile feedback
+                // Intercept any tap on background safely - does NOT unlock!
                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        onUnlock()
-                    },
-                    onTap = {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                    }
-                )
             },
         contentAlignment = Alignment.Center
     ) {
@@ -2156,16 +2151,16 @@ fun CallScreenLockOverlay(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 28.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top live call indicator
+            // Top live call duration capsule
             Surface(
                 shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-                modifier = Modifier.padding(top = 16.dp)
+                color = Color.Black.copy(alpha = 0.55f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                modifier = Modifier.padding(top = 12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -2186,23 +2181,25 @@ fun CallScreenLockOverlay(
                 }
             }
 
-            // Center Floating Shield Card (Samsung Duos style frosted glass)
+            // Center Floating Shield Card with Elevated Integrated Slider (Elevated safely away from End Call & controls!)
             Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = Color(0xFF1E2128).copy(alpha = 0.88f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                shadowElevation = 12.dp,
+                shape = RoundedCornerShape(32.dp),
+                color = Color(0xFF1B1E24).copy(alpha = 0.92f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                shadowElevation = 16.dp,
                 modifier = Modifier
-                    .fillMaxWidth(0.88f)
+                    .fillMaxWidth(0.90f)
                     .padding(vertical = 16.dp)
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 26.dp)
                 ) {
+                    // Lock icon inside pulsing circle
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                         modifier = Modifier
                             .size(68.dp)
                             .scale(pulseScale)
@@ -2216,118 +2213,103 @@ fun CallScreenLockOverlay(
                             )
                         }
                     }
+
                     Spacer(Modifier.height(14.dp))
+
                     Text(
                         text = stringResource(R.string.call_screen_locked_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(Modifier.height(6.dp))
+
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
-                        text = stringResource(R.string.call_screen_double_tap_to_unlock),
+                        text = stringResource(R.string.call_screen_slide_to_unlock),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.72f),
+                        color = Color.White.copy(alpha = 0.70f),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(18.dp))
-                    FilledTonalButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onUnlock()
-                        },
-                        shape = CircleShape,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp)
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Elevated Slider (Safely in the center card, far above the in-call buttons and red End Call button!)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+                            .onSizeChanged { trackWidthPx = it.width.toFloat() },
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.LockOpen,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
+                        // Slider Track Label
                         Text(
-                            text = stringResource(R.string.call_screen_unlock_action),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
+                            text = stringResource(R.string.call_screen_slide_to_unlock),
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.5.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = textAlpha),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            textAlign = TextAlign.Center
                         )
-                    }
-                }
-            }
 
-            // Bottom Slider (Slide to Unlock - RTL & LTR aware)
-            Box(
-                modifier = Modifier
-                    .padding(bottom = 24.dp)
-                    .width(280.dp)
-                    .height(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.16f))
-                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                // Slider Track Label
-                Text(
-                    text = stringResource(R.string.call_screen_slide_to_unlock),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = textAlpha),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 28.dp),
-                    textAlign = TextAlign.Center
-                )
+                        // Drag Thumb
+                        val animatedOffset by animateFloatAsState(
+                            targetValue = dragOffsetPx,
+                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                            label = "thumbOffset"
+                        )
+                        val visualOffsetX = if (isRtl) -animatedOffset else animatedOffset
 
-                // Drag Thumb
-                val animatedOffset by animateFloatAsState(
-                    targetValue = dragOffsetPx,
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "thumbOffset"
-                )
-                val visualOffsetX = if (isRtl) -animatedOffset else animatedOffset
-
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(start = 6.dp)
-                        .offset { IntOffset(x = visualOffsetX.toInt(), y = 0) }
-                        .size(52.dp)
-                        .pointerInput(maxOffsetPx, isRtl) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (dragOffsetPx >= maxOffsetPx * 0.4f) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        onUnlock()
-                                    }
-                                    dragOffsetPx = 0f
-                                },
-                                onDragCancel = { dragOffsetPx = 0f },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    val delta = if (isRtl) -dragAmount else dragAmount
-                                    val newOffset = (dragOffsetPx + delta).coerceIn(0f, maxOffsetPx)
-                                    dragOffsetPx = newOffset
-                                    if (newOffset >= maxOffsetPx * 0.65f) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        onUnlock()
-                                    }
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier
+                                .padding(start = thumbPaddingDp)
+                                .offset { IntOffset(x = visualOffsetX.toInt(), y = 0) }
+                                .size(thumbSizeDp)
+                                .pointerInput(maxOffsetPx, isRtl) {
+                                    detectHorizontalDragGestures(
+                                        onDragEnd = {
+                                            if (dragOffsetPx >= maxOffsetPx * 0.45f) {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                onUnlock()
+                                            }
+                                            dragOffsetPx = 0f
+                                        },
+                                        onDragCancel = { dragOffsetPx = 0f },
+                                        onHorizontalDrag = { _, dragAmount ->
+                                            val delta = if (isRtl) -dragAmount else dragAmount
+                                            val newOffset = (dragOffsetPx + delta).coerceIn(0f, maxOffsetPx)
+                                            dragOffsetPx = newOffset
+                                            if (newOffset >= maxOffsetPx * 0.70f) {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                onUnlock()
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (dragOffsetPx >= maxOffsetPx * 0.45f) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.LockOpen,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(26.dp)
-                        )
                     }
                 }
             }
+
+            // Bottom empty spacer: leaves the lower screen area (controls & End Call button) clean and clear
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 }

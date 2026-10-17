@@ -812,4 +812,15 @@
     <string name="call_screen_slide_to_unlock">Slide to unlock</string>
     <string name="call_screen_double_tap_to_unlock">Double tap or slide to unlock</string>
     <string name="call_screen_unlock_action">Unlock</string>
+
+    <!-- In-Call Buttons Customization -->
+    <string name="customize_call_controls">Customize In-Call Buttons</string>
+    <string name="customize_call_controls_subtitle">Arrange buttons and choose what appears on screen vs 3-dots menu</string>
+    <string name="call_controls_main_screen">Main Screen Buttons</string>
+    <string name="call_controls_more_menu">More (3 Dots) Menu</string>
+    <string name="call_controls_preview">Layout Preview</string>
+    <string name="reset_to_default">Reset to default</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="slot_label">Slot %1$d</string>
 </resources>

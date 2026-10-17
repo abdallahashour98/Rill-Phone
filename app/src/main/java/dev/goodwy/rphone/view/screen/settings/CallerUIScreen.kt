@@ -16,9 +16,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.FormatSize
@@ -26,6 +34,13 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Wallpaper
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Dialpad
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,7 +65,9 @@ import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.view.components.NavigationIcon
 import dev.goodwy.rphone.view.components.RillAnimatedSection
+import dev.goodwy.rphone.view.components.RillDialog
 import dev.goodwy.rphone.view.components.RillExpressiveCard
+import dev.goodwy.rphone.view.components.RillListItem
 import dev.goodwy.rphone.view.theme.MyColors.cardColor
 import dev.goodwy.rphone.view.theme.color_call_end
 import com.ramcosta.composedestinations.annotation.Destination
@@ -105,6 +122,7 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
     var callScreenLockButton by remember(settingsState) {
         mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, true))
     }
+    var showCustomizeButtonsDialog by remember { mutableStateOf(false) }
     val rawCallerNameSize = prefs.getInt(PreferenceManager.KEY_CALLER_NAME_SIZE, 28)
     val initialCallerNameSize = when (rawCallerNameSize) {
         0 -> 28
@@ -713,6 +731,15 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                                         prefs.setInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, it)
                                     }
                                 )
+                                RillListItem(
+                                    headline = stringResource(R.string.customize_call_controls),
+                                    supporting = stringResource(R.string.customize_call_controls_subtitle),
+                                    leadingIcon = Icons.Rounded.Widgets,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                    trailingIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    onClick = { showCustomizeButtonsDialog = true }
+                                )
                             }
                         }
                     }
@@ -772,6 +799,424 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            }
+
+            if (showCustomizeButtonsDialog) {
+                CustomizeCallControlsDialog(
+                    initialStyle = callScreenStyle,
+                    onDismissRequest = { showCustomizeButtonsDialog = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CustomizeCallControlsDialog(
+    initialStyle: Int,
+    onDismissRequest: () -> Unit
+) {
+    val context = LocalContext.current
+    val prefs: PreferenceManager = koinInject()
+    var selectedStyle by remember { mutableIntStateOf(initialStyle) }
+    var buttonsOrder by remember(selectedStyle) {
+        mutableStateOf(prefs.getCallButtonsOrder(selectedStyle))
+    }
+
+    val msgIcon = ImageVector.vectorResource(id = R.drawable.ic_message_outline)
+
+    val allActionInfo = remember(msgIcon) {
+        mapOf(
+            "mute" to (context.getString(R.string.mute) to Icons.Rounded.Mic),
+            "keypad" to (context.getString(R.string.keypad) to Icons.Rounded.Dialpad),
+            "audio" to (context.getString(R.string.audio_output_title) to Icons.AutoMirrored.Rounded.VolumeUp),
+            "record" to (context.getString(R.string.record_call) to Icons.Rounded.FiberManualRecord),
+            "note" to (context.getString(R.string.add_note) to Icons.AutoMirrored.Outlined.StickyNote2),
+            "add_call" to (context.getString(R.string.add_call) to Icons.Rounded.Add),
+            "hold" to (context.getString(R.string.hold) to Icons.Default.Pause),
+            "lock" to (context.getString(R.string.call_screen_lock) to Icons.Rounded.Lock),
+            "message" to (context.getString(R.string.message) to msgIcon),
+            "more" to (context.getString(R.string.more) to Icons.Default.MoreVert)
+        )
+    }
+
+    val primarySlotsCount = if (selectedStyle == PreferenceManager.CALL_SCREEN_STYLE_IOS ||
+        selectedStyle == PreferenceManager.CALL_SCREEN_STYLE_ONEUI) 6 else 4
+
+    val primaryActions = buttonsOrder.take(primarySlotsCount)
+    val moreActions = buttonsOrder.drop(primarySlotsCount)
+
+    fun moveAction(fromIndex: Int, toIndex: Int) {
+        if (fromIndex in buttonsOrder.indices && toIndex in buttonsOrder.indices) {
+            val updated = buttonsOrder.toMutableList()
+            val item = updated.removeAt(fromIndex)
+            updated.add(toIndex, item)
+            buttonsOrder = updated
+            prefs.setCallButtonsOrder(selectedStyle, updated)
+        }
+    }
+
+    RillDialog(
+        onDismissRequest = onDismissRequest,
+        title = stringResource(R.string.customize_call_controls),
+        icon = Icons.Rounded.Widgets,
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.done))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    prefs.resetCallButtonsOrder(selectedStyle)
+                    buttonsOrder = prefs.getCallButtonsOrder(selectedStyle)
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.reset_to_default))
+            }
+        }
+    ) {
+        val styleOptions = listOf(
+            stringResource(R.string.call_screen_style_default) to PreferenceManager.CALL_SCREEN_STYLE_DEFAULT,
+            stringResource(R.string.call_screen_style_ios) to PreferenceManager.CALL_SCREEN_STYLE_IOS,
+            stringResource(R.string.call_screen_style_oneui) to PreferenceManager.CALL_SCREEN_STYLE_ONEUI,
+            stringResource(R.string.call_screen_style_minimal) to PreferenceManager.CALL_SCREEN_STYLE_MINIMAL
+        )
+
+        ScrollableTabRow(
+            selectedTabIndex = styleOptions.indexOfFirst { it.second == selectedStyle }.coerceAtLeast(0),
+            edgePadding = 0.dp,
+            divider = {},
+            containerColor = Color.Transparent
+        ) {
+            styleOptions.forEach { (title, style) ->
+                Tab(
+                    selected = selectedStyle == style,
+                    onClick = { selectedStyle = style },
+                    text = {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selectedStyle == style) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Mini preview of the buttons layout in the selected style
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.call_controls_preview),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+
+                when (selectedStyle) {
+                    PreferenceManager.CALL_SCREEN_STYLE_IOS -> {
+                        // 3x2 mini grid + circle hangup
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (row in 0..1) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    for (col in 0..2) {
+                                        val idx = row * 3 + col
+                                        val key = primaryActions.getOrNull(idx)
+                                        val info = key?.let { allActionInfo[it] }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            modifier = Modifier.size(46.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (info != null) {
+                                                    Icon(info.second, contentDescription = info.first, modifier = Modifier.size(20.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFEB5545),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.CallEnd, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                            }
+                        }
+                    }
+                    PreferenceManager.CALL_SCREEN_STYLE_ONEUI -> {
+                        // 3x2 mini squircles + pill hangup
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (row in 0..1) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    for (col in 0..2) {
+                                        val idx = row * 3 + col
+                                        val key = primaryActions.getOrNull(idx)
+                                        val info = key?.let { allActionInfo[it] }
+                                        Surface(
+                                            shape = RoundedCornerShape(14.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            modifier = Modifier.size(46.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (info != null) {
+                                                    Icon(info.second, contentDescription = info.first, modifier = Modifier.size(20.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xFFE53935),
+                            modifier = Modifier.width(130.dp).height(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.CallEnd, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    PreferenceManager.CALL_SCREEN_STYLE_MINIMAL -> {
+                        Surface(
+                            shape = RoundedCornerShape(26.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                primaryActions.take(4).forEach { key ->
+                                    val info = allActionInfo[key]
+                                    if (info != null) {
+                                        Icon(info.second, contentDescription = info.first, modifier = Modifier.size(22.dp))
+                                    }
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = color_call_end,
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Rounded.CallEnd, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Classic Rill: 4 buttons + wide hangup bar
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            primaryActions.take(4).forEach { key ->
+                                val info = allActionInfo[key]
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        if (info != null) {
+                                            Icon(info.second, contentDescription = info.first, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = color_call_end,
+                            modifier = Modifier.fillMaxWidth(0.6f).height(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.CallEnd, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // Reorder list
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // Main Screen Buttons Header
+            item {
+                Text(
+                    text = "${stringResource(R.string.call_controls_main_screen)} ($primarySlotsCount)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp, start = 4.dp)
+                )
+            }
+
+            items(primaryActions.size) { slotIdx ->
+                val key = primaryActions[slotIdx]
+                val info = allActionInfo[key]
+                val slotNumber = slotIdx + 1
+
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "$slotNumber",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        if (info != null) {
+                            Icon(info.second, null, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = info.first,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            Text(key, modifier = Modifier.weight(1f))
+                        }
+
+                        IconButton(
+                            onClick = { moveAction(slotIdx, slotIdx - 1) },
+                            enabled = slotIdx > 0,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up), modifier = Modifier.size(20.dp))
+                        }
+
+                        IconButton(
+                            onClick = { moveAction(slotIdx, slotIdx + 1) },
+                            enabled = slotIdx < buttonsOrder.lastIndex,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+
+            // More Menu Buttons Header
+            if (moreActions.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.call_controls_more_menu),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp, start = 4.dp)
+                    )
+                }
+
+                items(moreActions.size) { relIdx ->
+                    val globalIdx = primarySlotsCount + relIdx
+                    val key = moreActions[relIdx]
+                    val info = allActionInfo[key]
+
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.MoreHoriz, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            if (info != null) {
+                                Icon(info.second, null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = info.first,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                Text(key, modifier = Modifier.weight(1f))
+                            }
+
+                            IconButton(
+                                onClick = { moveAction(globalIdx, globalIdx - 1) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up), modifier = Modifier.size(20.dp))
+                            }
+
+                            IconButton(
+                                onClick = { moveAction(globalIdx, globalIdx + 1) },
+                                enabled = globalIdx < buttonsOrder.lastIndex,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down), modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
                 }
             }
         }

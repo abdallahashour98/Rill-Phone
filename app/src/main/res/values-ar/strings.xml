@@ -814,4 +814,15 @@
     <string name="call_screen_slide_to_unlock">اسحب لإلغاء القفل</string>
     <string name="call_screen_double_tap_to_unlock">انقر مرتين أو اسحب لفك القفل</string>
     <string name="call_screen_unlock_action">إلغاء القفل</string>
+
+    <!-- In-Call Buttons Customization -->
+    <string name="customize_call_controls">تخصيص أزرار شاشة المكالمة</string>
+    <string name="customize_call_controls_subtitle">ترتيب الأزرار واختيار ما يظهر في الشاشة وما يظهر في قائمة 3 نقاط</string>
+    <string name="call_controls_main_screen">الأزرار في الشاشة الرئيسية</string>
+    <string name="call_controls_more_menu">داخل قائمة المزيد (3 نقاط)</string>
+    <string name="call_controls_preview">معاينة الترتيب</string>
+    <string name="reset_to_default">إعادة التعيين للافتراضي</string>
+    <string name="move_up">تحريك للأعلى</string>
+    <string name="move_down">تحريك للأسفل</string>
+    <string name="slot_label">الموضع %1$d</string>
 </resources>

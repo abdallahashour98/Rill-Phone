@@ -257,6 +257,41 @@ class PreferenceManager(context: Context) {
         )
     }
 
+    fun getCallButtonsOrder(style: Int): List<String> {
+        val (key, defaultList) = when (style) {
+            CALL_SCREEN_STYLE_IOS -> KEY_CALL_BUTTONS_ORDER_IOS to DEFAULT_CALL_BUTTONS_IOS
+            CALL_SCREEN_STYLE_ONEUI -> KEY_CALL_BUTTONS_ORDER_ONEUI to DEFAULT_CALL_BUTTONS_ONEUI
+            CALL_SCREEN_STYLE_MINIMAL -> KEY_CALL_BUTTONS_ORDER_MINIMAL to DEFAULT_CALL_BUTTONS_MINIMAL
+            else -> KEY_CALL_BUTTONS_ORDER_DEFAULT to DEFAULT_CALL_BUTTONS_CLASSIC
+        }
+        val stored = getString(key, null) ?: return defaultList
+        val list = stored.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val validKeys = listOf("mute", "keypad", "audio", "record", "note", "lock", "add_call", "hold", "message", "more")
+        val result = list.filter { it in validKeys }.toMutableList()
+        defaultList.forEach { if (it !in result) result.add(it) }
+        return result
+    }
+
+    fun setCallButtonsOrder(style: Int, order: List<String>) {
+        val key = when (style) {
+            CALL_SCREEN_STYLE_IOS -> KEY_CALL_BUTTONS_ORDER_IOS
+            CALL_SCREEN_STYLE_ONEUI -> KEY_CALL_BUTTONS_ORDER_ONEUI
+            CALL_SCREEN_STYLE_MINIMAL -> KEY_CALL_BUTTONS_ORDER_MINIMAL
+            else -> KEY_CALL_BUTTONS_ORDER_DEFAULT
+        }
+        setString(key, order.joinToString(","))
+    }
+
+    fun resetCallButtonsOrder(style: Int) {
+        val key = when (style) {
+            CALL_SCREEN_STYLE_IOS -> KEY_CALL_BUTTONS_ORDER_IOS
+            CALL_SCREEN_STYLE_ONEUI -> KEY_CALL_BUTTONS_ORDER_ONEUI
+            CALL_SCREEN_STYLE_MINIMAL -> KEY_CALL_BUTTONS_ORDER_MINIMAL
+            else -> KEY_CALL_BUTTONS_ORDER_DEFAULT
+        }
+        setString(key, null)
+    }
+
     fun contactBackgroundIdKey(contactId: String): String {
         return CONTACT_BACKGROUND_PREFIX + contactId
     }
@@ -448,6 +483,24 @@ class PreferenceManager(context: Context) {
         const val CALL_SCREEN_STYLE_IOS = 1
         const val CALL_SCREEN_STYLE_ONEUI = 2
         const val CALL_SCREEN_STYLE_MINIMAL = 3
+
+        const val KEY_CALL_BUTTONS_ORDER_DEFAULT = "call_buttons_order_default"
+        const val KEY_CALL_BUTTONS_ORDER_IOS = "call_buttons_order_ios"
+        const val KEY_CALL_BUTTONS_ORDER_ONEUI = "call_buttons_order_oneui"
+        const val KEY_CALL_BUTTONS_ORDER_MINIMAL = "call_buttons_order_minimal"
+
+        val DEFAULT_CALL_BUTTONS_CLASSIC = listOf(
+            "keypad", "mute", "audio", "more", "record", "note", "lock", "message", "add_call", "hold"
+        )
+        val DEFAULT_CALL_BUTTONS_IOS = listOf(
+            "mute", "keypad", "audio", "add_call", "record", "more", "note", "lock", "hold", "message"
+        )
+        val DEFAULT_CALL_BUTTONS_ONEUI = listOf(
+            "mute", "keypad", "audio", "add_call", "record", "more", "note", "lock", "hold", "message"
+        )
+        val DEFAULT_CALL_BUTTONS_MINIMAL = listOf(
+            "mute", "keypad", "audio", "more", "record", "note", "lock", "add_call", "hold", "message"
+        )
 
         const val KEY_CALL_SCREEN_LOCK_BUTTON = "call_screen_lock_button"
 

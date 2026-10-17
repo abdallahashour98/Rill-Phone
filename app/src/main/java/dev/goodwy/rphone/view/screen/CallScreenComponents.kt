@@ -6,7 +6,9 @@ import android.telecom.CallAudioState
 import android.view.HapticFeedbackConstants
 import android.media.AudioManager
 import android.media.ToneGenerator
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.zIndex
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -2092,8 +2094,13 @@ fun CallScreenLockOverlay(
     onUnlock: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler(enabled = true) {
+        // Prevent accidental system back gestures from closing call screen while locked
+    }
+
     val view = LocalView.current
     val density = LocalDensity.current
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val maxSliderOffset = 210.dp
     val maxOffsetPx = with(density) { maxSliderOffset.toPx() }
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
@@ -2122,7 +2129,15 @@ fun CallScreenLockOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .zIndex(100f)
             .background(Color.Black.copy(alpha = 0.52f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                // Intercept any clicks on background and provide tactile feedback
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
@@ -2243,7 +2258,7 @@ fun CallScreenLockOverlay(
                 }
             }
 
-            // Bottom Slider (Slide to Unlock - bidirectional)
+            // Bottom Slider (Slide to Unlock - RTL & LTR aware)
             Box(
                 modifier = Modifier
                     .padding(bottom = 24.dp)
@@ -2262,7 +2277,7 @@ fun CallScreenLockOverlay(
                     color = Color.White.copy(alpha = textAlpha),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 28.dp),
+                        .padding(horizontal = 28.dp),
                     textAlign = TextAlign.Center
                 )
 
@@ -2272,18 +2287,19 @@ fun CallScreenLockOverlay(
                     animationSpec = spring(stiffness = Spring.StiffnessMedium),
                     label = "thumbOffset"
                 )
+                val visualOffsetX = if (isRtl) -animatedOffset else animatedOffset
 
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(start = 6.dp)
-                        .offset { IntOffset(x = animatedOffset.toInt(), y = 0) }
+                        .offset { IntOffset(x = visualOffsetX.toInt(), y = 0) }
                         .size(52.dp)
-                        .pointerInput(maxOffsetPx) {
+                        .pointerInput(maxOffsetPx, isRtl) {
                             detectHorizontalDragGestures(
                                 onDragEnd = {
-                                    if (abs(dragOffsetPx) >= maxOffsetPx * 0.4f) {
+                                    if (dragOffsetPx >= maxOffsetPx * 0.4f) {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onUnlock()
                                     }
@@ -2291,9 +2307,10 @@ fun CallScreenLockOverlay(
                                 },
                                 onDragCancel = { dragOffsetPx = 0f },
                                 onHorizontalDrag = { _, dragAmount ->
-                                    val newOffset = (dragOffsetPx + dragAmount).coerceIn(0f, maxOffsetPx)
+                                    val delta = if (isRtl) -dragAmount else dragAmount
+                                    val newOffset = (dragOffsetPx + delta).coerceIn(0f, maxOffsetPx)
                                     dragOffsetPx = newOffset
-                                    if (newOffset >= maxOffsetPx * 0.7f) {
+                                    if (newOffset >= maxOffsetPx * 0.65f) {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onUnlock()
                                     }

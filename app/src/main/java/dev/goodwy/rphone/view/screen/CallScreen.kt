@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -210,7 +211,7 @@ fun ExpressiveCallScreen(
     val lockButtonEnabled = remember(settingsState) {
         preferenceManager.getBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, true)
     }
-    var isScreenLocked by remember { mutableStateOf(false) }
+    var isScreenLocked by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(callState) {
         if (callState == Call.STATE_DISCONNECTED || callState == Call.STATE_DISCONNECTING) {
@@ -1753,6 +1754,15 @@ fun ExpressiveCallScreen(
 //                }
             )
         }
+
+        if (isScreenLocked) {
+            CallScreenLockOverlay(
+                contactName = contactName,
+                phoneNumber = phoneNumber,
+                callDuration = callDuration,
+                onUnlock = { isScreenLocked = false }
+            )
+        }
     }
 
     if (showCallBiometricUnlock) {
@@ -1804,15 +1814,6 @@ fun ExpressiveCallScreen(
                     onDismiss = { onBiometricFail() }
                 )
             }
-        }
-
-        if (isScreenLocked) {
-            CallScreenLockOverlay(
-                contactName = contactName,
-                phoneNumber = phoneNumber,
-                callDuration = callDuration,
-                onUnlock = { isScreenLocked = false }
-            )
         }
     }
 

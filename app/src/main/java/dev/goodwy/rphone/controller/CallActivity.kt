@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
 import androidx.activity.SystemBarStyle
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
@@ -84,6 +85,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     companion object {
         /** FloatingCallService observes this to hide the bubble when CallActivity is visible. */
         val isInForeground = kotlinx.coroutines.flow.MutableStateFlow(false)
+        var userDismissedCallScreen = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,6 +93,11 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         turnScreenOnAndShowWhileLocked()
         super.onCreate(savedInstanceState)
         handleCallIntent(intent)
+
+        onBackPressedDispatcher.addCallback(this) {
+            userDismissedCallScreen = true
+            moveTaskToBack(true)
+        }
 
         CallBackgroundStore.attach(preferenceManager)
 
@@ -487,6 +494,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
     override fun onResume() {
         super.onResume()
+        userDismissedCallScreen = false
         isInForeground.value = true
         isFinishingCall.set(false)
         if (callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
@@ -525,10 +533,16 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        userDismissedCallScreen = false
         setIntent(intent)
         isFinishingCall.set(false)
         handleCallIntent(intent)
         turnScreenOnAndShowWhileLocked()
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        userDismissedCallScreen = true
     }
 
     private fun dismissCallScreen() {

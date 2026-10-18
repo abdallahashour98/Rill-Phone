@@ -741,7 +741,7 @@ fun ExpressiveCallScreen(
                     val messageIcon = ImageVector.vectorResource(id = R.drawable.ic_message_outline)
 
                     val allInCallActions = remember(
-                        isMuted, showKeypad, audioRoute, audioIcon, audioLabel, hasExternalRoutes,
+                        isMuted, showKeypad, audioRoute, audioIcon, audioLabel, hasExternalRoutes, audioState,
                         isRecording, isPendingRecording, recordingDuration, showNoteWindow, isScreenLocked,
                         otherCall, callState, isConference, showMore
                     ) {
@@ -795,6 +795,22 @@ fun ExpressiveCallScreen(
                                             }
                                         }
                                     }
+                                },
+                                onLongClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    val supported = audioState?.supportedRouteMask ?: 0
+                                    if (audioRoute == CallAudioState.ROUTE_SPEAKER) {
+                                        if (hasExternalRoutes && (supported and CallAudioState.ROUTE_BLUETOOTH) != 0) {
+                                            callViewModel.setAudioRoute(CallAudioState.ROUTE_BLUETOOTH)
+                                        } else if ((supported and CallAudioState.ROUTE_EARPIECE) != 0) {
+                                            callViewModel.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                                        }
+                                    } else {
+                                        if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) {
+                                            callViewModel.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                                        }
+                                    }
+                                    showAudioPicker = false
                                 }
                             ),
                             "record" to InCallActionState(
@@ -1055,6 +1071,7 @@ fun ExpressiveCallScreen(
                                                         leadingIcon = action.icon,
                                                         isSelected = action.isActive,
                                                         enabled = action.isEnabled,
+                                                        onLongClick = action.onLongClick,
                                                         onClick = action.onClick
                                                     )
                                                 }
@@ -1172,10 +1189,10 @@ fun ExpressiveCallScreen(
                                                 btnColor = controlBtnColor,
                                                 activeBtnColor = controlBtnActiveColor,
                                                 fgColor = controlBtnFg,
-                                                activeFgColor = controlBtnActiveFg
-                                            ) {
-                                                action.onClick()
-                                            }
+                                                activeFgColor = controlBtnActiveFg,
+                                                onLongClick = action.onLongClick,
+                                                onClick = action.onClick
+                                            )
                                         }
                                     }
                                 }

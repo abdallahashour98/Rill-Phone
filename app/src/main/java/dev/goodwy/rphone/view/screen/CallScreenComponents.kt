@@ -518,6 +518,7 @@ fun AnimatedCallButton(
     activeBtnColor: Color = Color.White,
     fgColor: Color = Color.White,
     activeFgColor: Color = Color.Black,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -527,11 +528,19 @@ fun AnimatedCallButton(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(onClick = onClick,
-            modifier = Modifier.height(68.dp).fillMaxWidth(),
+        Surface(
+            modifier = Modifier
+                .height(68.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(radius))
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = ripple(),
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
             shape = RoundedCornerShape(radius),
-            color = if (isActive) activeBtnColor else btnColor,
-            interactionSource = interaction
+            color = if (isActive) activeBtnColor else btnColor
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
@@ -1169,18 +1178,6 @@ fun IPhoneSwipeToAnswer(
         if (useLg || useBlur) bottomBarColor else Color.Black.copy(alpha = if (isDark) 0.38f else 0.28f)
     val buttonContentColor = Color.White
 
-    // Knob touch scale and elevation spring animation
-    val handleScale by animateFloatAsState(
-        targetValue = if (isDragging) 1.07f else 1.0f,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "iosHandleScale"
-    )
-    val handleElevation by animateDpAsState(
-        targetValue = if (isDragging) 8.dp else 2.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "iosHandleElevation"
-    )
-
     // Authentic continuous iOS shimmer wave across text and chevrons
     val infiniteTransition = rememberInfiniteTransition(label = "iosShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -1194,7 +1191,6 @@ fun IPhoneSwipeToAnswer(
     )
 
     val dragProgress = remember { derivedStateOf { if (maxDrag > 0f) (offsetX.value / maxDrag).coerceIn(0f, 1f) else 0f } }
-    val iconRotation by remember { derivedStateOf { dragProgress.value * 45f } }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1303,13 +1299,13 @@ fun IPhoneSwipeToAnswer(
             }
         }
 
-        // iOS Slide to Answer Capsule Track
+        // iOS Slide to Answer Capsule Track (Pure Authentic Clean Style)
         Box(
             modifier = Modifier
                 .width(trackWidth)
                 .height(trackHeight)
                 .clip(CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape),
+                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
             contentAlignment = Alignment.CenterStart
         ) {
             // Track base background surface
@@ -1343,26 +1339,6 @@ fun IPhoneSwipeToAnswer(
                     )
             ) {}
 
-            // Dynamic iOS Call Green Trailing Fill (follows the thumb smoothly with glow)
-            val fillWidthPx = (handlePaddingPx + offsetX.value + handleSizePx / 2f).coerceIn(0f, trackWidthPx)
-            if (fillWidthPx > handlePaddingPx + 4f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(with(localDensity) { fillWidthPx.toDp() })
-                        .clip(CircleShape)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color(0xFF34C759).copy(alpha = 0.35f),
-                                    Color(0xFF34C759).copy(alpha = 0.70f),
-                                    Color(0xFF30D158).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                )
-            }
-
             // Shimmering Text & Animated Chevrons
             val shimmerBrush = Brush.linearGradient(
                 colors = listOf(
@@ -1370,12 +1346,22 @@ fun IPhoneSwipeToAnswer(
                     Color.White.copy(alpha = 0.98f),
                     Color.White.copy(alpha = 0.32f)
                 ),
-                start = Offset(trackWidthPx * (shimmerOffset - 0.28f), 0f),
-                end = Offset(trackWidthPx * (shimmerOffset + 0.28f), 0f)
+                start = if (isRtl) {
+                    val rtlOffset = 1.1f - shimmerOffset
+                    Offset(trackWidthPx * (rtlOffset + 0.28f), 0f)
+                } else {
+                    Offset(trackWidthPx * (shimmerOffset - 0.28f), 0f)
+                },
+                end = if (isRtl) {
+                    val rtlOffset = 1.1f - shimmerOffset
+                    Offset(trackWidthPx * (rtlOffset - 0.28f), 0f)
+                } else {
+                    Offset(trackWidthPx * (shimmerOffset + 0.28f), 0f)
+                }
             )
 
-            val textAlpha = (1f - dragProgress.value * 1.6f).coerceIn(0f, 1f)
-            val textSlidePx = dragProgress.value * 28f
+            // Text fades out smoothly as handle advances (completely gone by 45% of drag)
+            val textAlpha = (1f - (dragProgress.value / 0.45f)).coerceIn(0f, 1f)
 
             Row(
                 modifier = Modifier
@@ -1383,7 +1369,6 @@ fun IPhoneSwipeToAnswer(
                     .padding(start = handleSize + 12.dp, end = 20.dp)
                     .graphicsLayer {
                         alpha = textAlpha
-                        translationX = if (isRtl) -textSlidePx else textSlidePx
                     },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -1408,15 +1393,14 @@ fun IPhoneSwipeToAnswer(
                 )
             }
 
-            // Slider Thumb Handle with iOS Physics & Rubber-band Drag
+            // Slider Thumb Handle with Strict Boundaries (Never Exceeds Track or Screen)
             val visualOffsetX = if (isRtl) -offsetX.value else offsetX.value
             Box(
                 modifier = Modifier
                     .padding(start = handlePadding)
                     .offset { IntOffset(visualOffsetX.roundToInt(), 0) }
                     .size(handleSize)
-                    .scale(handleScale)
-                    .shadow(handleElevation, CircleShape)
+                    .shadow(3.dp, CircleShape)
                     .clip(CircleShape)
                     .background(Color.White)
                     .pointerInput(maxDrag, isRtl) {
@@ -1428,20 +1412,26 @@ fun IPhoneSwipeToAnswer(
                             onDragEnd = {
                                 isDragging = false
                                 coroutineScope.launch {
-                                    if (offsetX.value >= maxDrag * 0.75f) {
+                                    if (offsetX.value >= maxDrag * 0.80f) {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         } else {
                                             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                         }
-                                        offsetX.animateTo(maxDrag, spring(stiffness = Spring.StiffnessMedium))
+                                        offsetX.animateTo(
+                                            maxDrag,
+                                            spring(
+                                                stiffness = Spring.StiffnessMediumLow,
+                                                dampingRatio = Spring.DampingRatioNoBouncy
+                                            )
+                                        )
                                         onAnswer()
                                     } else {
                                         hasCrossedThreshold = false
                                         offsetX.animateTo(
                                             0f,
                                             spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
                                                 stiffness = Spring.StiffnessMediumLow
                                             )
                                         )
@@ -1455,7 +1445,7 @@ fun IPhoneSwipeToAnswer(
                                     offsetX.animateTo(
                                         0f,
                                         spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
                                             stiffness = Spring.StiffnessMediumLow
                                         )
                                     )
@@ -1464,18 +1454,11 @@ fun IPhoneSwipeToAnswer(
                             onHorizontalDrag = { change, dragAmount ->
                                 change.consume()
                                 val delta = if (isRtl) -dragAmount else dragAmount
-                                val rawOffset = offsetX.value + delta
-                                // iOS rubber-band resistance when dragging beyond maxDrag
-                                val clampedOffset = if (rawOffset > maxDrag) {
-                                    maxDrag + (rawOffset - maxDrag) * 0.25f
-                                } else if (rawOffset < 0f) {
-                                    rawOffset * 0.25f
-                                } else {
-                                    rawOffset
-                                }
+                                // Strictly clamp offset inside the track [0f .. maxDrag]
+                                val newOffset = (offsetX.value + delta).coerceIn(0f, maxDrag)
                                 coroutineScope.launch {
-                                    offsetX.snapTo(clampedOffset)
-                                    val crossed = clampedOffset >= maxDrag * 0.75f
+                                    offsetX.snapTo(newOffset)
+                                    val crossed = newOffset >= maxDrag * 0.80f
                                     if (crossed && !hasCrossedThreshold) {
                                         hasCrossedThreshold = true
                                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -1491,13 +1474,8 @@ fun IPhoneSwipeToAnswer(
                 Icon(
                     Icons.Rounded.Call,
                     contentDescription = null,
-                    tint = color_call_button,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .graphicsLayer {
-                            val adjustedIconRotation = if (isRtl) -iconRotation else iconRotation
-                            rotationZ = adjustedIconRotation
-                        }
+                    tint = Color(0xFF34C759),
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -2040,6 +2018,7 @@ fun MoreItem(
     trailingIcon: ImageVector? = null,
     enabled: Boolean = true,
     isSelected: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -2069,6 +2048,7 @@ fun MoreItem(
                                 interactionSource = interactionSource,
                                 indication = ripple(),
                                 onClick = onClick,
+                                onLongClick = onLongClick
                             )
                     } else {
                         Modifier.alpha(0.5f)
@@ -2447,7 +2427,8 @@ data class InCallActionState(
     val icon: ImageVector,
     val isActive: Boolean = false,
     val isEnabled: Boolean = true,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val onLongClick: (() -> Unit)? = null
 )
 
 // ── iOS Style Button ─────────────────────────────────────────────────────────
@@ -2457,6 +2438,7 @@ fun IOSCallButton(
     label: String,
     isActive: Boolean = false,
     enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2473,15 +2455,20 @@ fun IOSCallButton(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            onClick = onClick,
-            enabled = enabled,
             shape = CircleShape,
             color = if (isActive) Color.White else Color.White.copy(alpha = 0.20f),
             border = if (!isActive) BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)) else null,
-            interactionSource = interaction,
             modifier = Modifier
                 .size(75.dp)
                 .scale(scale)
+                .clip(CircleShape)
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = ripple(),
+                    enabled = enabled,
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
@@ -2536,6 +2523,7 @@ fun CallControlsIOS(
                             isActive = action.isActive,
                             enabled = action.isEnabled,
                             onClick = action.onClick,
+                            onLongClick = action.onLongClick,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -2558,6 +2546,7 @@ fun CallControlsIOS(
                             isActive = action.isActive,
                             enabled = action.isEnabled,
                             onClick = action.onClick,
+                            onLongClick = action.onLongClick,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -2596,6 +2585,7 @@ fun OneUICallButton(
     label: String,
     isActive: Boolean = false,
     enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -2612,14 +2602,19 @@ fun OneUICallButton(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            onClick = onClick,
-            enabled = enabled,
             shape = RoundedCornerShape(24.dp),
             color = if (isActive) Color.White else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-            interactionSource = interaction,
             modifier = Modifier
                 .size(68.dp)
                 .scale(scale)
+                .clip(RoundedCornerShape(24.dp))
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = ripple(),
+                    enabled = enabled,
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
@@ -2674,6 +2669,7 @@ fun CallControlsOneUI(
                             isActive = action.isActive,
                             enabled = action.isEnabled,
                             onClick = action.onClick,
+                            onLongClick = action.onLongClick,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -2696,6 +2692,7 @@ fun CallControlsOneUI(
                             isActive = action.isActive,
                             enabled = action.isEnabled,
                             onClick = action.onClick,
+                            onLongClick = action.onLongClick,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -2762,20 +2759,26 @@ fun CallControlsMinimal(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             actions.forEach { action ->
-                IconButton(
-                    onClick = action.onClick,
-                    enabled = action.isEnabled,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (action.isActive) Color.White else Color.Transparent,
-                        contentColor = if (action.isActive) Color.Black else MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.size(50.dp)
+                Surface(
+                    shape = CircleShape,
+                    color = if (action.isActive) Color.White else Color.Transparent,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            enabled = action.isEnabled,
+                            onClick = action.onClick,
+                            onLongClick = action.onLongClick
+                        )
                 ) {
-                    Icon(
-                        imageVector = action.icon,
-                        contentDescription = action.label,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = action.icon,
+                            contentDescription = action.label,
+                            tint = if (action.isActive) Color.Black else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
             Surface(

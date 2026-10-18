@@ -485,12 +485,6 @@ class CallService : InCallService() {
             notification,
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
         )
-        val isRinging = call.state == Call.STATE_RINGING || call.state == Call.STATE_SIMULATED_RINGING
-        val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
-        if (isRinging && (isHigh || fullscreenCalls) && !CallActivity.isInForeground.value) {
-            wakeUpScreen()
-            showCallActivity()
-        }
     }
 
     private fun removeForeground() {
@@ -550,6 +544,7 @@ class CallService : InCallService() {
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
+        CallActivity.userDismissedCallScreen = false
         call.registerCallback(callCallback)
         callAudioState?.let { callRepository.updateAudioState(it) }
         try { setMuted(false) } catch (_: Exception) {}
@@ -654,7 +649,7 @@ class CallService : InCallService() {
             } else true
 
             val canAlert = notificationManager.canShowIncomingCallNotification() && canUseFullScreenIntent
-            if (fullscreenCalls || wasLocked || isLockedNow || !canAlert) {
+            if (!CallActivity.userDismissedCallScreen && (fullscreenCalls || wasLocked || isLockedNow || !canAlert)) {
                 showCallActivity()
             }
         }
@@ -662,6 +657,7 @@ class CallService : InCallService() {
 
     override fun onCallRemoved(call: Call) {
         super.onCallRemoved(call)
+        CallActivity.userDismissedCallScreen = false
         call.unregisterCallback(callCallback)
         awaitingRingCalls.remove(call)
         blockCheckCalls.remove(call)

@@ -222,7 +222,7 @@ class CallNotificationManager(
                 .setContentIntent(fullScreenPendingIntent)
                 .setOngoing(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setOnlyAlertOnce(!isRinging)
+                .setOnlyAlertOnce(!isRinging || CallActivity.userDismissedCallScreen)
                 .setStyle(
                     if (isRinging) {
                         Notification.CallStyle.forIncomingCall(person, declinePendingIntent, answerPendingIntent)
@@ -235,7 +235,9 @@ class CallNotificationManager(
                 .addPerson(person)
 
             if (isRinging) {
-                builder.setFullScreenIntent(fullScreenPendingIntent, true)
+                if (!CallActivity.userDismissedCallScreen) {
+                    builder.setFullScreenIntent(fullScreenPendingIntent, true)
+                }
                 builder.setUsesChronometer(false)
                 builder.setShowWhen(false)
             } else {
@@ -282,13 +284,13 @@ class CallNotificationManager(
                 .setContentText(contentText)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
+                .setFullScreenIntent(if (!CallActivity.userDismissedCallScreen) fullScreenPendingIntent else null, true)
                 .setContentIntent(fullScreenPendingIntent)
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setAutoCancel(false)
                 .setSilent(!isRinging)
-                .setOnlyAlertOnce(!isRinging)
+                .setOnlyAlertOnce(!isRinging || CallActivity.userDismissedCallScreen)
                 .setDefaults(if (isRinging) NotificationCompat.DEFAULT_ALL else 0)
                 .setStyle(
                     if (isRinging) {

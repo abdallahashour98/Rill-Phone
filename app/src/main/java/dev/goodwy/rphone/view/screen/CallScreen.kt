@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -1183,10 +1184,10 @@ fun ExpressiveCallScreen(
                                     preferenceManager.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f)
                                 val endInteraction = remember { MutableInteractionSource() }
                                 val endPressed by endInteraction.collectIsPressedAsState()
-                                val endRadius by animateDpAsState(
-                                    if (endPressed) 20.dp else 42.dp,
-                                    spring(stiffness = Spring.StiffnessMedium),
-                                    label = "endRadius"
+                                val endScale by animateFloatAsState(
+                                    targetValue = if (endPressed) 0.94f else 1.0f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                                    label = "endScale"
                                 )
 
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -1199,11 +1200,12 @@ fun ExpressiveCallScreen(
                                     val isCircleHangup = hangupWidthFraction <= 0.1f
                                     Surface(
                                         onClick = onHangupClick,
-                                        modifier = if (isCircleHangup) Modifier.size(76.dp)
+                                        modifier = (if (isCircleHangup) Modifier.size(76.dp)
                                         else Modifier
                                             .fillMaxWidth(hangupWidthFraction.coerceIn(0.1f, 1.0f))
-                                            .height(68.dp),
-                                        shape = if (isCircleHangup) CircleShape else RoundedCornerShape(endRadius),
+                                            .height(68.dp))
+                                            .scale(endScale),
+                                        shape = CircleShape,
                                         color = color_call_end,
                                         interactionSource = endInteraction
                                     ) {

@@ -606,9 +606,7 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                                     ) {
                                         val isCircle = hangupWidth <= 0.1f
                                         Surface(
-                                            shape = if (isCircle) CircleShape else RoundedCornerShape(
-                                                42.dp
-                                            ),
+                                            shape = CircleShape,
                                             color = color_call_end,
                                             modifier = if (isCircle) Modifier.size(64.dp)
                                             else Modifier.fillMaxWidth(

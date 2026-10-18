@@ -23,8 +23,8 @@ android {
         applicationId = "dev.goodwy.rphone"
         minSdk = 29
         targetSdk = 37
-        versionCode = 99
-        versionName = "0.6.39"
+        versionCode = 100
+        versionName = "0.6.40"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

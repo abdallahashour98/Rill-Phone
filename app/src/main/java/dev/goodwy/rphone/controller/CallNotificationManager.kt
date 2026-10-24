@@ -221,6 +221,7 @@ class CallNotificationManager(
                 .setCategory(Notification.CATEGORY_CALL)
                 .setContentIntent(fullScreenPendingIntent)
                 .setOngoing(true)
+                .setAutoCancel(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setOnlyAlertOnce(!isRinging || CallActivity.userDismissedCallScreen)
                 .setStyle(
@@ -288,7 +289,7 @@ class CallNotificationManager(
                 .setContentIntent(fullScreenPendingIntent)
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setAutoCancel(false)
+                .setAutoCancel(true)
                 .setSilent(!isRinging)
                 .setOnlyAlertOnce(!isRinging || CallActivity.userDismissedCallScreen)
                 .setDefaults(if (isRinging) NotificationCompat.DEFAULT_ALL else 0)

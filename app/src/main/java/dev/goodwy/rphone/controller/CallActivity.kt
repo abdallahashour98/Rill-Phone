@@ -1,5 +1,6 @@
 package dev.goodwy.rphone.controller
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -91,11 +92,16 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onCreate(savedInstanceState: Bundle?) {
         isFinishingCall.set(false)
         turnScreenOnAndShowWhileLocked()
+        isInForeground.value = true
+        callViewModel.setIsActivityVisible(true)
+        (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
         super.onCreate(savedInstanceState)
         handleCallIntent(intent)
 
         onBackPressedDispatcher.addCallback(this) {
             userDismissedCallScreen = true
+            isInForeground.value = false
+            callViewModel.setIsActivityVisible(false)
             moveTaskToBack(true)
         }
 
@@ -496,11 +502,15 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         super.onResume()
         userDismissedCallScreen = false
         isInForeground.value = true
+        callViewModel.setIsActivityVisible(true)
         isFinishingCall.set(false)
+        val state = callViewModel.currentCallSession.value?.state
+        if (state == Call.STATE_RINGING || state == Call.STATE_SIMULATED_RINGING) {
+            (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
+        }
         if (callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
             turnScreenOnAndShowWhileLocked()
         }
-        val state = callViewModel.currentCallSession.value?.state
         if (state == Call.STATE_ACTIVE || state == Call.STATE_DIALING) {
             if (preferenceManager.getBoolean(PreferenceManager.KEY_PROXIMITY_SENSOR, true)) {
                 acquireProximityLock()
@@ -511,6 +521,9 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onPause() {
         super.onPause()
         isInForeground.value = false
+        if (userDismissedCallScreen) {
+            callViewModel.setIsActivityVisible(false)
+        }
     }
 
     private fun setupProximitySensor() {
@@ -534,6 +547,9 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         userDismissedCallScreen = false
+        isInForeground.value = true
+        callViewModel.setIsActivityVisible(true)
+        (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
         setIntent(intent)
         isFinishingCall.set(false)
         handleCallIntent(intent)
@@ -543,6 +559,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         userDismissedCallScreen = true
+        isInForeground.value = false
+        callViewModel.setIsActivityVisible(false)
     }
 
     private fun dismissCallScreen() {
@@ -625,6 +643,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         super.onStart()
         isInForeground.value = true
         callViewModel.setIsActivityVisible(true)
+        (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
         turnScreenOnAndShowWhileLocked()
     }
 

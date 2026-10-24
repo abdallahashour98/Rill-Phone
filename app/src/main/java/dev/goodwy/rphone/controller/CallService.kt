@@ -40,6 +40,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -113,8 +115,25 @@ class CallService : InCallService() {
         registerReceiver(screenStateReceiver, filter)
 
         serviceScope.launch {
-            callRepository.isActivityVisible.collect {
-                callRepository.currentCallSession.value?.call?.let { currentCall ->
+            combine(
+                callRepository.isActivityVisible,
+                CallActivity.isInForeground
+            ) { isVisible, inForeground ->
+                isVisible || inForeground
+            }.distinctUntilChanged().collect { isUiVisible ->
+                val currentCall = callRepository.currentCallSession.value?.call
+                val isRinging = currentCall?.let { isRingingState(it.state) }
+                    ?: callRepository.allCalls.value.any { isRingingState(it.state) }
+
+                if (isRinging) {
+                    if (isUiVisible) {
+                        notificationUpdateJob?.cancel()
+                        removeForeground()
+                        cancelNotification()
+                    } else if (currentCall != null) {
+                        updateNotification(currentCall)
+                    }
+                } else if (currentCall != null) {
                     updateNotification(currentCall)
                 }
             }
@@ -440,6 +459,16 @@ class CallService : InCallService() {
                 ?: return
         }
 
+        val isRinging = isRingingState(call.state)
+        val isUiVisible = callRepository.isActivityVisible.value || CallActivity.isInForeground.value
+
+        if (isRinging && isUiVisible) {
+            notificationUpdateJob?.cancel()
+            removeForeground()
+            cancelNotification()
+            return
+        }
+
         notificationUpdateJob?.cancel()
         notificationUpdateJob = serviceScope.launch {
             val handle = call.details.handle
@@ -455,6 +484,11 @@ class CallService : InCallService() {
             val quickPhoto = photoDeferred?.let { withTimeoutOrNull(PHOTO_LOAD_TIMEOUT_MS.milliseconds) { it.await() } }
 
             if (!isActive) return@launch
+            if (isRinging && (callRepository.isActivityVisible.value || CallActivity.isInForeground.value)) {
+                removeForeground()
+                cancelNotification()
+                return@launch
+            }
             postCallNotification(call, contactName, quickPhoto, forcedHigh)
 
             // Start/stop floating bubble based on preference
@@ -465,6 +499,11 @@ class CallService : InCallService() {
             if (quickPhoto == null && photoDeferred != null) {
                 val photo = photoDeferred.await()
                 if (photo != null && isActive && call.state != Call.STATE_DISCONNECTED) {
+                    if (isRinging && (callRepository.isActivityVisible.value || CallActivity.isInForeground.value)) {
+                        removeForeground()
+                        cancelNotification()
+                        return@launch
+                    }
                     postCallNotification(call, contactName, photo, forcedHigh)
                 }
             }
@@ -639,8 +678,6 @@ class CallService : InCallService() {
             updateCallState()
             if (call.state == Call.STATE_DISCONNECTED) return@launch
 
-            updateNotification(call)
-
             val fullscreenCalls = preferenceManager.getBoolean(PreferenceManager.KEY_ALWAYS_FULLSCREEN_CALLS, false)
             val isLockedNow = isDeviceLocked()
             val canUseFullScreenIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -649,8 +686,12 @@ class CallService : InCallService() {
             } else true
 
             val canAlert = notificationManager.canShowIncomingCallNotification() && canUseFullScreenIntent
-            if (!CallActivity.userDismissedCallScreen && (fullscreenCalls || wasLocked || isLockedNow || !canAlert)) {
+            val shouldShowActivity = !CallActivity.userDismissedCallScreen && (fullscreenCalls || wasLocked || isLockedNow || !canAlert)
+
+            if (shouldShowActivity) {
                 showCallActivity()
+            } else {
+                updateNotification(call)
             }
         }
     }

@@ -1,6 +1,7 @@
 package dev.goodwy.rphone.view.screen
 
 import android.Manifest
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -155,6 +158,11 @@ fun ContactSearchContent(
     val displayOrder = remember(settingsVer) { prefs.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0) }
     val hideVoiceSearch = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_HIDE_VOICE_SEARCH, false) }
     val simPref = remember(settingsVer) { prefs.getInt(PreferenceManager.KEY_DEFAULT_SIM, prefs.getDefaultSimIndexDefault()) }
+    val swipeToCallEnabled = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_SWIPE_TO_CALL, true) }
+    val swipeCallStyle = remember(settingsVer) { prefs.getInt(PreferenceManager.KEY_SWIPE_TO_CALL_STYLE, PreferenceManager.SWIPE_STYLE_SAMSUNG) }
+    val appHaptics = remember(settingsVer) { prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true) }
+    val hapticsStrength = remember(settingsVer) { prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light" }
+    val hapticsIntensity = remember(settingsVer) { prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f) }
 
     var showSimPicker by remember { mutableStateOf(false) }
     var pendingNumber by remember { mutableStateOf<String?>(null) }
@@ -464,48 +472,69 @@ fun ContactSearchContent(
                             )
                             RillExpressiveCard {
                                 filteredContacts.forEach { contact ->
-//                                    ContactListItem(
-//                                        contact = contact,
-//                                        navigator = navigator,
-//                                        displayOrder = displayOrder
-//                                    )
                                     val displayName = getDisplayName(contact, displayOrder)
                                     val defaultOrFirstPhone = contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
-                                    SingleTile(
-                                        title = displayName,
-                                        subtitle = getDisplayContactInfo(contact),
-                                        photoUri = contact.photoUri,
-                                        phoneNumber = defaultOrFirstPhone,
-                                        trailingContent = {
-//                                                navigator.navigate(DialPadScreenDestination(initialNumber = entry.number))
+                                    val showTrailingCall = !swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG
+                                    SwipeableCallLogContainer(
+                                        enabled = swipeToCallEnabled && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                        style = swipeCallStyle,
+                                        shape = RoundedCornerShape(cardCornerExtraSmall),
+                                        haptics = appHaptics,
+                                        hapticsStrength = hapticsStrength,
+                                        hapticsIntensity = hapticsIntensity,
+                                        onSwipeRight = {
                                             if (defaultOrFirstPhone != null) {
-                                                IconButton(onClick = {
+                                                placeCallWithSimPreference(context, defaultOrFirstPhone, simPref) {
+                                                    pendingNumber = defaultOrFirstPhone
+                                                    showSimPicker = true
+                                                }
+                                            }
+                                        },
+                                        onSwipeLeft = {
+                                            if (defaultOrFirstPhone != null) {
+                                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                    data = "sms:$defaultOrFirstPhone".toUri()
+                                                }
+                                                context.startActivity(intent)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        SingleTile(
+                                            title = displayName,
+                                            subtitle = getDisplayContactInfo(contact),
+                                            photoUri = contact.photoUri,
+                                            phoneNumber = defaultOrFirstPhone,
+                                            trailingContent = if (showTrailingCall && defaultOrFirstPhone != null) {
+                                                {
+                                                    IconButton(onClick = {
+                                                        placeCallWithSimPreference(context, defaultOrFirstPhone, simPref) {
+                                                            pendingNumber = defaultOrFirstPhone; showSimPicker = true
+                                                        }
+                                                    }) {
+                                                        Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                }
+                                            } else null,
+                                            onCall = {
+                                                if (defaultOrFirstPhone != null) {
                                                     placeCallWithSimPreference(context, defaultOrFirstPhone, simPref) {
                                                         pendingNumber = defaultOrFirstPhone; showSimPicker = true
                                                     }
-                                                }) {
-                                                    Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.call), tint = MaterialTheme.colorScheme.primary)
                                                 }
-                                            }
-                                        },
-                                        onCall = {
-                                            if (defaultOrFirstPhone != null) {
-                                                placeCallWithSimPreference(context, defaultOrFirstPhone, simPref) {
-                                                    pendingNumber = defaultOrFirstPhone; showSimPicker = true
+                                            },
+                                            onClick = {
+                                                if (appHaptics) {
+                                                    performAppHaptic(
+                                                        context,
+                                                        hapticsStrength,
+                                                        hapticsIntensity
+                                                    )
                                                 }
+                                                navigator.navigate(ContactDetailsScreenDestination(contactId = contact.id))
                                             }
-                                        },
-                                        onClick = {
-                                            if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
-                                                performAppHaptic(
-                                                    context,
-                                                    prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light",
-                                                    prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
-                                                )
-                                            }
-                                            navigator.navigate(ContactDetailsScreenDestination(contactId = contact.id))
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -522,38 +551,62 @@ fun ContactSearchContent(
                             RillExpressiveCard {
                                 nonContactResults.forEach { entry ->
                                     val displayName = if (entry.name == entry.number) entry.number.forceLtr() else entry.name?.ifEmpty { entry.number } ?: entry.number.ifEmpty { "Unknown" }
-                                    SingleTile(
-                                        title = displayName,
-                                        subtitle = if (entry.name.isNullOrEmpty() || entry.name == entry.number) null else entry.number,
-                                        icon = Icons.Default.Person,
-                                        phoneNumber = entry.number,
-                                        trailingContent = {
-                                            IconButton(onClick = {
-//                                                navigator.navigate(DialPadScreenDestination(initialNumber = entry.number))
+                                    val showTrailingCall = !swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG
+                                    SwipeableCallLogContainer(
+                                        enabled = swipeToCallEnabled && entry.number.isNotEmpty() && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
+                                        style = swipeCallStyle,
+                                        shape = RoundedCornerShape(cardCornerExtraSmall),
+                                        haptics = appHaptics,
+                                        hapticsStrength = hapticsStrength,
+                                        hapticsIntensity = hapticsIntensity,
+                                        onSwipeRight = {
+                                            placeCallWithSimPreference(context, entry.number, simPref) {
+                                                pendingNumber = entry.number
+                                                showSimPicker = true
+                                            }
+                                        },
+                                        onSwipeLeft = {
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                data = "sms:${entry.number}".toUri()
+                                            }
+                                            context.startActivity(intent)
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        SingleTile(
+                                            title = displayName,
+                                            subtitle = if (entry.name.isNullOrEmpty() || entry.name == entry.number) null else entry.number,
+                                            icon = Icons.Default.Person,
+                                            phoneNumber = entry.number,
+                                            trailingContent = if (showTrailingCall) {
+                                                {
+                                                    IconButton(onClick = {
+                                                        placeCallWithSimPreference(context, entry.number, simPref) {
+                                                            pendingNumber = entry.number; showSimPicker = true
+                                                        }
+                                                    }) {
+                                                        Icon(Icons.Outlined.Call, contentDescription = "Call", tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                }
+                                            } else null,
+                                            onCall = {
                                                 placeCallWithSimPreference(context, entry.number, simPref) {
                                                     pendingNumber = entry.number; showSimPicker = true
                                                 }
-                                            }) {
-                                                Icon(Icons.Outlined.Call, contentDescription = "Call", tint = MaterialTheme.colorScheme.primary)
-                                            }
-                                        },
-                                        onCall = {
-                                            placeCallWithSimPreference(context, entry.number, simPref) {
-                                                pendingNumber = entry.number; showSimPicker = true
-                                            }
-                                        },
-                                        onClick = {
-                                            if (prefs.getBoolean(PreferenceManager.KEY_APP_HAPTICS, true)) {
-                                                performAppHaptic(
-                                                    context,
-                                                    prefs.getString(PreferenceManager.KEY_APP_HAPTICS_STRENGTH, "light") ?: "light",
-                                                    prefs.getFloat(PreferenceManager.KEY_HAPTICS_CUSTOM_INTENSITY, 0.5f)
-                                                )
-                                            }
-                                            navigator.navigate(ContactDetailsScreenDestination(phoneNumber = entry.number))
-                                        },
-                                        showCreateContact = entry.contactId == null
-                                    )
+                                            },
+                                            onClick = {
+                                                if (appHaptics) {
+                                                    performAppHaptic(
+                                                        context,
+                                                        hapticsStrength,
+                                                        hapticsIntensity
+                                                    )
+                                                }
+                                                navigator.navigate(ContactDetailsScreenDestination(phoneNumber = entry.number))
+                                            },
+                                            showCreateContact = entry.contactId == null
+                                        )
+                                    }
                                 }
                             }
                         }

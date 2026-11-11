@@ -137,19 +137,11 @@ class CallNotificationManager(
         val fullScreenIntent = Intent(context, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            @Suppress("DEPRECATION")
-            android.app.ActivityOptions.makeBasic().apply {
-                setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-            }.toBundle()
-        } else null
-
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,
             if (isRinging) call.hashCode() else 0,
             fullScreenIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            options
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val handleNumber = call.details.handle?.schemeSpecificPart?.let { Uri.decode(it) } ?: ""
@@ -170,8 +162,7 @@ class CallNotificationManager(
             context,
             1,
             answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            options
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val declineIntent = Intent(context, CallService::class.java).apply { action = "DECLINE_CALL" }

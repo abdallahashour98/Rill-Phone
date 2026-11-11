@@ -548,16 +548,9 @@ class CallService : InCallService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("NOTIFICATION_PENDING_ACTION", action)
         }
-        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ActivityOptions.makeBasic().apply {
-                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-            }.toBundle()
-        } else null
         try {
-            startActivity(intent, options)
-        } catch (_: Exception) {
-            try { startActivity(intent) } catch (_: Exception) {}
-        }
+            startActivity(intent)
+        } catch (_: Exception) {}
     }
 
     /**
@@ -579,16 +572,9 @@ class CallService : InCallService() {
         val intent = Intent(this, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ActivityOptions.makeBasic().apply {
-                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-            }.toBundle()
-        } else null
         try {
-            startActivity(intent, options)
-        } catch (_: Exception) {
-            try { startActivity(intent) } catch (_: Exception) {}
-        }
+            startActivity(intent)
+        } catch (_: Exception) {}
     }
 
     override fun onCallAdded(call: Call) {
@@ -647,16 +633,9 @@ class CallService : InCallService() {
         val intent = Intent(this@CallService, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ActivityOptions.makeBasic().apply {
-                setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-            }.toBundle()
-        } else null
         try {
-            startActivity(intent, options)
-        } catch (_: Exception) {
-            try { startActivity(intent) } catch (_: Exception) {}
-        }
+            startActivity(intent)
+        } catch (_: Exception) {}
     }
 
     private fun wakeUpScreen() {
@@ -772,16 +751,9 @@ class CallService : InCallService() {
                         putExtra("ANSWERED_FROM_NOTIFICATION", true)
                         putExtra("AUTO_ANSWER_CALL", true)
                     }
-                    val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        ActivityOptions.makeBasic().apply {
-                            setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-                        }.toBundle()
-                    } else null
                     try {
-                        startActivity(intent, options)
-                    } catch (_: Exception) {
-                        try { startActivity(intent) } catch (_: Exception) {}
-                    }
+                        startActivity(intent)
+                    } catch (_: Exception) {}
                 }
             }
             "DECLINE_CALL" -> {

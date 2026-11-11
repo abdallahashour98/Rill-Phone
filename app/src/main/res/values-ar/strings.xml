@@ -873,4 +873,9 @@
     <string name="bluetooth_optimization_subtitle">تفعيل الصوت عالي الدقة (HD Voice / WBS) وإلغاء الصدى والضوضاء وتحسين التقاط المايك</string>
     <string name="bluetooth_auto_route_title">التحويل التلقائي لسماعة البلوتوث</string>
     <string name="bluetooth_auto_route_subtitle">توجيه المكالمة فوراً إلى سماعة البلوتوث المتصلة دون أي تأخير</string>
+
+    <!-- Default Dialer Helper & Restricted Settings -->
+    <string name="open_default_apps_settings">فتح إعدادات التطبيقات الافتراضية</string>
+    <string name="open_app_info_restricted">معلومات التطبيق (للسماح بالإعدادات المقيدة)</string>
+    <string name="restricted_settings_hint">في أندرويد 14 و15 و16: إذا ظهر تنبيه «إعداد مقيد»، افتح معلومات التطبيق، واضغط على الثلاث نقاط (⋮) بأعلى الشاشة ثم اختر «السماح بالإعدادات المقيدة» لتفعيل تطبيق الهاتف الافتراضي.</string>
 </resources>

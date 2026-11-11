@@ -22,6 +22,7 @@ import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import android.text.Html
+import android.util.Log
 import android.view.Gravity
 import android.widget.TextView
 import android.widget.Toast
@@ -79,42 +80,53 @@ fun makeCall(context: Context, number: String, accountHandle: PhoneAccountHandle
     val isAirplane = isAirplaneModeOn(context)
     val isWifi = isWifiConnected(context)
 
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
-        if (isAirplane && isWifi) {
-            // In airplane mode with Wi-Fi connected, route through system ACTION_CALL so privileged IMS/VoWiFi handles it
-            try {
-                val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
-                    putExtras(extras)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(callIntent)
-                return
-            } catch (e: Exception) {
-                // fallback to placeCall below
-            }
-        }
+    val isDefault = isAlreadyDefaultDialer(context)
 
+    if (isDefault) {
+        // App is the default dialer: place the call directly via TelecomManager.
+        // Telecom will invoke CallService.onCallAdded(call), which displays CallActivity.
         try {
             telecomManager.placeCall(uri, extras)
+            return
         } catch (e: Exception) {
-            try {
-                val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
-                    putExtras(extras)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(callIntent)
-            } catch (e2: Exception) {
-                val dialIntent = Intent(Intent.ACTION_DIAL, uri).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(dialIntent)
-            }
+            Log.e("makeCall", "telecomManager.placeCall failed even though default dialer", e)
         }
-    } else {
-        val intent = Intent(Intent.ACTION_DIAL, uri).apply {
+    }
+
+    // App is NOT the default dialer (or placeCall failed):
+    // Delegate the call cleanly to the system's actual default dialer!
+    val defaultDialerPkg = try {
+        telecomManager.defaultDialerPackage
+    } catch (_: Exception) { null }
+
+    val hasCallPhone = ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+
+    if (hasCallPhone && !defaultDialerPkg.isNullOrBlank() && defaultDialerPkg != context.packageName) {
+        // Route directly to the system's default dialer (e.g. com.google.android.dialer, com.samsung.android.incallui)
+        try {
+            val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
+                putExtras(extras)
+                setPackage(defaultDialerPkg)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(callIntent)
+            return
+        } catch (e: Exception) {
+            Log.w("makeCall", "Failed to launch default dialer with ACTION_CALL", e)
+        }
+    }
+
+    // Fallback: Open system dialer via ACTION_DIAL, never targeting ourselves
+    try {
+        val dialIntent = Intent(Intent.ACTION_DIAL, uri).apply {
+            if (!defaultDialerPkg.isNullOrBlank() && defaultDialerPkg != context.packageName) {
+                setPackage(defaultDialerPkg)
+            }
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        context.startActivity(intent)
+        context.startActivity(dialIntent)
+    } catch (e: Exception) {
+        Log.e("makeCall", "Failed to launch dialer fallback", e)
     }
 }
 

@@ -54,7 +54,14 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.compose.koinInject
 import androidx.core.net.toUri
+import androidx.compose.material.icons.rounded.AdminPanelSettings
+import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.BluetoothAudio
+import androidx.compose.material.icons.rounded.VisibilityOff
+import com.ramcosta.composedestinations.generated.destinations.CallerAliasScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickResponsesScreenDestination
+import dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper
+import dev.goodwy.rphone.controller.util.root.RootUtils
 import dev.goodwy.rphone.view.components.RillSelectListItem
 import dev.goodwy.rphone.view.components.Title
 
@@ -88,8 +95,14 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
 
     val isShizukuAvailable by ShizukuManager.isAvailable.collectAsStateWithLifecycle()
     val isShizukuGranted by ShizukuManager.isPermissionGranted.collectAsStateWithLifecycle()
+    val isRootAvailable by RootUtils.isRootAvailable.collectAsStateWithLifecycle()
+    val isRootGranted by RootUtils.isRootGranted.collectAsStateWithLifecycle()
 
     var showAudioSourceDialog by remember { mutableStateOf(false) }
+    var showEngineModeDialog by remember { mutableStateOf(false) }
+    var currentEngineMode by remember {
+        mutableStateOf(prefs.getString("call_recording_engine_mode", "auto") ?: "auto")
+    }
     var currentAudioSource by remember {
         val saved = prefs.getString("call_recording_audio_source", "voice-call") ?: "voice-call"
         val effective = if (saved == "mic-voice-communication" && !prefs.getBoolean("call_recording_audio_source_explicit_comm", false)) {
@@ -105,14 +118,21 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     var redialAutoCall by remember {
         mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, true))
     }
+    var bluetoothOptimization by remember {
+        mutableStateOf(prefs.getBoolean(BluetoothCallAudioHelper.KEY_BT_OPTIMIZATION, true))
+    }
+    var bluetoothAutoRoute by remember {
+        mutableStateOf(prefs.getBoolean(BluetoothCallAudioHelper.KEY_BT_AUTO_ROUTE, true))
+    }
 
     LaunchedEffect(Unit) {
         ShizukuManager.ensureInitialized()
         ShizukuManager.checkStatus()
+        RootUtils.checkStatus()
     }
 
-    LaunchedEffect(isShizukuAvailable, isShizukuGranted) {
-        if (isShizukuAvailable && isShizukuGranted) {
+    LaunchedEffect(isShizukuAvailable, isShizukuGranted, isRootAvailable, isRootGranted) {
+        if ((isShizukuAvailable && isShizukuGranted) || isRootGranted) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val serverPath = dev.goodwy.rphone.controller.util.shizuku.ScrcpyConfig.getServerPath(context)
@@ -242,6 +262,15 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                 trailingIcon = Icons.Default.ChevronRight,
                                 onClick = { navigator.navigate(QuickResponsesScreenDestination) }
                             )
+                            RillListItem(
+                                headline = stringResource(R.string.caller_alias_title),
+                                supporting = stringResource(R.string.caller_alias_subtitle),
+                                leadingIcon = Icons.Rounded.VisibilityOff,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorGreen,
+                                trailingIcon = Icons.Default.ChevronRight,
+                                onClick = { navigator.navigate(CallerAliasScreenDestination) }
+                            )
                             RillSwitchListItem(
                                 headline   = stringResource(R.string.proximity_sensor),
                                 supporting = stringResource(R.string.proximity_sensor_subtitle),
@@ -361,13 +390,98 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                 }
             }
 
+            // ── Bluetooth Calls Audio Optimization ───────────────────────────
+            item {
+                RillAnimatedSection(delayMs = 115L) {
+                    Column {
+                        SettingsSectionLabel(stringResource(R.string.bluetooth_call_section))
+                        RillExpressiveCard {
+                            RillSwitchListItem(
+                                headline = stringResource(R.string.bluetooth_optimization_title),
+                                supporting = stringResource(R.string.bluetooth_optimization_subtitle),
+                                leadingIcon = Icons.Rounded.BluetoothAudio,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                checked = bluetoothOptimization,
+                                onCheckedChange = {
+                                    bluetoothOptimization = it
+                                    prefs.setBoolean(BluetoothCallAudioHelper.KEY_BT_OPTIMIZATION, it)
+                                }
+                            )
+                            RillSwitchListItem(
+                                headline = stringResource(R.string.bluetooth_auto_route_title),
+                                supporting = stringResource(R.string.bluetooth_auto_route_subtitle),
+                                leadingIcon = Icons.Rounded.Bluetooth,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                checked = bluetoothAutoRoute,
+                                onCheckedChange = {
+                                    bluetoothAutoRoute = it
+                                    prefs.setBoolean(BluetoothCallAudioHelper.KEY_BT_AUTO_ROUTE, it)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             // ── Call Recording ────────────────────────────────────────────────
             item {
                 RillAnimatedSection(delayMs = 120L) {
                     Column {
                         SettingsSectionLabel(stringResource(R.string.call_recording))
                         RillExpressiveCard {
-                            val statusHeadline = stringResource(R.string.shizuku_call_recording)
+                            // Engine Selection Item
+                            val engineHeadline = stringResource(R.string.call_recording_engine)
+                            val engineSupporting = when (currentEngineMode) {
+                                "root" -> "${stringResource(R.string.engine_root)} • " + if (isRootGranted) stringResource(R.string.root_status_granted) else if (isRootAvailable) stringResource(R.string.root_status_available) else stringResource(R.string.root_status_not_found)
+                                "shizuku" -> "${stringResource(R.string.engine_shizuku)} • " + if (isShizukuGranted) stringResource(R.string.shizuku_status_connected) else stringResource(R.string.shizuku_status_disconnected)
+                                "standard" -> stringResource(R.string.engine_standard)
+                                else -> "${stringResource(R.string.engine_auto)} • " + if (isRootGranted) "Root (Superuser)" else if (isShizukuGranted) "Shizuku" else "Standard"
+                            }
+                            val engineIconColor = when {
+                                (currentEngineMode == "root" && isRootGranted) || (currentEngineMode == "auto" && isRootGranted) -> MaterialTheme.colorScheme.customColors.colorDarkGreen
+                                (currentEngineMode == "shizuku" && isShizukuGranted) || (currentEngineMode == "auto" && isShizukuGranted) -> MaterialTheme.colorScheme.customColors.colorDarkGreen
+                                (currentEngineMode == "root" && isRootAvailable) || (currentEngineMode == "shizuku" && isShizukuAvailable) -> MaterialTheme.colorScheme.customColors.colorDarkAmber
+                                else -> MaterialTheme.colorScheme.customColors.colorDarkBlue
+                            }
+                            val engineIconBgColor = when {
+                                (currentEngineMode == "root" && isRootGranted) || (currentEngineMode == "auto" && isRootGranted) -> MaterialTheme.colorScheme.customColors.colorGreen
+                                (currentEngineMode == "shizuku" && isShizukuGranted) || (currentEngineMode == "auto" && isShizukuGranted) -> MaterialTheme.colorScheme.customColors.colorGreen
+                                (currentEngineMode == "root" && isRootAvailable) || (currentEngineMode == "shizuku" && isShizukuAvailable) -> MaterialTheme.colorScheme.customColors.colorAmber
+                                else -> MaterialTheme.colorScheme.customColors.colorBlue
+                            }
+
+                            RillListItem(
+                                headline = engineHeadline,
+                                supporting = engineSupporting,
+                                leadingIcon = Icons.Rounded.AdminPanelSettings,
+                                iconContainerColor = engineIconColor,
+                                iconBgContainerColor = engineIconBgColor,
+                                trailingIcon = Icons.Default.ChevronRight,
+                                onClick = { showEngineModeDialog = true }
+                            )
+
+                            // Grant Root Access item if available and not yet authorized
+                            if ((currentEngineMode == "root" || currentEngineMode == "auto") && isRootAvailable && !isRootGranted) {
+                                RillListItem(
+                                    headline = stringResource(R.string.request_root_access),
+                                    supporting = stringResource(R.string.root_bluetooth_supported),
+                                    leadingIcon = Icons.Rounded.BluetoothAudio,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkAmber,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorAmber,
+                                    trailingIcon = Icons.Default.ChevronRight,
+                                    onClick = {
+                                        RootUtils.requestRootPermission { granted ->
+                                            if (granted) {
+                                                RootUtils.checkStatus()
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Audio Source Selector
                             val sourceName = when (currentAudioSource) {
                                 "voice-call" -> stringResource(R.string.audio_source_voice_call)
                                 "voice-call-downlink" -> stringResource(R.string.audio_source_voice_call_downlink)
@@ -375,38 +489,14 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                 "mic" -> stringResource(R.string.audio_source_mic)
                                 else -> stringResource(R.string.audio_source_voice_comm)
                             }
-                            val statusSupporting = when {
-                                isShizukuAvailable && isShizukuGranted -> "${stringResource(R.string.shizuku_status_connected)} • $sourceName"
-                                isShizukuAvailable -> stringResource(R.string.shizuku_status_permission_needed)
-                                else -> stringResource(R.string.shizuku_status_disconnected)
-                            }
-                            val iconColor = when {
-                                isShizukuAvailable && isShizukuGranted -> MaterialTheme.colorScheme.customColors.colorDarkGreen
-                                isShizukuAvailable -> MaterialTheme.colorScheme.customColors.colorDarkAmber
-                                else -> MaterialTheme.colorScheme.customColors.colorDarkRed
-                            }
-                            val iconBgColor = when {
-                                isShizukuAvailable && isShizukuGranted -> MaterialTheme.colorScheme.customColors.colorGreen
-                                isShizukuAvailable -> MaterialTheme.colorScheme.customColors.colorAmber
-                                else -> MaterialTheme.colorScheme.customColors.colorRed
-                            }
-
                             RillListItem(
-                                headline = statusHeadline,
-                                supporting = statusSupporting,
+                                headline = stringResource(R.string.call_recording_audio_source),
+                                supporting = "$sourceName • ${stringResource(R.string.root_bluetooth_supported)}",
                                 leadingIcon = Icons.Rounded.Mic,
-                                iconContainerColor = iconColor,
-                                iconBgContainerColor = iconBgColor,
+                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
+                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorGreen,
                                 trailingIcon = Icons.Default.ChevronRight,
-                                onClick = {
-                                    if (isShizukuAvailable && !isShizukuGranted) {
-                                        ShizukuManager.requestPermission()
-                                    } else if (!isShizukuAvailable) {
-                                        ShizukuManager.launchShizukuApp(context)
-                                    } else {
-                                        showAudioSourceDialog = true
-                                    }
-                                }
+                                onClick = { showAudioSourceDialog = true }
                             )
                         }
                     }
@@ -661,6 +751,82 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                 },
                 confirmButton = {
                     TextButton(onClick = { showAudioSourceDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        // Engine Mode Dialog
+        if (showEngineModeDialog) {
+            AlertDialog(
+                onDismissRequest = { showEngineModeDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Rounded.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = stringResource(R.string.call_recording_engine),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "auto" to stringResource(R.string.engine_auto),
+                            "root" to stringResource(R.string.engine_root),
+                            "shizuku" to stringResource(R.string.engine_shizuku),
+                            "standard" to stringResource(R.string.engine_standard)
+                        ).forEach { (key, label) ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (currentEngineMode == key)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                onClick = {
+                                    currentEngineMode = key
+                                    prefs.setString("call_recording_engine_mode", key)
+                                    showEngineModeDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = currentEngineMode == key,
+                                        onClick = {
+                                            currentEngineMode = key
+                                            prefs.setString("call_recording_engine_mode", key)
+                                            showEngineModeDialog = false
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (currentEngineMode == key) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showEngineModeDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }

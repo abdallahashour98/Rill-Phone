@@ -188,11 +188,16 @@ class CallNotificationManager(
         val audioLabel = when (audioRoute) {
             CallAudioState.ROUTE_SPEAKER -> context.getString(R.string.audio_route_speaker)
             CallAudioState.ROUTE_BLUETOOTH -> {
-                try {
-                    audioState?.activeBluetoothDevice?.name ?: context.getString(R.string.audio_route_bluetooth)
-                } catch (_: SecurityException) {
-                    context.getString(R.string.audio_route_bluetooth)
-                }
+                val hasBtPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.BLUETOOTH_CONNECT
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                } else true
+                val btName = if (hasBtPerm) {
+                    try { audioState?.activeBluetoothDevice?.name } catch (_: Exception) { null }
+                } else null
+                btName ?: context.getString(R.string.audio_route_bluetooth)
             }
             CallAudioState.ROUTE_WIRED_HEADSET -> context.getString(R.string.audio_route_headset)
             else -> context.getString(R.string.audio_route_handset)

@@ -825,4 +825,52 @@
     <string name="move_up">تحريك للأعلى</string>
     <string name="move_down">تحريك للأسفل</string>
     <string name="slot_label">الموضع %1$d</string>
+
+    <!-- Root Call Recording -->
+    <string name="call_recording_engine">محرك تسجيل المكالمات</string>
+    <string name="call_recording_engine_subtitle">اختر محرك الروت (Superuser)، أو Shizuku، أو المحرك القياسي</string>
+    <string name="engine_auto">تلقائي (الروت إن وجد، ثم Shizuku)</string>
+    <string name="engine_root">الروت (مباشر بصوت الطرفين ودعم البلوتوث)</string>
+    <string name="engine_shizuku">خدمة Shizuku (بدون روت)</string>
+    <string name="engine_standard">تسجيل قياسي MediaRecorder (الميكروفون فقط)</string>
+    <string name="root_status_granted">الروت متصل ومصرح به</string>
+    <string name="root_status_available">الروت متوفر (انقر للمنح)</string>
+    <string name="root_status_not_found">لم يتم العثور على روت</string>
+    <string name="root_bluetooth_supported">تسجيل مباشر عبر الروت لكلا الطرفين مع دعم سماعات البلوتوث</string>
+    <string name="request_root_access">فحص / منح صلاحية الروت</string>
+    <string name="root_permission_granted">تم منح صلاحية الروت بنجاح!</string>
+    <string name="root_permission_denied">لم يتم منح صلاحية الروت.</string>
+
+    <!-- Caller ID Masking / Alias -->
+    <string name="caller_alias_title">تمويه هوية المتصل</string>
+    <string name="caller_alias_subtitle">إظهار اسم مستعار (مثل رقم خاص) لأرقام محددة عند الاتصال</string>
+    <string name="caller_alias_enable">تفعيل تمويه اسم المتصل</string>
+    <string name="caller_alias_enable_desc">عند التفعيل، ستظهر المكالمات الواردة والصادرة للأرقام المحددة بالاسم المستعار بدلاً من اسمها المسجل في جهات الاتصال.</string>
+    <string name="add_masked_number">إضافة رقم مموه</string>
+    <string name="edit_masked_number">تعديل الرقم المموه</string>
+    <string name="phone_number_label">رقم الهاتف</string>
+    <string name="alias_name_label">الاسم المستعار المراد إظهاره</string>
+    <string name="alias_name_hint">مثال: رقم خاص أو أي اسم مخصص</string>
+    <string name="quick_suggestions">اقتراحات سريعة</string>
+    <string name="hide_number_toggle">إخفاء أرقام الهاتف أثناء الاتصال</string>
+    <string name="hide_number_desc">إخفاء أرقام الهاتف الفعلية لتظهر كـ •••••••• على شاشة الاتصال والإشعارات</string>
+    <string name="preset_private_number">رقم خاص</string>
+    <string name="preset_unknown">غير معروف</string>
+    <string name="preset_customer_service">خدمة العملاء</string>
+    <string name="preset_work">العمل</string>
+    <string name="preset_delivery">توصيل طلبات</string>
+    <string name="preset_important">مهم</string>
+    <string name="no_masked_numbers">لا توجد أرقام مموهة بعد</string>
+    <string name="no_masked_numbers_desc">انقر على + لإضافة رقم واختيار الاسم الذي تحب أن يظهر عند اتصاله بك</string>
+    <string name="pick_contact">اختيار من الأسماء</string>
+    <string name="alias_saved">تم حفظ الرقم المموه بنجاح</string>
+    <string name="delete_alias">حذف الرقم المموه</string>
+    <string name="delete_alias_confirm">هل أنت متأكد من حذف التمويه للرقم %s؟</string>
+
+    <!-- Bluetooth Call Audio Optimization -->
+    <string name="bluetooth_call_section">صوت ومكالمات البلوتوث</string>
+    <string name="bluetooth_optimization_title">تحسين جودة صوت ومايك البلوتوث</string>
+    <string name="bluetooth_optimization_subtitle">تفعيل الصوت عالي الدقة (HD Voice / WBS) وإلغاء الصدى والضوضاء وتحسين التقاط المايك</string>
+    <string name="bluetooth_auto_route_title">التحويل التلقائي لسماعة البلوتوث</string>
+    <string name="bluetooth_auto_route_subtitle">توجيه المكالمة فوراً إلى سماعة البلوتوث المتصلة دون أي تأخير</string>
 </resources>

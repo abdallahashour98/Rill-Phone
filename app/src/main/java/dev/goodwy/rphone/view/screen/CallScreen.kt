@@ -724,10 +724,14 @@ fun ExpressiveCallScreen(
                     val bluetoothLabel = stringResource(R.string.audio_route_bluetooth)
                     val audioLabel = when (audioRoute) {
                         CallAudioState.ROUTE_SPEAKER -> stringResource(R.string.audio_route_speaker)
-                        CallAudioState.ROUTE_BLUETOOTH -> try {
-                            audioState?.activeBluetoothDevice?.name ?: bluetoothLabel
-                        } catch (e: SecurityException) {
-                            bluetoothLabel
+                        CallAudioState.ROUTE_BLUETOOTH -> {
+                            val hasBtPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                            } else true
+                            val name = if (hasBtPerm) {
+                                try { audioState?.activeBluetoothDevice?.name } catch (_: Exception) { null }
+                            } else null
+                            name ?: bluetoothLabel
                         }
                         CallAudioState.ROUTE_WIRED_HEADSET -> stringResource(R.string.audio_route_headset)
                         else -> stringResource(R.string.audio_route_handset)
@@ -1033,11 +1037,12 @@ fun ExpressiveCallScreen(
                                                     if ((supported and CallAudioState.ROUTE_SPEAKER) != 0) add(speakerLabel to CallAudioState.ROUTE_SPEAKER)
                                                     if ((supported and CallAudioState.ROUTE_WIRED_HEADSET) != 0) add(headsetLabel to CallAudioState.ROUTE_WIRED_HEADSET)
                                                     if ((supported and CallAudioState.ROUTE_BLUETOOTH) != 0) {
-                                                        val deviceName = try {
-                                                            audioState?.activeBluetoothDevice?.name
-                                                        } catch (e: SecurityException) {
-                                                            null
-                                                        }
+                                                        val hasBtPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                                                        } else true
+                                                        val deviceName = if (hasBtPerm) {
+                                                            try { audioState?.activeBluetoothDevice?.name } catch (_: Exception) { null }
+                                                        } else null
                                                         add((deviceName ?: bluetoothLabel) to CallAudioState.ROUTE_BLUETOOTH)
                                                     }
                                                 }

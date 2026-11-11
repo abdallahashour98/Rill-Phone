@@ -1,6 +1,9 @@
 package dev.goodwy.rphone
 
 import android.app.Application
+import dev.goodwy.rphone.controller.util.alias.CallerAliasManager
+import dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper
+import dev.goodwy.rphone.controller.util.root.RootUtils
 import dev.goodwy.rphone.view.screen.settings.KEY_SELECTED_APP_ICON
 import dev.goodwy.rphone.view.screen.settings.applyIcon
 import dev.goodwy.rphone.view.screen.settings.buildIcons
@@ -10,6 +13,9 @@ import org.koin.core.context.startKoin
 class RillApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        CallerAliasManager.init(this)
+        RootUtils.checkStatus()
+        BluetoothCallAudioHelper.init(this)
         startKoin {
             androidContext(this@RillApp)
             modules(appModule)

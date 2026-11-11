@@ -27,6 +27,7 @@ import android.telecom.TelecomManager
 import android.widget.Toast
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
+import dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper
 import dev.goodwy.rphone.controller.util.toast
 import dev.goodwy.rphone.modal.`interface`.CallSession
 import dev.goodwy.rphone.modal.`interface`.ICallRepository
@@ -104,6 +105,7 @@ class CallService : InCallService() {
 
     override fun onCreate() {
         super.onCreate()
+        BluetoothCallAudioHelper.init(this)
         (callRepository as? CallRepositoryImpl)?.bindService(this)
 
         // Register the receiver to track screen locks
@@ -196,6 +198,9 @@ class CallService : InCallService() {
             if (state == Call.STATE_ACTIVE) {
                 redialCount = 0
                 redialNumber = null
+                BluetoothCallAudioHelper.onCallActive(this@CallService)
+            } else if (state == Call.STATE_DIALING || state == Call.STATE_CONNECTING) {
+                BluetoothCallAudioHelper.onCallActive(this@CallService)
             }
 
             if (state == Call.STATE_DISCONNECTED) {
@@ -204,6 +209,7 @@ class CallService : InCallService() {
 
                 val remaining = calls?.filter { it.state != Call.STATE_DISCONNECTED && !isSuppressed(it) } ?: emptyList()
                 if (remaining.isEmpty()) {
+                    BluetoothCallAudioHelper.onCallEnded()
                     serviceScope.launch {
                         delay(150.milliseconds)
                         removeForeground()
@@ -587,6 +593,7 @@ class CallService : InCallService() {
         call.registerCallback(callCallback)
         callAudioState?.let { callRepository.updateAudioState(it) }
         try { setMuted(false) } catch (_: Exception) {}
+        BluetoothCallAudioHelper.onCallAdded(this, call)
 
         val number = numberOf(call)
         val cnam = if (call.details.callerDisplayNamePresentation == TelecomManager.PRESENTATION_ALLOWED) {
@@ -733,6 +740,7 @@ class CallService : InCallService() {
     override fun onCallAudioStateChanged(audioState: CallAudioState?) {
         super.onCallAudioStateChanged(audioState)
         callRepository.updateAudioState(audioState)
+        BluetoothCallAudioHelper.onCallAudioStateChanged(this, audioState)
         callRepository.currentCallSession.value?.call?.let { updateNotification(it) }
     }
 
@@ -789,6 +797,7 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        BluetoothCallAudioHelper.onCallEnded()
 
         try {
             unregisterReceiver(screenStateReceiver)

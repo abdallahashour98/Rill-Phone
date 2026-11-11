@@ -18,6 +18,8 @@ import android.os.Build
 import android.os.Environment
 import android.os.PowerManager
 import android.util.Log
+import dev.goodwy.rphone.controller.util.root.RootCallRecorderEngine
+import dev.goodwy.rphone.controller.util.root.RootUtils
 import dev.goodwy.rphone.controller.util.shizuku.ScrcpyAudioCodec
 import dev.goodwy.rphone.controller.util.shizuku.ScrcpyAudioSource
 import dev.goodwy.rphone.controller.util.shizuku.ShizukuCallRecorderEngine
@@ -43,6 +45,7 @@ object CallRecorder {
     private var mediaRecorder: MediaRecorder? = null
     private var currentOutputFile: File? = null
     private var isUsingShizukuEngine = false
+    private var isUsingRootEngine = false
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
@@ -82,44 +85,85 @@ object CallRecorder {
             val fileName = "Call_${cleanPhone}_${System.currentTimeMillis()}.m4a"
             val outputFile = File(recordDir, fileName)
 
-            // Check if Shizuku elevated engine is available for two-way recording
-            ShizukuManager.ensureInitialized()
-            val isShizukuReady = ShizukuManager.isAvailable.value && ShizukuManager.isPermissionGranted.value
-            if (isShizukuReady) {
-                Log.i(TAG, "Shizuku ready. Attempting two-way call recording via Shizuku engine...")
-                val prefs = PreferenceManager(context)
-                val savedSource = prefs.getString("call_recording_audio_source", "voice-call") ?: "voice-call"
-                val audioSourceKey = if (savedSource == "mic-voice-communication" && !prefs.getBoolean("call_recording_audio_source_explicit_comm", false)) {
-                    "voice-call"
-                } else {
-                    savedSource
-                }
-                val audioSource = ScrcpyAudioSource.fromKey(audioSourceKey)
+            val prefs = PreferenceManager(context)
+            val selectedEngine = prefs.getString("call_recording_engine_mode", "auto") ?: "auto"
+            val savedSource = prefs.getString("call_recording_audio_source", "voice-call") ?: "voice-call"
+            val audioSourceKey = if (savedSource == "mic-voice-communication" && !prefs.getBoolean("call_recording_audio_source_explicit_comm", false)) {
+                "voice-call"
+            } else {
+                savedSource
+            }
+            val audioSource = ScrcpyAudioSource.fromKey(audioSourceKey)
 
-                val shizukuStarted = ShizukuCallRecorderEngine.startRecording(
-                    context = context,
-                    outputFile = outputFile,
-                    audioSource = audioSource,
-                    codec = ScrcpyAudioCodec.AAC,
-                    bitRate = 96000
-                )
-                if (shizukuStarted) {
-                    isUsingShizukuEngine = true
-                    currentOutputFile = outputFile
-                    _isRecording.value = true
-                    _recordingDuration.value = 0L
+            // 1. Try Root Engine if selected or auto
+            val tryRoot = selectedEngine == "root" || selectedEngine == "auto"
+            if (tryRoot) {
+                val hasRoot = RootUtils.testSuAccess()
+                if (hasRoot) {
+                    Log.i(TAG, "Root (su) available. Attempting 2-way call recording via Root engine (with Bluetooth support)...")
+                    val rootStarted = RootCallRecorderEngine.startRecording(
+                        context = context,
+                        outputFile = outputFile,
+                        audioSource = audioSource,
+                        codec = ScrcpyAudioCodec.AAC,
+                        bitRate = 96000
+                    )
+                    if (rootStarted) {
+                        isUsingRootEngine = true
+                        currentOutputFile = outputFile
+                        _isRecording.value = true
+                        _recordingDuration.value = 0L
 
-                    timerJob?.cancel()
-                    timerJob = scope.launch(Dispatchers.Main) {
-                        while (_isRecording.value) {
-                            delay(1000)
-                            _recordingDuration.value += 1
+                        timerJob?.cancel()
+                        timerJob = scope.launch(Dispatchers.Main) {
+                            while (_isRecording.value) {
+                                delay(1000)
+                                _recordingDuration.value += 1
+                            }
                         }
+                        Log.i(TAG, "Call recording started via Root engine: ${outputFile.absolutePath}")
+                        return true
+                    } else {
+                        Log.w(TAG, "Root engine failed to start, falling back to next engine")
                     }
-                    Log.i(TAG, "Call recording started via Shizuku engine: ${outputFile.absolutePath}")
-                    return true
-                } else {
-                    Log.w(TAG, "Shizuku engine start failed, falling back to standard MediaRecorder")
+                } else if (selectedEngine == "root") {
+                    Log.e(TAG, "Root engine selected but root access not granted")
+                }
+            }
+
+            // 2. Try Shizuku Engine if selected or auto
+            val tryShizuku = selectedEngine == "shizuku" || (selectedEngine == "auto" && !isUsingRootEngine)
+            if (tryShizuku) {
+                ShizukuManager.ensureInitialized()
+                val isShizukuReady = ShizukuManager.isAvailable.value && ShizukuManager.isPermissionGranted.value
+                if (isShizukuReady) {
+                    Log.i(TAG, "Shizuku ready. Attempting two-way call recording via Shizuku engine...")
+
+                    val shizukuStarted = ShizukuCallRecorderEngine.startRecording(
+                        context = context,
+                        outputFile = outputFile,
+                        audioSource = audioSource,
+                        codec = ScrcpyAudioCodec.AAC,
+                        bitRate = 96000
+                    )
+                    if (shizukuStarted) {
+                        isUsingShizukuEngine = true
+                        currentOutputFile = outputFile
+                        _isRecording.value = true
+                        _recordingDuration.value = 0L
+
+                        timerJob?.cancel()
+                        timerJob = scope.launch(Dispatchers.Main) {
+                            while (_isRecording.value) {
+                                delay(1000)
+                                _recordingDuration.value += 1
+                            }
+                        }
+                        Log.i(TAG, "Call recording started via Shizuku engine: ${outputFile.absolutePath}")
+                        return true
+                    } else {
+                        Log.w(TAG, "Shizuku engine start failed, falling back to standard MediaRecorder")
+                    }
                 }
             }
 
@@ -204,6 +248,16 @@ object CallRecorder {
     private fun cleanup() {
         timerJob?.cancel()
         timerJob = null
+
+        if (isUsingRootEngine) {
+            try {
+                RootCallRecorderEngine.stopRecording()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error stopping Root engine", e)
+            } finally {
+                isUsingRootEngine = false
+            }
+        }
 
         if (isUsingShizukuEngine) {
             try {

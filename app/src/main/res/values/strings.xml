@@ -823,4 +823,52 @@
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
     <string name="slot_label">Slot %1$d</string>
+
+    <!-- Root Call Recording -->
+    <string name="call_recording_engine">Recording Engine</string>
+    <string name="call_recording_engine_subtitle">Choose Root (Superuser), Shizuku, or Standard engine</string>
+    <string name="engine_auto">Auto (Root if available, then Shizuku)</string>
+    <string name="engine_root">Root (Superuser - 2-Way &amp; Bluetooth)</string>
+    <string name="engine_shizuku">Shizuku (Non-Root elevated service)</string>
+    <string name="engine_standard">Standard MediaRecorder (Microphone only)</string>
+    <string name="root_status_granted">Root Connected &amp; Authorized</string>
+    <string name="root_status_available">Root Available (Tap to Grant)</string>
+    <string name="root_status_not_found">No Root Detected</string>
+    <string name="root_bluetooth_supported">Direct 2-way call recording via Root with Bluetooth headset support</string>
+    <string name="request_root_access">Test / Grant Root Access</string>
+    <string name="root_permission_granted">Root permission granted successfully!</string>
+    <string name="root_permission_denied">Root permission was not granted.</string>
+
+    <!-- Caller ID Masking / Alias -->
+    <string name="caller_alias_title">Caller ID Masking</string>
+    <string name="caller_alias_subtitle">Show a custom name (like Private Number) for selected callers</string>
+    <string name="caller_alias_enable">Enable Caller ID Masking</string>
+    <string name="caller_alias_enable_desc">When enabled, calls from or to selected numbers will display the custom alias instead of their real contact name.</string>
+    <string name="add_masked_number">Add Masked Number</string>
+    <string name="edit_masked_number">Edit Masked Number</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="alias_name_label">Display Alias Name</string>
+    <string name="alias_name_hint">e.g. Private Number or custom name</string>
+    <string name="quick_suggestions">Quick Suggestions</string>
+    <string name="hide_number_toggle">Hide phone digits during call</string>
+    <string name="hide_number_desc">Mask the phone number digits so they are hidden on the call screen and notification</string>
+    <string name="preset_private_number">Private Number</string>
+    <string name="preset_unknown">Unknown</string>
+    <string name="preset_customer_service">Customer Service</string>
+    <string name="preset_work">Work</string>
+    <string name="preset_delivery">Delivery</string>
+    <string name="preset_important">Important</string>
+    <string name="no_masked_numbers">No masked numbers yet</string>
+    <string name="no_masked_numbers_desc">Tap + to add a number and choose what name should appear when they call</string>
+    <string name="pick_contact">Pick Contact</string>
+    <string name="alias_saved">Masked caller saved</string>
+    <string name="delete_alias">Delete Masked Number</string>
+    <string name="delete_alias_confirm">Are you sure you want to remove the alias for %s?</string>
+
+    <!-- Bluetooth Call Audio Optimization -->
+    <string name="bluetooth_call_section">Bluetooth Calls</string>
+    <string name="bluetooth_optimization_title">Optimize Bluetooth Audio &amp; Mic</string>
+    <string name="bluetooth_optimization_subtitle">Enable HD Voice (WBS), hardware echo cancellation, and mic clarity for Bluetooth headsets</string>
+    <string name="bluetooth_auto_route_title">Auto-Route to Bluetooth</string>
+    <string name="bluetooth_auto_route_subtitle">Route calls directly to the connected Bluetooth headset without delay</string>
 </resources>

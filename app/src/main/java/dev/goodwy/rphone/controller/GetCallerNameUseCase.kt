@@ -1,10 +1,21 @@
 package dev.goodwy.rphone.controller
 
+import dev.goodwy.rphone.controller.util.alias.CallerAliasManager
 import dev.goodwy.rphone.modal.data.CallerMetadata
 import dev.goodwy.rphone.modal.`interface`.ICallerRepository
 
 class GetCallerNameUseCase(private val repository: ICallerRepository) {
     suspend operator fun invoke(incomingNumber: String, cnamName: String?): CallerMetadata {
+        val alias = CallerAliasManager.getAliasForNumber(incomingNumber)
+        if (alias != null) {
+            return CallerMetadata(
+                number = if (alias.hideNumber) "••••••••" else incomingNumber,
+                name = alias.aliasName,
+                isLocalContact = true,
+                photoUri = null
+            )
+        }
+
         val localContact = repository.getContactByNumber(incomingNumber)
         
         val hasLocalName = localContact != null && (

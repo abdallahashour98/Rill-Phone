@@ -92,7 +92,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!isAlreadyDefaultDialer(this) && callViewModel.allCalls.value.isEmpty()) {
+        if (!isAlreadyDefaultDialer(this)) {
             finish()
             return
         }

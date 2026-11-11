@@ -876,4 +876,5 @@
     <string name="open_default_apps_settings">Open Default Apps Settings</string>
     <string name="open_app_info_restricted">App Info (Allow Restricted Settings)</string>
     <string name="restricted_settings_hint">On Android 14/15/16: If a "Restricted setting" notice appears, open App Info, tap (⋮) in the top-right corner, and select "Allow restricted settings".</string>
+    <string name="continue_without_default">Continue without setting default</string>
 </resources>

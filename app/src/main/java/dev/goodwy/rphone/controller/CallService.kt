@@ -28,6 +28,7 @@ import android.widget.Toast
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper
+import dev.goodwy.rphone.controller.util.isAlreadyDefaultDialer
 import dev.goodwy.rphone.controller.util.toast
 import dev.goodwy.rphone.modal.`interface`.CallSession
 import dev.goodwy.rphone.modal.`interface`.ICallRepository
@@ -458,6 +459,7 @@ class CallService : InCallService() {
     }
 
     private fun updateNotification(requestedCall: Call, forcedHigh: Boolean? = null) {
+        if (!isAlreadyDefaultDialer(this)) return
         // Never show a notification for a hidden call; fall back to the visible current call if any
         val call = if (!isSuppressed(requestedCall)) requestedCall else {
             callRepository.currentCallSession.value?.call
@@ -565,6 +567,7 @@ class CallService : InCallService() {
      */
     override fun onBringToForeground(showDialpad: Boolean) {
         super.onBringToForeground(showDialpad)
+        if (!isAlreadyDefaultDialer(this)) return
         if (callRepository.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
             wakeUpScreen()
             showCallActivity()
@@ -572,6 +575,7 @@ class CallService : InCallService() {
     }
 
     private fun showCallActivity() {
+        if (!isAlreadyDefaultDialer(this)) return
         val intent = Intent(this, CallActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
@@ -632,6 +636,12 @@ class CallService : InCallService() {
         // Update call state synchronously so CallActivity sees active calls immediately
         updateCallState()
 
+        if (!isAlreadyDefaultDialer(this)) {
+            // Rill Phone is NOT the default dialer. The system default dialer handles the call.
+            // Do NOT launch CallActivity, do NOT wake up screen, do NOT post notifications.
+            return
+        }
+
         // Outgoing call: display CallActivity immediately with zero blocking or delay!
         updateNotification(call)
         val intent = Intent(this@CallService, CallActivity::class.java).apply {
@@ -666,6 +676,10 @@ class CallService : InCallService() {
     }
 
     private fun handleIncomingCall(call: Call, number: String) {
+        if (!isAlreadyDefaultDialer(this)) {
+            updateCallState()
+            return
+        }
         val wasLocked = isDeviceLocked()
         wakeUpScreen()
         // Keep the call hidden until we know it isn't blocked, so no notification flashes for it
@@ -808,6 +822,7 @@ class CallService : InCallService() {
     }
 
     private fun maybeStartFloatingCall(contactName: String, number: String, photoUri: String?) {
+        if (!isAlreadyDefaultDialer(this)) return
         if (!preferenceManager.getBoolean(PreferenceManager.KEY_FLOATING_CALL, false)) return
         if (!android.provider.Settings.canDrawOverlays(this)) return
 

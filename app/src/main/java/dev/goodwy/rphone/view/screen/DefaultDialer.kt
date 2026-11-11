@@ -265,6 +265,22 @@ fun DefaultDialerScreen(navController: NavController, navigator: DestinationsNav
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                TextButton(
+                    onClick = {
+                        navigator.navigate(initialRoute) {
+                            popUpTo(DefaultDialerScreenDestination) { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.continue_without_default),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

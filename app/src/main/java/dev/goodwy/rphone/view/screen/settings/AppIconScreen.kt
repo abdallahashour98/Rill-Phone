@@ -69,11 +69,16 @@ internal fun applyIcon(context: android.content.Context, icons: List<AppIconEntr
 
     // Enable only the selected alias; disable all others
     allAliasComponents.forEach { component ->
-        val state = if (component == target)
+        val desiredState = if (component == target)
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         else
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        pm.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP)
+        try {
+            val currentState = pm.getComponentEnabledSetting(component)
+            if (currentState != desiredState) {
+                pm.setComponentEnabledSetting(component, desiredState, PackageManager.DONT_KILL_APP)
+            }
+        } catch (_: Exception) {}
     }
 }
 

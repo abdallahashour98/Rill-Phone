@@ -41,6 +41,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.controller.util.PreferenceManager
+import dev.goodwy.rphone.controller.util.isAlreadyDefaultDialer
 import dev.goodwy.rphone.controller.util.isConference
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.rememberLayerBackdrop
@@ -90,12 +91,16 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (!isAlreadyDefaultDialer(this) && callViewModel.allCalls.value.isEmpty()) {
+            finish()
+            return
+        }
         isFinishingCall.set(false)
         turnScreenOnAndShowWhileLocked()
         isInForeground.value = true
         callViewModel.setIsActivityVisible(true)
         (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
-        super.onCreate(savedInstanceState)
         handleCallIntent(intent)
 
         onBackPressedDispatcher.addCallback(this) {
@@ -260,7 +265,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                             }
                         } else {
                             // Waiting for Telecom to deliver onCallAdded. Don't immediately exit and drop back to previous app!
-                            delay(5000.milliseconds)
+                            delay(2000.milliseconds)
                             if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
                                 dismissCallScreen()
                             }
@@ -586,13 +591,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         finishAndRemoveTask()
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        turnScreenOnAndShowWhileLocked()
-    }
-
     private fun turnScreenOnAndShowWhileLocked() {
-        isFinishingCall.set(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -607,13 +606,13 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
         try {
             val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
-            if (powerManager != null) {
+            if (powerManager != null && !powerManager.isInteractive) {
                 @Suppress("DEPRECATION")
                 val wakeLock = powerManager.newWakeLock(
                     PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
                     "RillPhone:IncomingCallWakeLock"
                 )
-                wakeLock.acquire(5000L)
+                wakeLock.acquire(3000L)
             }
         } catch (e: Exception) {
             Log.w("CallActivity", "Failed to acquire screen wake lock", e)

@@ -96,14 +96,6 @@ fun makeCall(context: Context, number: String, accountHandle: PhoneAccountHandle
 
         try {
             telecomManager.placeCall(uri, extras)
-            // Immediately bring CallActivity to the foreground from the active context
-            // so Xiaomi / MIUI does not suppress the call screen or drop to previous app.
-            try {
-                val callIntent = Intent(context, CallActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                context.startActivity(callIntent)
-            } catch (_: Exception) {}
         } catch (e: Exception) {
             try {
                 val callIntent = Intent(Intent.ACTION_CALL, uri).apply {

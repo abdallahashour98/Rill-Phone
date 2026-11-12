@@ -48,6 +48,7 @@ import androidx.compose.material.icons.rounded.Recycling
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.StarRate
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -435,8 +436,26 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
                 stringResource(R.string.direct_call_on_tap_subtitle),
                 stringResource(R.string.fullscreen_calls),
                 stringResource(R.string.fullscreen_calls_subtitle),
+                stringResource(R.string.caller_alias_title),
+                stringResource(R.string.caller_alias_subtitle),
             )
         ) { navigator.navigate(CallSettingScreenDestination) },
+        SettingsSearchEntry(
+            headline = stringResource(R.string.caller_alias_title),
+            supporting = stringResource(R.string.caller_alias_subtitle),
+            leadingIcon = Icons.Rounded.VisibilityOff,
+            iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkGreen,
+            iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorGreen,
+            options = listOf(
+                stringResource(R.string.caller_alias_title),
+                stringResource(R.string.caller_alias_subtitle),
+                stringResource(R.string.caller_alias_enable),
+                stringResource(R.string.add_masked_number),
+                stringResource(R.string.preset_private_number),
+                stringResource(R.string.preset_unknown),
+                stringResource(R.string.hide_number_toggle)
+            )
+        ) { navigator.navigate(CallerAliasScreenDestination) },
         SettingsSearchEntry(
             headline = stringResource(R.string.quick_responses),
             supporting = stringResource(R.string.quick_responses_subtitle),

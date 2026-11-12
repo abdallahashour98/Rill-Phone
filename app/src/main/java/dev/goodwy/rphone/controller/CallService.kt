@@ -394,11 +394,15 @@ class CallService : InCallService() {
 
     private fun getContactNameFromCache(number: String): String {
         if (number.isEmpty()) return getString(R.string.label_unknown_number)
+        val alias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number)
+        if (alias != null) return alias.aliasName
         val metadata = callStateManager.callerMetadataMap.value[number]
         return metadata?.name?.takeIf { it.isNotEmpty() } ?: number
     }
 
     private fun getContactPhotoFromCache(number: String): String? {
+        val alias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number)
+        if (alias != null) return null
         val metadata = callStateManager.callerMetadataMap.value[number]
         return metadata?.photoUri
     }
@@ -501,7 +505,9 @@ class CallService : InCallService() {
 
             // Start/stop floating bubble based on preference
             if (call.state != Call.STATE_DISCONNECTED && call.state != Call.STATE_DISCONNECTING) {
-                maybeStartFloatingCall(contactName, number, photoUri)
+                val alias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number)
+                val bubbleNumber = if (alias?.hideNumber == true) "••••••••" else number
+                maybeStartFloatingCall(contactName, bubbleNumber, photoUri)
             }
 
             if (quickPhoto == null && photoDeferred != null) {

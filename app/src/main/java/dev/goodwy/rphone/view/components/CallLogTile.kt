@@ -82,7 +82,13 @@ fun CallLogTileSimple(
         CallLog.Calls.BLOCKED_TYPE  -> stringResource(R.string.blocked)
         else                        -> stringResource(R.string.call)
     }
-    val headlineText = if (showNumber) log.number.forceLtr() + "  •  " + typeText else typeText
+    val alias = remember(log.number) { dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(log.number) }
+    val displayedNum = if (alias != null && alias.hideNumber) "••••••••" else log.number.forceLtr()
+    val headlineText = if (alias != null) {
+        alias.aliasName + "  •  " + typeText
+    } else if (showNumber) {
+        displayedNum + "  •  " + typeText
+    } else typeText
     val simLabel = if (showSimLabel && log.simLabel != null) " • " + log.simLabel else ""
     val recordingBadge = if (recordingFile != null) " • 🎙️" else ""
     CallLogListItemSimple(
@@ -123,14 +129,25 @@ fun CallLogTile(
     Box(modifier = Modifier.fillMaxWidth()) {
         val simLabel = if (showSimLabel && log.simLabel != null) " • " + log.simLabel else ""
         val recBadge = if (recordingFile != null) " • 🎙️" else ""
-        val displayName = if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
+        val alias = remember(log.number) { dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(log.number) }
+        val displayName = if (alias != null) {
+            alias.aliasName
+        } else if (log.name == log.number) {
+            log.number.forceLtr()
+        } else {
+            log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
+        }
+        val photoUri = if (alias != null) null else log.photoUri
         CallLogListItem(
             headline = buildString {
                 append(displayName)
                 if (log.count > 1) append(" (${log.count})")
             },
             supporting = buildString {
-                if (log.name != null && log.name != log.number) {
+                if (alias != null) {
+                    val numText = if (alias.hideNumber) "••••••••" else log.number
+                    append(numText + " • " + context.formatDate(log.date, true) + simLabel + recBadge)
+                } else if (log.name != null && log.name != log.number) {
                     val typeLabel = getPhoneTypeText(context, log.phoneType, log.phoneLabel)
                     append(typeLabel + " • " + context.formatDate(log.date, true) + simLabel + recBadge)
                 } else {
@@ -138,7 +155,7 @@ fun CallLogTile(
                 }
             },
             avatarName  = displayName,
-            photoUri    = log.photoUri,
+            photoUri    = photoUri,
             supportingIcon = when (log.type) {
                 CallLog.Calls.MISSED_TYPE   -> Icons.AutoMirrored.Filled.CallMissed
                 CallLog.Calls.INCOMING_TYPE -> Icons.AutoMirrored.Filled.CallReceived

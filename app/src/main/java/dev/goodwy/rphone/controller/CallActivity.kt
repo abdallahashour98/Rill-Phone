@@ -375,9 +375,17 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         }
 
         val conference = stringResource(R.string.conference)
-        var identity by remember(number, cnam, unknownLabel) {
+        val initialAlias = remember(number) { dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number) }
+        var identity by remember(number, cnam, unknownLabel, initialAlias) {
             val base = if (isConference) {
                 CallIdentity("", conference, null, null)
+            } else if (initialAlias != null) {
+                CallIdentity(
+                    number = if (initialAlias.hideNumber) "••••••••" else number,
+                    name = initialAlias.aliasName,
+                    photoUri = null,
+                    backgroundUri = null
+                )
             } else {
                 val cached = cachedIdentity(number, settingsState)
                 if (cached != null) {
@@ -411,6 +419,15 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
         LaunchedEffect(number) {
             if (number.isNotEmpty()) {
+                val currentAlias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number)
+                if (currentAlias != null) {
+                    identity = identity.copy(
+                        name = currentAlias.aliasName,
+                        number = if (currentAlias.hideNumber) "••••••••" else number,
+                        photoUri = null
+                    )
+                    return@LaunchedEffect
+                }
                 callStateManager.callerMetadataMap.collect { map ->
                     val meta = map[number] ?: return@collect
                     if (meta.name.isNotBlank() && meta.name != number) {
@@ -426,12 +443,26 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         val displayOrder = preferenceManager.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0)
 
         LaunchedEffect(number, cnam, settingsState, displayOrder) {
+            val currentAlias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number)
             val handle = number.ifEmpty { null }
 
             val handleResult = CallBackgroundStore.resolveResult(context, handle, null)
             val handleBackground = handleResult.uri
             if (handleBackground != null && handleBackground != identity.backgroundUri) {
                 identity = identity.copy(backgroundUri = handleBackground)
+            }
+
+            if (currentAlias != null) {
+                val defaultBackground = CallBackgroundStore.defaultModelAsync(context)
+                val resolved = CallIdentity(
+                    number = if (currentAlias.hideNumber) "••••••••" else number,
+                    name = currentAlias.aliasName,
+                    photoUri = null,
+                    backgroundUri = handleBackground ?: defaultBackground
+                )
+                cacheIdentity(number, resolved, settingsState)
+                identity = resolved
+                return@LaunchedEffect
             }
 
             val lookup = if (handle == null) {

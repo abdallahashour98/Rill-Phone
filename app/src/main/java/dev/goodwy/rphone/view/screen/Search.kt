@@ -202,6 +202,8 @@ fun ContactSearchContent(
             val cleanDigits = normalizeNumberDigits(query)
             val cleanPureDigits = cleanDigits.filter { it.isDigit() }
             contacts.filter { contact ->
+                val alias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForContact(contact)
+                (alias != null && alias.aliasName.normalizeForSearch().contains(normQuery)) ||
                 contact.displayName.normalizeForSearch().contains(normQuery) ||
                 contact.nickname.normalizeForSearch().contains(normQuery) ||
                 contact.company.normalizeForSearch().contains(normQuery) ||
@@ -237,6 +239,8 @@ fun ContactSearchContent(
             val normQuery = query.normalizeForSearch()
             val cleanQueryDigits = normalizeNumberDigits(query)
             seen.values.filter { entry ->
+                val alias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(entry.number)
+                (alias != null && alias.aliasName.normalizeForSearch().contains(normQuery)) ||
                 (cleanQueryDigits.isNotEmpty() && normalizeNumberDigits(entry.number).contains(cleanQueryDigits)) ||
                         (entry.isCallerIdName && (entry.name?.normalizeForSearch()?.contains(normQuery) == true))
             }

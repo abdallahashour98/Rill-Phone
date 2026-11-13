@@ -88,8 +88,19 @@ fun SingleTile(
         label         = "TileScale"
     )
 
-    val numberForMenu = phoneNumber ?: subtitle?.filter { it.isDigit() || it == '+' }
-        ?.takeIf { it.length >= 5 } ?: subtitle
+    val alias = remember(phoneNumber, title) {
+        phoneNumber?.takeIf { it.isNotBlank() }?.let { dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(it) }
+            ?: if (title.isPhoneNumber()) dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(title) else null
+    }
+
+    val effectiveTitle = alias?.aliasName ?: title
+    val effectivePhotoUri = if (alias != null) null else photoUri
+    val effectiveSubtitle = if (alias != null) {
+        if (alias.hideNumber) "••••••••" else (subtitle ?: phoneNumber)
+    } else subtitle
+
+    val numberForMenu = if (alias != null && alias.hideNumber) null else (phoneNumber ?: subtitle?.filter { it.isDigit() || it == '+' }
+        ?.takeIf { it.length >= 5 } ?: subtitle)
 
     Surface(
         shape = RoundedCornerShape(cardCornerExtraSmall),
@@ -127,8 +138,8 @@ fun SingleTile(
             verticalAlignment = Alignment.CenterVertically
         ) {
             RillAvatar(
-                name               = title,
-                photoUri           = photoUri,
+                name               = effectiveTitle,
+                photoUri           = effectivePhotoUri,
                 icon               = icon,
                 iconContainerColor = iconContainerColor,
                 hasRecording       = hasRecording,
@@ -164,7 +175,7 @@ fun SingleTile(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text     = if (title.isPhoneNumber()) title.forceLtr() else title,
+                        text     = if (effectiveTitle.isPhoneNumber()) effectiveTitle.forceLtr() else effectiveTitle,
                         style    = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color    = if (isMissedCall) MaterialTheme.colorScheme.error
@@ -179,9 +190,9 @@ fun SingleTile(
                 }
                 if (supportingContent != null) {
                     supportingContent()
-                } else if (subtitle != null) {
+                } else if (effectiveSubtitle != null) {
                     Text(
-                        text     = if (subtitle.isPhoneNumber()) subtitle.forceLtr() else subtitle,
+                        text     = if (effectiveSubtitle.isPhoneNumber()) effectiveSubtitle.forceLtr() else effectiveSubtitle,
                         style    = MaterialTheme.typography.bodyMedium,
                         color    = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -240,7 +251,7 @@ fun SingleTile(
                             context.startActivity(intent)
                         }
                     )
-                    if (showCreateContact) {
+                    if (showCreateContact && alias == null) {
                         DropdownMenuItem(
                             contentPadding = PaddingValues(start = 20.dp, end = 26.dp),
                             text = { Text(stringResource(R.string.create_contact)) },
@@ -263,7 +274,8 @@ fun SingleTile(
                     onClick = {
                         showMenu = false
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Phone number", numberForMenu ?: title))
+                        val copyText = if (alias != null && alias.hideNumber) "••••••••" else (numberForMenu ?: effectiveTitle)
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Phone number", copyText))
                     }
                 )
             }

@@ -86,6 +86,9 @@ import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import dev.goodwy.rphone.controller.util.alias.CallerAliasManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -457,11 +460,13 @@ fun DialPadContent(
             value = withContext(Dispatchers.Default) {
                 allContacts.asSequence()
                     .filter { contact ->
+                        val alias = CallerAliasManager.getAliasForContact(contact)
                         val matchesNumber = contact.phoneNumbers.any {
                             val cleanNum = normalizeNumberDigits(it)
                             cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
                         }
-                        val matchesName = t9Enabled && T9Matcher.isMatch(contact.displayName, cleanQuery)
+                        val searchName = alias?.aliasName ?: contact.displayName
+                        val matchesName = t9Enabled && T9Matcher.isMatch(searchName, cleanQuery)
                         val matchesNickname = t9Enabled && contact.nickname.isNotBlank() && T9Matcher.isMatch(contact.nickname, cleanQuery)
                         matchesNumber || matchesName || matchesNickname
                     }
@@ -482,9 +487,11 @@ fun DialPadContent(
             value = withContext(Dispatchers.Default) {
                 logs.asSequence()
                     .filter { log ->
+                        val alias = CallerAliasManager.getAliasForNumber(log.number)
                         val cleanNum = normalizeNumberDigits(log.number)
                         val matchesNumber = cleanNum.contains(cleanQuery) || (cleanQueryDigits.length >= 3 && cleanNum.filter { c -> c.isDigit() }.contains(cleanQueryDigits))
-                        val matchesName = t9Enabled && T9Matcher.isMatch(log.name ?: "", cleanQuery)
+                        val searchName = alias?.aliasName ?: (log.name ?: "")
+                        val matchesName = t9Enabled && T9Matcher.isMatch(searchName, cleanQuery)
                         matchesNumber || matchesName
                     }
                     .take(take)
@@ -828,6 +835,14 @@ fun DialPadContent(
                                     ) {
                                         searchResults.forEach { contact ->
                                             val defaultOrFirstPhone = contact.phoneDetails.firstOrNull { it.isPrimary }?.number ?: contact.phoneNumbers.firstOrNull()
+                                            val alias = defaultOrFirstPhone?.let { CallerAliasManager.getAliasForNumber(it) } ?: CallerAliasManager.getAliasForContact(contact)
+                                            val tileTitle = alias?.aliasName ?: getDisplayName(contact, displayOrder)
+                                            val tilePhoto = if (alias != null) null else contact.photoUri
+                                            val tileSubtitle = if (alias != null) {
+                                                if (alias.hideNumber) "••••••••" else (defaultOrFirstPhone ?: getDisplayContactInfo(contact))
+                                            } else {
+                                                getDisplayContactInfo(contact)
+                                            }
                                             SwipeableCallLogContainer(
                                                 enabled = swipeToCallEnabled && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
                                                 style = swipeCallStyle,
@@ -844,9 +859,9 @@ fun DialPadContent(
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
                                                 SingleTile(
-                                                    title = getDisplayName(contact, displayOrder), //contact.displayName,
-                                                    subtitle = getDisplayContactInfo(contact),
-                                                    photoUri = contact.photoUri,
+                                                    title = tileTitle,
+                                                    subtitle = tileSubtitle,
+                                                    photoUri = tilePhoto,
                                                     phoneNumber = defaultOrFirstPhone,
                                                     trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
                                                         {
@@ -909,7 +924,20 @@ fun DialPadContent(
                                         verticalArrangement = Arrangement.spacedBy(2.dp),
                                     ) {
                                         filteredSearchLogsResults.forEach { log ->
-                                            val displayName = if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
+                                            val alias = remember(log.number) { CallerAliasManager.getAliasForNumber(log.number) }
+                                            val displayName = if (alias != null) {
+                                                alias.aliasName
+                                            } else if (log.name == log.number) {
+                                                log.number.forceLtr()
+                                            } else {
+                                                log.name?.ifEmpty { log.number } ?: log.number.ifEmpty { "Unknown" }
+                                            }
+                                            val tilePhoto = if (alias != null) null else log.photoUri
+                                            val tileSubtitle = if (alias != null) {
+                                                if (alias.hideNumber) "••••••••" else log.number
+                                            } else {
+                                                if (log.name == log.number) null else log.number
+                                            }
                                             val recFile = remember(log.id, log.number, log.date) {
                                                 CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
                                             }
@@ -927,11 +955,11 @@ fun DialPadContent(
                                                     initiateMessage(log.number)
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
-                                            ) {
+                                             ) {
                                                 SingleTile(
                                                     title = displayName,
-                                                    subtitle = if (log.name == log.number) null else log.number,
-                                                    photoUri = log.photoUri,
+                                                    subtitle = tileSubtitle,
+                                                    photoUri = tilePhoto,
                                                     phoneNumber = log.number,
                                                     hasRecording = recFile != null,
                                                     trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
@@ -952,7 +980,7 @@ fun DialPadContent(
                                                         }
                                                         navigator?.navigate(ContactDetailsScreenDestination(phoneNumber = log.number))
                                                     },
-                                                    showCreateContact = log.contactId == null,
+                                                    showCreateContact = log.contactId == null && alias == null,
                                                     menuOffset = DpOffset(56.dp, 0.dp),
                                                 )
                                             }
@@ -986,22 +1014,63 @@ fun DialPadContent(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(4.dp)//.SpaceEvenly
                         ) {
+                            val typedAlias = remember(number) { CallerAliasManager.getAliasForNumber(number) }
+                            var revealMaskedNumber by remember(number) { mutableStateOf(false) }
+
                             // Number display
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1.2f)
                                     .clip(MaterialTheme.shapes.large)
                                     .padding(vertical = 4.dp),
-                                contentAlignment = Alignment.Center
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                val numberLength = number.length
+                                if (typedAlias != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                        modifier = Modifier.padding(bottom = 2.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.VisibilityOff,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(12.dp),
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = typedAlias.aliasName,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                                val numberToDisplay = if (typedAlias != null && typedAlias.hideNumber && !revealMaskedNumber) {
+                                    "••••••••"
+                                } else {
+                                    number
+                                }
+                                val numberLength = numberToDisplay.length
                                 val dynamicFontSize = (28f - (numberLength * 0.4f)).coerceIn(12f, 28f).toInt()
                                 DialpadNumberDisplay(
-                                    number = number,
+                                    number = numberToDisplay,
                                     fontSize = dynamicFontSize,
-                                    cursorPosition = cursorPosition,
-                                    onCursorPositionChange = { cursorPosition = it },
+                                    cursorPosition = if (typedAlias != null && typedAlias.hideNumber && !revealMaskedNumber) numberToDisplay.length else cursorPosition,
+                                    onCursorPositionChange = {
+                                        if (typedAlias == null || !typedAlias.hideNumber || revealMaskedNumber) {
+                                            cursorPosition = it
+                                        }
+                                    },
                                     onLongPress = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         showOverflowMenu = true
@@ -1052,7 +1121,7 @@ fun DialPadContent(
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxHeight(),
-                                    visible = number.isNotEmpty()
+                                    visible = number.isNotEmpty() && typedAlias == null
                                 ) {
                                     var showAddContactDropdown by remember { mutableStateOf(false) }
                                     Box(
@@ -1206,8 +1275,9 @@ fun DialPadContent(
                                 verticalArrangement = Arrangement.Top
                             ) {
 
+                                val typedAlias = remember(number) { CallerAliasManager.getAliasForNumber(number) }
                                 AnimatedVisibility(
-                                    visible = number.isNotEmpty(),// && searchResults.isEmpty() && searchQuery.isEmpty(),
+                                    visible = number.isNotEmpty() && typedAlias == null,// && searchResults.isEmpty() && searchQuery.isEmpty(),
                                     enter = fadeIn() + expandVertically(),
                                     exit = fadeOut() + shrinkVertically()
                                 ) {
@@ -1403,6 +1473,15 @@ fun DialPadContent(
                                                     val defaultOrFirstPhone =
                                                         contact.phoneDetails.firstOrNull { it.isPrimary }?.number
                                                             ?: contact.phoneNumbers.firstOrNull()
+                                                    val alias = defaultOrFirstPhone?.let { CallerAliasManager.getAliasForNumber(it) }
+                                                        ?: CallerAliasManager.getAliasForContact(contact)
+                                                    val tileTitle = alias?.aliasName ?: getDisplayName(contact, displayOrder)
+                                                    val tilePhoto = if (alias != null) null else contact.photoUri
+                                                    val tileSubtitle = if (alias != null) {
+                                                        if (alias.hideNumber) "••••••••" else (defaultOrFirstPhone ?: getDisplayContactInfo(contact))
+                                                    } else {
+                                                        getDisplayContactInfo(contact)
+                                                    }
                                                     SwipeableCallLogContainer(
                                                         enabled = swipeToCallEnabled && defaultOrFirstPhone != null && (swipeCallStyle != PreferenceManager.SWIPE_STYLE_DISABLED),
                                                         style = swipeCallStyle,
@@ -1419,12 +1498,9 @@ fun DialPadContent(
                                                         modifier = Modifier.fillMaxWidth()
                                                     ) {
                                                         SingleTile(
-                                                            title = getDisplayName(
-                                                                contact,
-                                                                displayOrder
-                                                            ), //contact.displayName,
-                                                            subtitle = getDisplayContactInfo(contact),
-                                                            photoUri = contact.photoUri,
+                                                            title = tileTitle,
+                                                            subtitle = tileSubtitle,
+                                                            photoUri = tilePhoto,
                                                             phoneNumber = defaultOrFirstPhone,
                                                             trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
                                                                 {
@@ -1521,9 +1597,18 @@ fun DialPadContent(
                                                 verticalArrangement = Arrangement.spacedBy(2.dp),
                                             ) {
                                                 logsToDisplay.forEach { log ->
+                                                    val alias = remember(log.number) { CallerAliasManager.getAliasForNumber(log.number) }
                                                     val displayName =
-                                                        if (log.name == log.number) log.number.forceLtr() else log.name?.ifEmpty { log.number }
+                                                        if (alias != null) alias.aliasName
+                                                        else if (log.name == log.number) log.number.forceLtr()
+                                                        else log.name?.ifEmpty { log.number }
                                                             ?: log.number.ifEmpty { "Unknown" }
+                                                    val tilePhoto = if (alias != null) null else log.photoUri
+                                                    val tileSubtitle = if (alias != null) {
+                                                        if (alias.hideNumber) "••••••••" else log.number
+                                                    } else {
+                                                        if (log.name == log.number) null else log.number
+                                                    }
                                                     val recFile = remember(log.id, log.number, log.date) {
                                                         CallRecorder.findRecordingForCall(context, log.number, log.date, log.duration)
                                                     }
@@ -1544,8 +1629,8 @@ fun DialPadContent(
                                                     ) {
                                                         SingleTile(
                                                             title = displayName,
-                                                            subtitle = if (log.name == log.number) null else log.number,
-                                                            photoUri = log.photoUri,
+                                                            subtitle = tileSubtitle,
+                                                            photoUri = tilePhoto,
                                                             phoneNumber = log.number,
                                                             hasRecording = recFile != null,
                                                             trailingContent = if (!swipeToCallEnabled || swipeCallStyle != PreferenceManager.SWIPE_STYLE_SAMSUNG) {
@@ -1586,7 +1671,7 @@ fun DialPadContent(
                                                                     )
                                                                 )
                                                             },
-                                                            showCreateContact = log.contactId == null,
+                                                            showCreateContact = log.contactId == null && alias == null,
                                                             menuOffset = DpOffset(56.dp, 64.dp),
                                                         )
                                                     }
@@ -1828,14 +1913,56 @@ fun DialPadContent(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                                 verticalArrangement = Arrangement.Center
                                             ) {
+                                                val typedAlias = remember(number) { CallerAliasManager.getAliasForNumber(number) }
+                                                var revealMaskedNumber by remember(number) { mutableStateOf(false) }
+
+                                                if (typedAlias != null) {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(12.dp),
+                                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                                        modifier = Modifier.padding(bottom = 4.dp)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Center
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Rounded.VisibilityOff,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(14.dp),
+                                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                                            )
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Text(
+                                                                text = typedAlias.aliasName,
+                                                                style = MaterialTheme.typography.titleMedium,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
                                                 Box(contentAlignment = Alignment.Center) {
-                                                    val numberLength = number.length
+                                                    val numberToDisplay = if (typedAlias != null && typedAlias.hideNumber && !revealMaskedNumber) {
+                                                        "••••••••"
+                                                    } else {
+                                                        number
+                                                    }
+                                                    val numberLength = numberToDisplay.length
                                                     val dynamicFontSize = (36f - (numberLength - 7).coerceAtLeast(0) * 1.5f).coerceIn(20f, 36f).toInt()
                                                     DialpadNumberDisplay(
-                                                        number = number,
+                                                        number = numberToDisplay,
                                                         fontSize = dynamicFontSize,
-                                                        cursorPosition = cursorPosition,
-                                                        onCursorPositionChange = { cursorPosition = it },
+                                                        cursorPosition = if (typedAlias != null && typedAlias.hideNumber && !revealMaskedNumber) numberToDisplay.length else cursorPosition,
+                                                        onCursorPositionChange = {
+                                                            if (typedAlias == null || !typedAlias.hideNumber || revealMaskedNumber) {
+                                                                cursorPosition = it
+                                                            }
+                                                        },
                                                         onLongPress = {
                                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                             showOverflowMenu = true
@@ -1857,7 +1984,8 @@ fun DialPadContent(
                                                                 text = { Text(stringResource(R.string.copy)) },
                                                                 onClick = {
                                                                     showOverflowMenu = false
-                                                                    clipboard.setText(AnnotatedString(number))
+                                                                    val copyNumber = if (typedAlias != null && typedAlias.hideNumber) "••••••••" else number
+                                                                    clipboard.setText(AnnotatedString(copyNumber))
                                                                 }
                                                             )
                                                             DropdownMenuItem(
@@ -1890,7 +2018,32 @@ fun DialPadContent(
                                                     }
                                                 }
 
-                                                if (number.isNotEmpty()) {
+                                                if (typedAlias != null && typedAlias.hideNumber) {
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Surface(
+                                                        onClick = { revealMaskedNumber = !revealMaskedNumber },
+                                                        shape = RoundedCornerShape(16.dp),
+                                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = if (revealMaskedNumber) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(15.dp),
+                                                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                            )
+                                                            Spacer(modifier = Modifier.width(4.dp))
+                                                            Text(
+                                                                text = if (revealMaskedNumber) stringResource(R.string.hide_number_toggle) else stringResource(R.string.alias_name_label),
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                            )
+                                                        }
+                                                    }
+                                                } else if (number.isNotEmpty() && typedAlias == null) {
                                                     Spacer(modifier = Modifier.height(4.dp))
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth(),

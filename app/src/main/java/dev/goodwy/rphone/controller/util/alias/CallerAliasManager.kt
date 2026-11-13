@@ -117,4 +117,21 @@ object CallerAliasManager {
             )
         }
     }
+
+    /**
+     * Resolves an alias for a Contact by checking all its phone numbers and phone details.
+     */
+    fun getAliasForContact(contact: dev.goodwy.rphone.modal.data.Contact): CallerAlias? {
+        if (!_isFeatureEnabled.value) return null
+        for (num in contact.phoneNumbers) {
+            val alias = getAliasForNumber(num)
+            if (alias != null) return alias
+        }
+        for (detail in contact.phoneDetails) {
+            val alias = getAliasForNumber(detail.number)
+            if (alias != null) return alias
+        }
+        return null
+    }
 }
+

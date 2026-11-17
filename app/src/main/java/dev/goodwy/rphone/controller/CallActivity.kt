@@ -127,6 +127,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
             Rill4Theme {
                 val session by callViewModel.currentCallSession.collectAsStateWithLifecycle()
                 val audioState by callViewModel.audioState.collectAsStateWithLifecycle()
+                val remoteWaitingCalls by CallService.remoteWaitingCalls.collectAsStateWithLifecycle()
                 val settingsState by preferenceManager.settingsChanged.collectAsStateWithLifecycle()
 //                val callerMetadata by callViewModel.callerMetadata.collectAsStateWithLifecycle()
 
@@ -229,8 +230,10 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                             val hasNoOtherCalls = callViewModel.allCalls.value.none { it != displayCall && it.state != Call.STATE_DISCONNECTED }
                             val redialEnabled = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true)
 
-                            if (isUnansweredOutgoing && hasNoOtherCalls && redialEnabled && identity != null && identity.number.isNotBlank()) {
-                                val disconnectCauseCode = displayCall?.details?.disconnectCause?.code
+                            val disconnectCauseCode = displayCall?.details?.disconnectCause?.code
+                            val canOfferRedial = disconnectCauseCode != android.telecom.DisconnectCause.LOCAL &&
+                                disconnectCauseCode != android.telecom.DisconnectCause.CANCELED
+                            if (isUnansweredOutgoing && hasNoOtherCalls && redialEnabled && canOfferRedial && identity != null && identity.number.isNotBlank()) {
                                 val reasonText = when (disconnectCauseCode) {
                                     android.telecom.DisconnectCause.BUSY -> getString(R.string.call_status_busy)
                                     android.telecom.DisconnectCause.REJECTED -> getString(R.string.call_status_rejected)
@@ -315,6 +318,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                 ExpressiveCallScreen(
                                     call = targetCall,
                                     callState = targetState,
+                                    isRemoteWaiting = targetCall in remoteWaitingCalls,
                                     contactName = targetIdentity.name,
                                     phoneNumber = targetIdentity.number,
                                     photoUri = targetIdentity.photoUri,
@@ -331,10 +335,11 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
                     val targetForRedial = redialTarget
                     if (targetForRedial != null) {
-                        val autoCall = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, true)
+                        val autoCall = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, false)
                         dev.goodwy.rphone.view.components.RedialPromptScreen(
                             target = targetForRedial,
                             autoCallEnabled = autoCall,
+                            totalDurationSeconds = preferenceManager.getInt(PreferenceManager.KEY_REDIAL_PROMPT_SECONDS, 10).coerceIn(5, 30),
                             onRedial = { rTarget ->
                                 val num = rTarget.number
                                 val account = rTarget.phoneAccountHandle
@@ -541,9 +546,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         callViewModel.setIsActivityVisible(true)
         isFinishingCall.set(false)
         val state = callViewModel.currentCallSession.value?.state
-        if (state == Call.STATE_RINGING || state == Call.STATE_SIMULATED_RINGING) {
-            (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
-        }
+        (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(CallNotificationManager.NOTIFICATION_ID)
         if (callViewModel.allCalls.value.any { it.state != Call.STATE_DISCONNECTED }) {
             turnScreenOnAndShowWhileLocked()
         }
@@ -557,9 +560,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
     override fun onPause() {
         super.onPause()
         isInForeground.value = false
-        if (userDismissedCallScreen) {
-            callViewModel.setIsActivityVisible(false)
-        }
+        callViewModel.setIsActivityVisible(false)
     }
 
     private fun setupProximitySensor() {

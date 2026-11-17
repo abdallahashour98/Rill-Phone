@@ -111,6 +111,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ExpressiveCallScreen(
     call: Call,
     callState: Int,
+    isRemoteWaiting: Boolean = false,
     contactName: String,
     phoneNumber: String,
     photoUri: String?,
@@ -488,7 +489,14 @@ fun ExpressiveCallScreen(
                             Call.STATE_DISCONNECTED -> stringResource(R.string.call_status_ended)
                             Call.STATE_HOLDING -> stringResource(R.string.call_status_on_hold)
                             Call.STATE_ACTIVE -> formatDuration(callDuration)
-                            Call.STATE_DIALING -> stringResource(R.string.call_status_calling)
+                            Call.STATE_DIALING -> stringResource(
+                                if (isRemoteWaiting) R.string.call_status_remote_waiting
+                                else R.string.call_status_calling
+                            )
+                            Call.STATE_CONNECTING -> stringResource(
+                                if (isRemoteWaiting) R.string.call_status_remote_waiting
+                                else R.string.call_status_connecting
+                            )
                             Call.STATE_RINGING -> stringResource(R.string.call_status_incoming)
                             else -> stringResource(R.string.call_status_connecting)
                         }

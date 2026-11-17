@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhoneCallback
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,7 +78,7 @@ data class RedialTarget(
 @Composable
 fun RedialPromptScreen(
     target: RedialTarget,
-    autoCallEnabled: Boolean = true,
+    autoCallEnabled: Boolean = false,
     totalDurationSeconds: Int = 5,
     onRedial: (RedialTarget) -> Unit,
     onDismiss: () -> Unit,
@@ -84,10 +87,13 @@ fun RedialPromptScreen(
     BackHandler { onDismiss() }
 
     val totalMillis = totalDurationSeconds * 1000L
-    var remainingMillis by remember { mutableLongStateOf(totalMillis) }
-    var isTriggered by remember { mutableStateOf(false) }
+    var remainingMillis by remember(target) { mutableLongStateOf(totalMillis) }
+    var continueAutomatically by remember(target) { mutableStateOf(autoCallEnabled) }
+    var isTriggered by remember(target) { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(continueAutomatically, target) {
+        remainingMillis = totalMillis
+        if (isTriggered) return@LaunchedEffect
         val interval = 50L
         while (remainingMillis > 0 && !isTriggered) {
             delay(interval)
@@ -95,11 +101,7 @@ fun RedialPromptScreen(
         }
         if (!isTriggered) {
             isTriggered = true
-            if (autoCallEnabled) {
-                onRedial(target)
-            } else {
-                onDismiss()
-            }
+            if (continueAutomatically) onRedial(target) else onDismiss()
         }
     }
 
@@ -200,7 +202,26 @@ fun RedialPromptScreen(
 
                     Spacer(modifier = Modifier.height(22.dp))
 
-                    // Linear countdown progress bar
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.toggleable(
+                            value = continueAutomatically,
+                            role = Role.Checkbox,
+                            onValueChange = { continueAutomatically = it }
+                        )
+                    ) {
+                        Checkbox(
+                            checked = continueAutomatically,
+                            onCheckedChange = null
+                        )
+                        Text(
+                            text = stringResource(R.string.redial_continue_after_countdown),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     LinearProgressIndicator(
                         progress = { animatedProgress },
                         modifier = Modifier
@@ -210,10 +231,7 @@ fun RedialPromptScreen(
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-
                     Spacer(modifier = Modifier.height(12.dp))
-
-                    // Countdown text with icon
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
@@ -226,7 +244,11 @@ fun RedialPromptScreen(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.redialing_in, remainingSeconds),
+                            text = stringResource(
+                                if (continueAutomatically) R.string.redialing_in
+                                else R.string.redial_prompt_closes_in,
+                                remainingSeconds
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

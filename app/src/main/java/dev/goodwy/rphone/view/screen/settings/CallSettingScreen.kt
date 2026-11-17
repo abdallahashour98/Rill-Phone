@@ -55,6 +55,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import org.koin.compose.koinInject
 import androidx.core.net.toUri
 import androidx.compose.material.icons.rounded.AdminPanelSettings
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.BluetoothAudio
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -116,10 +117,10 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
         mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true))
     }
     var redialAutoCall by remember {
-        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, true))
+        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, false))
     }
-    var bluetoothOptimization by remember {
-        mutableStateOf(prefs.getBoolean(BluetoothCallAudioHelper.KEY_BT_OPTIMIZATION, true))
+    var redialPromptSeconds by remember {
+        mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_REDIAL_PROMPT_SECONDS, 10))
     }
     var bluetoothAutoRoute by remember {
         mutableStateOf(prefs.getBoolean(BluetoothCallAudioHelper.KEY_BT_AUTO_ROUTE, true))
@@ -374,6 +375,19 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                 }
                             )
                             if (redialUnanswered) {
+                                RillSelectListItem(
+                                    headline = stringResource(R.string.redial_prompt_duration),
+                                    supporting = stringResource(R.string.redial_prompt_duration_subtitle),
+                                    leadingIcon = Icons.Rounded.Timer,
+                                    options = listOf(5, 10, 15, 30).map { seconds ->
+                                        stringResource(R.string.redial_seconds_option, seconds) to seconds
+                                    },
+                                    selectedValue = redialPromptSeconds,
+                                    onValueChange = { seconds ->
+                                        redialPromptSeconds = seconds
+                                        prefs.setInt(PreferenceManager.KEY_REDIAL_PROMPT_SECONDS, seconds)
+                                    }
+                                )
                                 RillSwitchListItem(
                                     headline = stringResource(R.string.redial_auto_call),
                                     supporting = stringResource(R.string.redial_auto_call_subtitle),
@@ -390,24 +404,12 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            // ── Bluetooth Calls Audio Optimization ───────────────────────────
+            // ── Bluetooth call routing ───────────────────────────
             item {
                 RillAnimatedSection(delayMs = 115L) {
                     Column {
                         SettingsSectionLabel(stringResource(R.string.bluetooth_call_section))
                         RillExpressiveCard {
-                            RillSwitchListItem(
-                                headline = stringResource(R.string.bluetooth_optimization_title),
-                                supporting = stringResource(R.string.bluetooth_optimization_subtitle),
-                                leadingIcon = Icons.Rounded.BluetoothAudio,
-                                iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
-                                iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
-                                checked = bluetoothOptimization,
-                                onCheckedChange = {
-                                    bluetoothOptimization = it
-                                    prefs.setBoolean(BluetoothCallAudioHelper.KEY_BT_OPTIMIZATION, it)
-                                }
-                            )
                             RillSwitchListItem(
                                 headline = stringResource(R.string.bluetooth_auto_route_title),
                                 supporting = stringResource(R.string.bluetooth_auto_route_subtitle),

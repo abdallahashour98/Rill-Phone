@@ -94,9 +94,6 @@ class CallRepositoryImpl : ICallRepository {
 
     override fun setAudioRoute(route: Int) {
         inCallService?.setAudioRoute(route)
-        if (route == CallAudioState.ROUTE_BLUETOOTH) {
-            inCallService?.let { dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper.onUserRequestedBluetooth(it) }
-        }
     }
 
     override fun cycleAudioRoute() {

@@ -486,12 +486,18 @@
     <string name="call_status_incoming">مكالمة واردة</string>
     <string name="call_status_connecting">جاري الاتصال…</string>
     <string name="call_status_unanswered">لم يتم الرد</string>
+    <string name="call_status_remote_waiting">المكالمة في الانتظار…</string>
     <string name="call_status_busy">الرقم مشغول</string>
     <string name="call_status_rejected">تم رفض المكالمة</string>
-    <string name="redial_unanswered">إعادة الاتصال عند عدم الرد</string>
-    <string name="redial_unanswered_subtitle">إظهار شاشة اتصال لمدة 5 ثوانٍ عند عدم الرد على المكالمة الصادرة</string>
+    <string name="redial_unanswered">خيارات إعادة الاتصال</string>
+    <string name="redial_unanswered_subtitle">السؤال عن إعادة الاتصال عند انشغال الرقم أو عدم الرد</string>
     <string name="redial_auto_call">إعادة الاتصال التلقائي</string>
-    <string name="redial_auto_call_subtitle">إعادة الاتصال بالرقم تلقائياً عند انتهاء العد التنازلي (5 ثوانٍ)</string>
+    <string name="redial_auto_call_subtitle">تحديد إعادة الاتصال التلقائي افتراضياً عند ظهور النافذة</string>
+    <string name="redial_continue_after_countdown">إعادة الاتصال تلقائياً بعد العد التنازلي؟</string>
+    <string name="redial_prompt_duration">مدة ظهور نافذة إعادة الاتصال</string>
+    <string name="redial_prompt_duration_subtitle">تختفي النافذة بعد المدة المحددة؛ إعادة الاتصال تلقائياً فقط عند اختيارها</string>
+    <string name="redial_seconds_option">%1$d ثوانٍ</string>
+    <string name="redial_prompt_closes_in">إغلاق النافذة خلال %1$d ثوانٍ…</string>
     <string name="redialing_in">إعادة الاتصال خلال %1$d ثوانٍ…</string>
     <string name="call_now">اتصال الآن</string>
     <string name="slide_to_answer">اسحب للرد</string>
@@ -867,12 +873,10 @@
     <string name="delete_alias">حذف الرقم المموه</string>
     <string name="delete_alias_confirm">هل أنت متأكد من حذف التمويه للرقم %s؟</string>
 
-    <!-- Bluetooth Call Audio Optimization -->
-    <string name="bluetooth_call_section">صوت ومكالمات البلوتوث</string>
-    <string name="bluetooth_optimization_title">تحسين جودة صوت ومايك البلوتوث</string>
-    <string name="bluetooth_optimization_subtitle">تفعيل الصوت عالي الدقة (HD Voice / WBS) وإلغاء الصدى والضوضاء وتحسين التقاط المايك</string>
+    <!-- Bluetooth call routing -->
+    <string name="bluetooth_call_section">توجيه صوت مكالمات البلوتوث</string>
     <string name="bluetooth_auto_route_title">التحويل التلقائي لسماعة البلوتوث</string>
-    <string name="bluetooth_auto_route_subtitle">توجيه المكالمة فوراً إلى سماعة البلوتوث المتصلة دون أي تأخير</string>
+    <string name="bluetooth_auto_route_subtitle">تفضيل سماعة البلوتوث المتصلة عند بدء مكالمة جديدة</string>
 
     <!-- Default Dialer Helper & Restricted Settings -->
     <string name="open_default_apps_settings">فتح إعدادات التطبيقات الافتراضية</string>

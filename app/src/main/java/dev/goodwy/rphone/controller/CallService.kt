@@ -6,7 +6,6 @@ import android.app.ActivityOptions
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.telecom.Connection
 import android.telecom.PhoneAccountHandle
 import android.telephony.ServiceState
@@ -45,6 +44,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -60,10 +62,6 @@ class CallService : InCallService() {
     private val callRepository: ICallRepository by inject()
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var redialCount = 0
-    // Number currently being auto-redialed. Used so a redial-initiated call doesn't reset the counter.
-    private var redialNumber: String? = null
-    private var redialJob: Job? = null
     private val callStartTimes = mutableMapOf<Call, Long>()
     private var lastFloatingCallMetadata: Triple<String, String, String?>? = null
     private var notificationUpdateJob: Job? = null
@@ -106,7 +104,6 @@ class CallService : InCallService() {
 
     override fun onCreate() {
         super.onCreate()
-        BluetoothCallAudioHelper.init(this)
         (callRepository as? CallRepositoryImpl)?.bindService(this)
 
         // Register the receiver to track screen locks
@@ -125,18 +122,11 @@ class CallService : InCallService() {
                 isVisible || inForeground
             }.distinctUntilChanged().collect { isUiVisible ->
                 val currentCall = callRepository.currentCallSession.value?.call
-                val isRinging = currentCall?.let { isRingingState(it.state) }
-                    ?: callRepository.allCalls.value.any { isRingingState(it.state) }
-
-                if (isRinging) {
-                    if (isUiVisible) {
-                        notificationUpdateJob?.cancel()
-                        removeForeground()
-                        cancelNotification()
-                    } else if (currentCall != null) {
-                        updateNotification(currentCall)
-                    }
-                } else if (currentCall != null) {
+                if (isUiVisible) {
+                    notificationUpdateJob?.cancel()
+                    removeForeground()
+                    cancelNotification()
+                } else if (currentCall != null && currentCall.state != Call.STATE_DISCONNECTED) {
                     updateNotification(currentCall)
                 }
             }
@@ -158,6 +148,16 @@ class CallService : InCallService() {
     private val callCallback = object : Call.Callback() {
         override fun onConnectionEvent(call: Call, event: String, extras: android.os.Bundle?) {
             super.onConnectionEvent(call, event, extras)
+            // AOSP Telephony sends supplementary service notification code 1/3 when
+            // the called party is already on a call and our outgoing call is waiting.
+            if (event == EVENT_SUPPLEMENTARY_SERVICE_NOTIFICATION &&
+                extras?.getInt(EXTRA_NOTIFICATION_TYPE, -1) == 0 &&
+                extras?.getInt(EXTRA_NOTIFICATION_CODE, -1) == 3 &&
+                (call.state == Call.STATE_DIALING || call.state == Call.STATE_CONNECTING)
+            ) {
+                remoteWaitingCallsState.value = remoteWaitingCallsState.value + call
+                if (!isSuppressed(call)) updateNotification(call)
+            }
             val number = call.details?.handle?.schemeSpecificPart?.let { android.net.Uri.decode(it) } ?: ""
             if (isUssdNumber(number)) {
                 val resp = extras?.let { b ->
@@ -194,15 +194,10 @@ class CallService : InCallService() {
                 }
             }
 
-            updateCallState()
-
-            if (state == Call.STATE_ACTIVE) {
-                redialCount = 0
-                redialNumber = null
-                BluetoothCallAudioHelper.onCallActive(this@CallService)
-            } else if (state == Call.STATE_DIALING || state == Call.STATE_CONNECTING) {
-                BluetoothCallAudioHelper.onCallActive(this@CallService)
+            if (state != Call.STATE_DIALING && state != Call.STATE_CONNECTING) {
+                remoteWaitingCallsState.value = remoteWaitingCallsState.value - call
             }
+            updateCallState()
 
             if (state == Call.STATE_DISCONNECTED) {
                 val cause = call.details.disconnectCause
@@ -210,7 +205,6 @@ class CallService : InCallService() {
 
                 val remaining = calls?.filter { it.state != Call.STATE_DISCONNECTED && !isSuppressed(it) } ?: emptyList()
                 if (remaining.isEmpty()) {
-                    BluetoothCallAudioHelper.onCallEnded()
                     serviceScope.launch {
                         delay(150.milliseconds)
                         removeForeground()
@@ -249,32 +243,6 @@ class CallService : InCallService() {
         val wasNeverConnected = call.details.connectTimeMillis == 0L
         val isIncoming = call.details.callDirection == Call.Details.DIRECTION_INCOMING
         val isOutgoing = call.details.callDirection == Call.Details.DIRECTION_OUTGOING
-
-        // Auto Redial on Busy
-        if (isOutgoing && cause?.code == DisconnectCause.BUSY &&
-            preferenceManager.getBoolean(PreferenceManager.KEY_AUTO_REDIAL_BUSY, false)) {
-
-            val maxAttempts = preferenceManager.getInt(PreferenceManager.KEY_REDIAL_ATTEMPTS, 3)
-            val delayMs = preferenceManager.getInt(PreferenceManager.KEY_REDIAL_DELAY, 3000).toLong()
-
-            if (redialNumber != number) {
-                redialNumber = number
-                redialCount = 0
-            }
-
-            if (redialCount < maxAttempts) {
-                redialCount++
-                val accountHandle = call.details.accountHandle
-                redialJob?.cancel()
-                redialJob = serviceScope.launch {
-                    delay(delayMs.milliseconds)
-                    placeRedialCall(number, accountHandle)
-                }
-            } else {
-                redialNumber = null
-                redialCount = 0
-            }
-        }
 
         if (isOutgoing && wasNeverConnected) {
             val failMessage = when {
@@ -333,23 +301,6 @@ class CallService : InCallService() {
             BlockedNumberContract.isBlocked(this@CallService, number)
         } catch (_: Exception) {
             false
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun placeRedialCall(number: String, accountHandle: PhoneAccountHandle?) {
-        if (number.isBlank()) return
-        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) return
-        val telecomManager = getSystemService(TelecomManager::class.java) ?: return
-        val extras = Bundle().apply {
-            // Redial through the same SIM that got the busy signal
-            accountHandle?.let { putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, it) }
-        }
-        try {
-            telecomManager.placeCall(Uri.fromParts("tel", number, null), extras)
-        } catch (_: Exception) {
-            redialNumber = null
-            redialCount = 0
         }
     }
 
@@ -471,10 +422,9 @@ class CallService : InCallService() {
                 ?: return
         }
 
-        val isRinging = isRingingState(call.state)
         val isUiVisible = callRepository.isActivityVisible.value || CallActivity.isInForeground.value
 
-        if (isRinging && isUiVisible) {
+        if (isUiVisible) {
             notificationUpdateJob?.cancel()
             removeForeground()
             cancelNotification()
@@ -496,7 +446,7 @@ class CallService : InCallService() {
             val quickPhoto = photoDeferred?.let { withTimeoutOrNull(PHOTO_LOAD_TIMEOUT_MS.milliseconds) { it.await() } }
 
             if (!isActive) return@launch
-            if (isRinging && (callRepository.isActivityVisible.value || CallActivity.isInForeground.value)) {
+            if (callRepository.isActivityVisible.value || CallActivity.isInForeground.value) {
                 removeForeground()
                 cancelNotification()
                 return@launch
@@ -513,7 +463,7 @@ class CallService : InCallService() {
             if (quickPhoto == null && photoDeferred != null) {
                 val photo = photoDeferred.await()
                 if (photo != null && isActive && call.state != Call.STATE_DISCONNECTED) {
-                    if (isRinging && (callRepository.isActivityVisible.value || CallActivity.isInForeground.value)) {
+                    if (callRepository.isActivityVisible.value || CallActivity.isInForeground.value) {
                         removeForeground()
                         cancelNotification()
                         return@launch
@@ -525,6 +475,7 @@ class CallService : InCallService() {
     }
 
     private fun postCallNotification(call: Call, contactName: String, contactPhoto: android.graphics.Bitmap?, forcedHigh: Boolean?) {
+        if (callRepository.isActivityVisible.value || CallActivity.isInForeground.value) return
         val isHigh = forcedHigh ?: isDeviceLocked()
         val notification = notificationManager.buildCallNotification(
             call,
@@ -533,6 +484,7 @@ class CallService : InCallService() {
             callRepository.audioState.value,
             isHigh
         )
+        if (callRepository.isActivityVisible.value || CallActivity.isInForeground.value) return
         startForeground(
             CallNotificationManager.NOTIFICATION_ID,
             notification,
@@ -618,13 +570,6 @@ class CallService : InCallService() {
             return
         }
 
-        // A new outgoing call that isn't our own auto-redial cancels any pending redial
-        if (number != redialNumber) {
-            redialJob?.cancel()
-            redialNumber = null
-            redialCount = 0
-        }
-
         // Update call state synchronously so CallActivity sees active calls immediately
         updateCallState()
 
@@ -706,6 +651,7 @@ class CallService : InCallService() {
         super.onCallRemoved(call)
         CallActivity.userDismissedCallScreen = false
         call.unregisterCallback(callCallback)
+        remoteWaitingCallsState.value = remoteWaitingCallsState.value - call
         awaitingRingCalls.remove(call)
         blockCheckCalls.remove(call)
         silentBlockedCalls.remove(call)
@@ -739,7 +685,6 @@ class CallService : InCallService() {
     override fun onCallAudioStateChanged(audioState: CallAudioState?) {
         super.onCallAudioStateChanged(audioState)
         callRepository.updateAudioState(audioState)
-        BluetoothCallAudioHelper.onCallAudioStateChanged(this, audioState)
         callRepository.currentCallSession.value?.call?.let { updateNotification(it) }
     }
 
@@ -789,7 +734,7 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        BluetoothCallAudioHelper.onCallEnded()
+        remoteWaitingCallsState.value = emptySet()
 
         try {
             unregisterReceiver(screenStateReceiver)
@@ -811,13 +756,23 @@ class CallService : InCallService() {
         FloatingCallService.start(this, contactName, number, photoUri)
     }
 
-    private companion object {
-        const val PHOTO_LOAD_TIMEOUT_MS = 300L
+    companion object {
+        private val remoteWaitingCallsState = MutableStateFlow<Set<Call>>(emptySet())
+        val remoteWaitingCalls: StateFlow<Set<Call>> = remoteWaitingCallsState.asStateFlow()
+
+        // TelephonyManager constants are hidden from the public SDK, but the
+        // ConnectionService event itself is delivered to Call.Callback.
+        private const val EVENT_SUPPLEMENTARY_SERVICE_NOTIFICATION =
+            "android.telephony.event.EVENT_SUPPLEMENTARY_SERVICE_NOTIFICATION"
+        private const val EXTRA_NOTIFICATION_TYPE = "android.telephony.extra.NOTIFICATION_TYPE"
+        private const val EXTRA_NOTIFICATION_CODE = "android.telephony.extra.NOTIFICATION_CODE"
+
+        private const val PHOTO_LOAD_TIMEOUT_MS = 300L
 
         // Connection.EVENT_CALL_SWITCH_FAILED (API 30); literal so it's safe on API 29
-        const val EVENT_CALL_SWITCH_FAILED = "android.telecom.event.CALL_SWITCH_FAILED"
+        private const val EVENT_CALL_SWITCH_FAILED = "android.telecom.event.CALL_SWITCH_FAILED"
 
-        val NORMAL_DISCONNECT_CODES = setOf(
+        private val NORMAL_DISCONNECT_CODES = setOf(
             DisconnectCause.LOCAL,
             DisconnectCause.REMOTE,
             DisconnectCause.CANCELED,

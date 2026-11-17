@@ -488,12 +488,18 @@
     <string name="call_status_incoming">Incoming call</string>
     <string name="call_status_connecting">Connecting…</string>
     <string name="call_status_unanswered">No answer</string>
+    <string name="call_status_remote_waiting">Call is waiting…</string>
     <string name="call_status_busy">Line busy</string>
     <string name="call_status_rejected">Call declined</string>
-    <string name="redial_unanswered">Redial on unanswered call</string>
-    <string name="redial_unanswered_subtitle">Show a 5-second redial prompt when an outgoing call is not answered</string>
+    <string name="redial_unanswered">Redial options</string>
+    <string name="redial_unanswered_subtitle">Ask whether to call again when an outgoing call is busy or unanswered</string>
     <string name="redial_auto_call">Auto-redial after countdown</string>
-    <string name="redial_auto_call_subtitle">Automatically call the number when the 5-second countdown finishes</string>
+    <string name="redial_auto_call_subtitle">Select automatic redial by default when the prompt opens</string>
+    <string name="redial_continue_after_countdown">Call again automatically after countdown?</string>
+    <string name="redial_prompt_duration">Prompt duration</string>
+    <string name="redial_prompt_duration_subtitle">The prompt closes when this time ends; automatic redial only happens if selected</string>
+    <string name="redial_seconds_option">%1$d seconds</string>
+    <string name="redial_prompt_closes_in">Closing in %1$d…</string>
     <string name="redialing_in">Calling again in %1$d…</string>
     <string name="call_now">Call now</string>
     <string name="slide_to_answer">slide to answer</string>
@@ -865,12 +871,10 @@
     <string name="delete_alias">Delete Masked Number</string>
     <string name="delete_alias_confirm">Are you sure you want to remove the alias for %s?</string>
 
-    <!-- Bluetooth Call Audio Optimization -->
-    <string name="bluetooth_call_section">Bluetooth Calls</string>
-    <string name="bluetooth_optimization_title">Optimize Bluetooth Audio &amp; Mic</string>
-    <string name="bluetooth_optimization_subtitle">Enable HD Voice (WBS), hardware echo cancellation, and mic clarity for Bluetooth headsets</string>
+    <!-- Bluetooth call routing -->
+    <string name="bluetooth_call_section">Bluetooth call routing</string>
     <string name="bluetooth_auto_route_title">Auto-Route to Bluetooth</string>
-    <string name="bluetooth_auto_route_subtitle">Route calls directly to the connected Bluetooth headset without delay</string>
+    <string name="bluetooth_auto_route_subtitle">Prefer a connected Bluetooth headset for a new call</string>
 
     <!-- Default Dialer Helper & Restricted Settings -->
     <string name="open_default_apps_settings">Open Default Apps Settings</string>

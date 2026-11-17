@@ -416,9 +416,6 @@ class PreferenceManager(context: Context) {
         const val KEY_CONTACTS_TRASH_ENABLED = "contacts_trash_enabled"
         const val KEY_INCOMING_CALL_POPUP = "incoming_call_popup"
         const val KEY_ALWAYS_FULL_SCREEN_CALLS = "always_full_screen_calls"
-        const val KEY_AUTO_REDIAL_BUSY = "auto_redial_busy"
-        const val KEY_REDIAL_ATTEMPTS = "redial_attempts"
-        const val KEY_REDIAL_DELAY = "redial_delay"
         const val KEY_BLOCK_METHOD = "block_method"
         const val KEY_BLOCK_LOG_VISIBILITY = "block_log_visibility"
         const val KEY_BLOCK_NOTIFICATION = "block_notification"
@@ -522,6 +519,7 @@ class PreferenceManager(context: Context) {
         const val KEY_POST_CALL_SCREEN = "post_call_screen"
         const val KEY_REDIAL_UNANSWERED = "redial_unanswered"
         const val KEY_REDIAL_AUTO_CALL = "redial_auto_call"
+        const val KEY_REDIAL_PROMPT_SECONDS = "redial_prompt_seconds"
         const val KEY_NAV_BAR_STYLE = "nav_bar_style"
         const val NAV_BAR_STYLE_STANDARD = 0
         const val NAV_BAR_STYLE_TOOLBAR = 1

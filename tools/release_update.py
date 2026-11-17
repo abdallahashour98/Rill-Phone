@@ -35,6 +35,10 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
+if os.path.exists("/usr/lib/jvm/java-25-openjdk"):
+    os.environ["JAVA_HOME"] = "/usr/lib/jvm/java-25-openjdk"
+    os.environ["PATH"] = f"/usr/lib/jvm/java-25-openjdk/bin:{os.environ.get('PATH', '')}"
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BUILD_GRADLE_PATH = PROJECT_ROOT / "app" / "build.gradle"
 DIST_DIR = PROJECT_ROOT / "dist"
@@ -269,6 +273,10 @@ def run_cmd(cmd: list, cwd=PROJECT_ROOT, check=True):
 
 def sync_to_updates_repo(new_version: str, notes: str):
     """Push update_manifest.json, README.md, and delta patches to updates repository on GitHub"""
+    if UPDATES_REPO_NAME == "abdallahashour98/Rill-Phone":
+        print("[INFO] Manifest and delta patches are published directly to GitHub Releases.")
+        return
+
     temp_dir = DIST_DIR / ".updates_git"
     print_header(f"Syncing public updates repository ({UPDATES_REPO_NAME})...")
 

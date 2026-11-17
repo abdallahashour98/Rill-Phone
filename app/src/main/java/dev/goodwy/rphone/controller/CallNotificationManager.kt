@@ -195,7 +195,15 @@ class CallNotificationManager(
         }
 
         val contentText = buildString {
-            if (isRinging) append(context.getString(R.string.call_status_incoming)) else append(context.getString(R.string.notif_active_call))
+            append(
+                context.getString(
+                    when {
+                        isRinging -> R.string.call_status_incoming
+                        call in CallService.remoteWaitingCalls.value -> R.string.call_status_remote_waiting
+                        else -> R.string.notif_active_call
+                    }
+                )
+            )
             if (!simLabel.isNullOrEmpty()) {
                 append(" ")
                 append(context.getString(R.string.notif_via_sim, simLabel))

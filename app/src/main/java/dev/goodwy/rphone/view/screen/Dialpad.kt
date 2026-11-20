@@ -15,6 +15,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -111,6 +113,7 @@ import dev.goodwy.rphone.controller.CallLogViewModel
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.view.components.PermissionDeniedView
 import dev.goodwy.rphone.view.components.PlaceholderView
+import dev.goodwy.rphone.view.components.getKeypadShape
 import dev.goodwy.rphone.view.theme.MyColors.dialpadColor
 import dev.goodwy.rphone.view.theme.MyColors.dialpadKeyColor
 import dev.goodwy.rphone.view.theme.TabTransitionStyle
@@ -1846,11 +1849,16 @@ fun DialPadContent(
 
                                 val scaleFactor = minOf(widthScale, heightScale)
 
-                                val keySize: Dp = (72 * scaleFactor).coerceIn(54f, 78f).dp
+                                val keypadShape = remember(settingsState) { prefs.getKeypadShape() }
+                                val userButtonScale = remember(settingsState) { prefs.getKeypadButtonSizeScale() }
+                                val userNumberSize = remember(settingsState) { prefs.getKeypadNumberSize() }
+                                val showLetters = remember(settingsState) { prefs.isKeypadShowLetters() }
+
+                                val keySize: Dp = (72 * scaleFactor * userButtonScale).coerceIn(46f, 92f).dp
                                 val keyWidth: Dp = keySize
                                 val keyHeight: Dp = keySize
                                 val spacing = if (isBottomSheet) 14 else 12
-                                val keySpacing: Dp = (spacing * scaleFactor).coerceIn(8f, 20f).dp
+                                val keySpacing: Dp = (spacing * scaleFactor * userButtonScale.coerceAtMost(1.1f)).coerceIn(6f, 20f).dp
 
                                 val liquidGlass = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_LIQUID_GLASS, false) }
                                 val lgDialpad = remember(settingsState) { prefs.getBoolean(PreferenceManager.KEY_LG_DIALPAD, false) }
@@ -1953,7 +1961,7 @@ fun DialPadContent(
                                                         number
                                                     }
                                                     val numberLength = numberToDisplay.length
-                                                    val dynamicFontSize = (36f - (numberLength - 7).coerceAtLeast(0) * 1.5f).coerceIn(20f, 36f).toInt()
+                                                    val dynamicFontSize = (userNumberSize.toFloat() - (numberLength - 7).coerceAtLeast(0) * 1.5f).coerceIn(18f, userNumberSize.toFloat()).toInt()
                                                     DialpadNumberDisplay(
                                                         number = numberToDisplay,
                                                         fontSize = dynamicFontSize,
@@ -2126,6 +2134,8 @@ fun DialPadContent(
                                             val currentLocale = LocalConfiguration.current.locales[0] ?: java.util.Locale.getDefault()
                                             val subKeys = remember(currentLocale) { getDialpadSubKeys(currentLocale.language) }
 
+                                            val currentShape = getKeypadShape(keypadShape)
+
                                             keys.forEach { row ->
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
@@ -2134,7 +2144,7 @@ fun DialPadContent(
                                                     row.forEach { key ->
                                                         DialPadKey(
                                                             number = key,
-                                                            letters = subKeys[key] ?: "",
+                                                            letters = if (showLetters) (subKeys[key] ?: "") else "",
                                                             hapticsEnabled = appHapticsEnabled,
                                                             dtmfEnabled = dtmfEnabled,
                                                             onClick = { digit ->
@@ -2145,7 +2155,9 @@ fun DialPadContent(
                                                             },
                                                             overrideWidth = keySize,
                                                             overrideHeight = keySize,
-                                                            scaleFactor = scaleFactor
+                                                            scaleFactor = scaleFactor,
+                                                            keypadShape = keypadShape,
+                                                            showLetters = showLetters
                                                         )
                                                     }
                                                 }
@@ -2177,7 +2189,7 @@ fun DialPadContent(
                                                     contentAlignment = Alignment.Center
                                                 ) {}
 
-                                                // Column 2: Circular green Call button
+                                                // Column 2: Call button (styled with current shape)
                                                 DialerActionExpressive(
                                                     onClick = {
                                                         if (number.isNotEmpty()) {
@@ -2205,6 +2217,7 @@ fun DialPadContent(
                                                     containerColor = color_call_button,
                                                     contentColor = Color.White,
                                                     modifier = Modifier.size(keySize),
+                                                    shape = currentShape,
                                                     isLarge = true,
                                                     liquidGlassBackdrop = lgBackdrop,
                                                     liquidGlassEnabled = lgDialpadEnabled,
@@ -2225,7 +2238,7 @@ fun DialPadContent(
                                                         Box(
                                                             modifier = Modifier
                                                                 .size(keySize)
-                                                                .clip(CircleShape)
+                                                                .clip(currentShape)
                                                                 .combinedClickable(
                                                                     onClick = { backspaceAtCursor() },
                                                                     onLongClick = { replaceNumber("") },
@@ -2287,10 +2300,12 @@ fun DialPadContent(
                                                 )
                                         ) { dialpadContent() }
                                     } else {
+                                        val isDarkTheme = isSystemInDarkTheme()
                                         Surface(
                                             modifier = baseModifier,
                                             shape    = dialpadCardShape,
-                                            color    = dialpadColor,
+                                            color    = if (isDarkTheme) dialpadColor else MaterialTheme.colorScheme.surfaceContainerLow,
+                                            shadowElevation = if (!isDarkTheme) 3.dp else 0.dp
                                         ) { dialpadContent() }
                                     }
                                 }
@@ -2330,6 +2345,7 @@ fun DialerActionExpressive(
     containerColor: Color,
     modifier: Modifier = Modifier.size(64.dp),
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    shape: Shape? = null,
     isLarge: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     liquidGlassBackdrop: dev.goodwy.rphone.liquidglass.Backdrop? = null,
@@ -2360,7 +2376,7 @@ fun DialerActionExpressive(
         targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = tween(80, easing = FastOutSlowInEasing), label = "ButtonScale"
     )
-    val buttonShape = if (isLarge) CircleShape else RoundedCornerShape(cornerRadius)
+    val buttonShape = shape ?: (if (isLarge) CircleShape else RoundedCornerShape(cornerRadius))
     val useLiquidGlass =
         liquidGlassEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && liquidGlassBackdrop != null
     val useBackdropBlur =
@@ -2467,6 +2483,8 @@ fun DialPadKey(
     overrideWidth: Dp? = null,
     overrideHeight: Dp? = null,
     scaleFactor: Float = 1f,
+    keypadShape: Int = PreferenceManager.KEYPAD_SHAPE_CIRCLE,
+    showLetters: Boolean = true,
     modifier: Modifier? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -2474,12 +2492,22 @@ fun DialPadKey(
     val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
 
-    val keyNormalColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
-    val keyPressedColor = if (isDark) Color(0xFF48484A) else Color(0xFFD1D1D6)
+    val isMinimal = keypadShape == PreferenceManager.KEYPAD_SHAPE_MINIMAL
+
+    val keyNormalColor = when {
+        isMinimal -> Color.Transparent
+        isDark -> Color(0xFF2C2C2E)
+        else -> Color(0xFFFFFFFF)
+    }
+    val keyPressedColor = when {
+        isMinimal -> if (isDark) Color(0xFF48484A).copy(alpha = 0.5f) else Color(0xFFD1D1D6).copy(alpha = 0.6f)
+        isDark -> Color(0xFF48484A)
+        else -> Color(0xFFD1D1D6)
+    }
     val numberColor = if (isDark) Color.White else Color.Black
     val lettersColor = if (isDark) Color(0xFF8E8E93) else Color(0xFF6C6C70)
 
-    val keySize = overrideWidth ?: if (compact) 60.dp else (72 * scaleFactor).coerceIn(54f, 78f).dp
+    val keySize = overrideWidth ?: if (compact) 60.dp else (72 * scaleFactor).coerceIn(46f, 92f).dp
     val keyWidth = keySize
     val keyHeight = overrideHeight ?: keySize
 
@@ -2495,11 +2523,18 @@ fun DialPadKey(
         label = "DialKeyColor"
     )
 
-    val isCircular = modifier == null || !compact
+    val shape = if (compact) RoundedCornerShape(18.dp) else getKeypadShape(keypadShape)
+    val border = when {
+        isMinimal && !isPressed -> BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.15f))
+        !isDark && !isMinimal -> BorderStroke(1.dp, Color(0xFFD1D1D6).copy(alpha = 0.5f))
+        else -> null
+    }
 
     Surface(
-        shape = if (isCircular) CircleShape else RoundedCornerShape(18.dp),
+        shape = shape,
         color = bgColor,
+        border = border,
+        shadowElevation = if (!isDark && !isMinimal && !isPressed) 1.dp else 0.dp,
         modifier = Modifier
             .then(
                 modifier ?: Modifier.size(width = keyWidth, height = keyHeight)
@@ -2531,7 +2566,7 @@ fun DialPadKey(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            val hasLetters = letters.isNotBlank()
+            val hasLetters = letters.isNotBlank() && showLetters
             if (!hasLetters) {
                 // Centered single symbol for "1", "*", "#"
                 val singleFontSize = (when (number) {

@@ -881,4 +881,37 @@
     <string name="open_app_info_restricted">App Info (Allow Restricted Settings)</string>
     <string name="restricted_settings_hint">On Android 14/15/16: If a "Restricted setting" notice appears, open App Info, tap (⋮) in the top-right corner, and select "Allow restricted settings".</string>
     <string name="continue_without_default">Continue without setting default</string>
+
+    <!-- Keypad & Dialpad Customization -->
+    <string name="keypad_settings">Keypad &amp; Dialpad</string>
+    <string name="keypad_settings_subtitle">Key shapes, button sizes, letters, and layout</string>
+    <string name="keypad_shape">Keypad Button Shape</string>
+    <string name="keypad_shape_subtitle">Choose the shape and curvature of the dial keys</string>
+    <string name="keypad_shape_circle">iOS Circle</string>
+    <string name="keypad_shape_squircle">One UI Squircle</string>
+    <string name="keypad_shape_rounded_rect">Modern Soft Square</string>
+    <string name="keypad_shape_capsule">Pill / Capsule</string>
+    <string name="keypad_shape_minimal">Minimal (Borderless)</string>
+    <string name="keypad_shape_cut_corner">Geometric Cut Corner</string>
+    <string name="keypad_button_size">Keypad Button Size</string>
+    <string name="keypad_button_size_subtitle">Adjust button diameter and scale</string>
+    <string name="keypad_number_display_size">Typed Number Font Size</string>
+    <string name="keypad_number_display_size_subtitle">Adjust font size of the entered phone number</string>
+    <string name="keypad_show_letters">Show Letters on Keys</string>
+    <string name="keypad_show_letters_subtitle">Display ABC, DEF letters under dialpad numbers</string>
+    <string name="call_screen_buttons_size">Call Screen Buttons Size</string>
+    <string name="call_screen_buttons_size_subtitle">Adjust the scale of in-call control buttons</string>
+    <string name="keypad_preview">Keypad Preview</string>
+    <string name="no_numbers_blocked">No numbers blocked</string>
+    <string name="default_tab_section">Default Tab Section</string>
+    <string name="default_tab_summary">Choose which tab opens when the app starts.</string>
+    <string name="call_ui_elements">Call UI Elements</string>
+    <string name="call_ui_elements_summary">Toggle which stat cards appear in the Calls home screen.</string>
+    <string name="manual">Manual</string>
+    <string name="current_theme_colors">Current theme colors</string>
+    <string name="call_time">Call Time</string>
+    <string name="language">Language</string>
+    <string name="language_subtitle">Choose the app display language</string>
+    <string name="language_system_default">System default</string>
+    <string name="select_language">Select Language</string>
 </resources>

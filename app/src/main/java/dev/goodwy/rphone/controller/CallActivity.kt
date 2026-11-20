@@ -74,6 +74,10 @@ private data class CachedCallIdentity(
 
 class CallActivity : FragmentActivity() { //ComponentActivity()
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(dev.goodwy.rphone.controller.util.LocaleHelper.wrapContext(newBase))
+    }
+
     private val contactsRepo: IContactsRepository by inject()
     private val preferenceManager: PreferenceManager by inject()
     private val callViewModel: CallViewModel by inject()

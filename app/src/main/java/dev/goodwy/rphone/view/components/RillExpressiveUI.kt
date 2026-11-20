@@ -19,6 +19,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1456,3 +1457,15 @@ fun Modifier.shake(enabled: Boolean, onAnimationFinish: () -> Unit): Modifier = 
         }
     )
 )
+
+fun getKeypadShape(shapeStyle: Int): Shape {
+    return when (shapeStyle) {
+        PreferenceManager.KEYPAD_SHAPE_CIRCLE -> CircleShape
+        PreferenceManager.KEYPAD_SHAPE_SQUIRCLE -> RoundedCornerShape(22.dp)
+        PreferenceManager.KEYPAD_SHAPE_ROUNDED_RECT -> RoundedCornerShape(14.dp)
+        PreferenceManager.KEYPAD_SHAPE_CAPSULE -> RoundedCornerShape(percent = 50)
+        PreferenceManager.KEYPAD_SHAPE_MINIMAL -> RoundedCornerShape(16.dp)
+        PreferenceManager.KEYPAD_SHAPE_CUT_CORNER -> CutCornerShape(12.dp)
+        else -> CircleShape
+    }
+}

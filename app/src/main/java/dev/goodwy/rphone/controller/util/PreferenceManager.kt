@@ -481,6 +481,19 @@ class PreferenceManager(context: Context) {
         const val CALL_SCREEN_STYLE_ONEUI = 2
         const val CALL_SCREEN_STYLE_MINIMAL = 3
 
+        const val KEY_KEYPAD_SHAPE = "keypad_shape"
+        const val KEYPAD_SHAPE_CIRCLE = 0
+        const val KEYPAD_SHAPE_SQUIRCLE = 1
+        const val KEYPAD_SHAPE_ROUNDED_RECT = 2
+        const val KEYPAD_SHAPE_CAPSULE = 3
+        const val KEYPAD_SHAPE_MINIMAL = 4
+        const val KEYPAD_SHAPE_CUT_CORNER = 5
+
+        const val KEY_KEYPAD_BUTTON_SIZE_SCALE = "keypad_button_size_scale"
+        const val KEY_KEYPAD_NUMBER_SIZE = "keypad_number_size"
+        const val KEY_KEYPAD_SHOW_LETTERS = "keypad_show_letters"
+        const val KEY_CALL_BUTTONS_SIZE_SCALE = "call_buttons_size_scale"
+
         const val KEY_CALL_BUTTONS_ORDER_DEFAULT = "call_buttons_order_default"
         const val KEY_CALL_BUTTONS_ORDER_IOS = "call_buttons_order_ios"
         const val KEY_CALL_BUTTONS_ORDER_ONEUI = "call_buttons_order_oneui"
@@ -761,6 +774,21 @@ class PreferenceManager(context: Context) {
 
     fun isCallScreenLockButtonEnabled(): Boolean = getBoolean(KEY_CALL_SCREEN_LOCK_BUTTON, true)
     fun setCallScreenLockButtonEnabled(enabled: Boolean) = setBoolean(KEY_CALL_SCREEN_LOCK_BUTTON, enabled)
+
+    fun getKeypadShape(): Int = getInt(KEY_KEYPAD_SHAPE, KEYPAD_SHAPE_CIRCLE)
+    fun setKeypadShape(shape: Int) = setInt(KEY_KEYPAD_SHAPE, shape)
+
+    fun getKeypadButtonSizeScale(): Float = getFloat(KEY_KEYPAD_BUTTON_SIZE_SCALE, 1.0f)
+    fun setKeypadButtonSizeScale(scale: Float) = setFloat(KEY_KEYPAD_BUTTON_SIZE_SCALE, scale)
+
+    fun getKeypadNumberSize(): Int = getInt(KEY_KEYPAD_NUMBER_SIZE, 36)
+    fun setKeypadNumberSize(size: Int) = setInt(KEY_KEYPAD_NUMBER_SIZE, size)
+
+    fun isKeypadShowLetters(): Boolean = getBoolean(KEY_KEYPAD_SHOW_LETTERS, true)
+    fun setKeypadShowLetters(show: Boolean) = setBoolean(KEY_KEYPAD_SHOW_LETTERS, show)
+
+    fun getCallButtonsSizeScale(): Float = getFloat(KEY_CALL_BUTTONS_SIZE_SCALE, 1.0f)
+    fun setCallButtonsSizeScale(scale: Float) = setFloat(KEY_CALL_BUTTONS_SIZE_SCALE, scale)
 
     fun resetSwipeActions() {
         setBoolean(KEY_SWIPE_ACTIONS_ENABLED, false)

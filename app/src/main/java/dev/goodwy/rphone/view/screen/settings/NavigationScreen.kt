@@ -140,12 +140,12 @@ fun NavigationScreen(navigator: DestinationsNavigator) {
                                 )
                             }
                         }
-                        Text("Default Tab Section", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.default_tab_section), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(16.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            "Choose which tab opens when the app starts.",
+                            stringResource(R.string.default_tab_summary),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -210,7 +210,7 @@ fun NavigationScreen(navigator: DestinationsNavigator) {
 
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showDefaultTabDialog = false }) { Text("Done") }
+                        TextButton(onClick = { showDefaultTabDialog = false }) { Text(stringResource(R.string.done)) }
                     }
                 }
             }

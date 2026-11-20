@@ -883,4 +883,40 @@
     <string name="open_app_info_restricted">معلومات التطبيق (للسماح بالإعدادات المقيدة)</string>
     <string name="restricted_settings_hint">في أندرويد 14 و15 و16: إذا ظهر تنبيه «إعداد مقيد»، افتح معلومات التطبيق، واضغط على الثلاث نقاط (⋮) بأعلى الشاشة ثم اختر «السماح بالإعدادات المقيدة» لتفعيل تطبيق الهاتف الافتراضي.</string>
     <string name="continue_without_default">المتابعة بدون تعيين افتراضي (استخدام لوحة الاتصال)</string>
+
+    <!-- Keypad & Dialpad Customization -->
+    <string name="keypad_settings">لوحة الاتصال والمفاتيح</string>
+    <string name="keypad_settings_subtitle">أشكال الأزرار، الأحجام، الحروف، وتنسيق لوحة الأرقام</string>
+    <string name="keypad_shape">شكل أزرار لوحة المفاتيح</string>
+    <string name="keypad_shape_subtitle">اختر مظهر واستدارة أزرار لوحة الاتصال</string>
+    <string name="keypad_shape_circle">دائري (iOS)</string>
+    <string name="keypad_shape_squircle">مستدير الحواف (One UI)</string>
+    <string name="keypad_shape_rounded_rect">مربع ناعم (عصري)</string>
+    <string name="keypad_shape_capsule">كبسولة / بيضاوي</string>
+    <string name="keypad_shape_minimal">مبسط (بدون إطار)</string>
+    <string name="keypad_shape_cut_corner">مضلع أنيق (زوايا مشطوفة)</string>
+    <string name="keypad_button_size">حجم أزرار لوحة المفاتيح</string>
+    <string name="keypad_button_size_subtitle">تعديل مقياس وقطر أزرار لوحة الاتصال</string>
+    <string name="keypad_number_display_size">حجم خط شاشة الأرقام</string>
+    <string name="keypad_number_display_size_subtitle">تعديل حجم خط الرقم المكتوب في لوحة المفاتيح</string>
+    <string name="keypad_show_letters">إظهار الأحرف أسفل الأرقام</string>
+    <string name="keypad_show_letters_subtitle">عرض الحروف الأبجدية (ABC) تحت أرقام لوحة الاتصال</string>
+    <string name="call_screen_buttons_size">حجم أزرار شاشة المكالمة</string>
+    <string name="call_screen_buttons_size_subtitle">تعديل مقياس وحجم أزرار التحكم أثناء المكالمة</string>
+    <string name="keypad_preview">معاينة لوحة المفاتيح</string>
+    <string name="call_screen_sim_label">شريحة %1$s</string>
+    <string name="label_unknown">غير معروف</string>
+    <string name="no_numbers_blocked">لا توجد أرقام محظورة</string>
+    <string name="default_tab_section">القسم الافتراضي للتبويب</string>
+    <string name="default_tab_summary">اختر التبويب الذي يفتح عند بدء تشغيل التطبيق.</string>
+    <string name="call_ui_elements">عناصر واجهة المكالمات</string>
+    <string name="call_ui_elements_summary">تبديل بطاقات الإحصائيات التي تظهر في شاشة المكالمات الرئيسية.</string>
+    <string name="manual">يدوي</string>
+    <string name="current_theme_colors">ألوان السمة الحالية</string>
+    <string name="call_time">مدة المكالمات</string>
+    <string name="app_name">Rill Phone</string>
+    <string name="language">اللغة</string>
+    <string name="language_subtitle">اختيار لغة عرض التطبيق</string>
+    <string name="language_system_default">افتراضي النظام</string>
+    <string name="select_language">اختيار اللغة</string>
 </resources>

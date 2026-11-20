@@ -47,6 +47,9 @@ import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.Recycling
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.StarRate
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.VolunteerActivism
@@ -55,6 +58,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,10 +69,12 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.BackupManager
+import dev.goodwy.rphone.controller.util.LocaleHelper
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.getAppVersion
 import dev.goodwy.rphone.view.components.NavigationIcon
@@ -148,6 +154,8 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
     }
     var enabledShake by remember { mutableStateOf(false) }
     var showSnackbar   by remember(settingsState) { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var currentLangCode by remember { mutableStateOf(LocaleHelper.getSelectedLanguage(context)) }
 
     var backupState       by remember { mutableStateOf<BackupDialogState>(BackupDialogState.Idle) }
 
@@ -228,6 +236,79 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
         else -> {}
     }
 
+    // ── Language Dialog ────────────────────────────────────────────────────────
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            icon = { Icon(Icons.Rounded.Language, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text(stringResource(R.string.select_language), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LocaleHelper.supportedLanguages.forEach { option ->
+                        val isSelected = currentLangCode == option.code
+                        Surface(
+                            onClick = {
+                                currentLangCode = option.code
+                                showLanguageDialog = false
+                                LocaleHelper.setLanguage(context, option.code)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = option.flag,
+                                    fontSize = 22.sp,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = option.nativeName,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (option.displayName != option.nativeName) {
+                                        Text(
+                                            text = option.displayName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = {
+                                        currentLangCode = option.code
+                                        showLanguageDialog = false
+                                        LocaleHelper.setLanguage(context, option.code)
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     // Create backup file picker
     val failedToCreateBackup = stringResource(R.string.failed_to_create_backup)
     val createBackupLauncher = rememberLauncherForActivityResult(
@@ -281,6 +362,22 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
     val isGPlay = BuildConfig.FLAVOR == "gplay"
     val isFoss = BuildConfig.FLAVOR == "foss"
     val settingsSearchEntries = listOf(
+        SettingsSearchEntry(
+            headline = stringResource(R.string.language),
+            supporting = LocaleHelper.getSelectedLanguageLabel(context),
+            leadingIcon = Icons.Rounded.Language,
+            iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+            iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+            options = listOf(
+                stringResource(R.string.language),
+                stringResource(R.string.language_subtitle),
+                stringResource(R.string.language_system_default),
+                "العربية",
+                "English",
+                "Language",
+                "لغة"
+            )
+        ) { showLanguageDialog = true },
         SettingsSearchEntry(
             headline = stringResource(R.string.interface_settings),
             supporting = stringResource(R.string.interface_settings_subtitle),
@@ -869,6 +966,15 @@ fun SettingsScreen(navigator: DestinationsNavigator) {
                             Column {
                                 SettingsSectionLabel(stringResource(R.string.appearance))
                                 RillExpressiveCard {
+                                    RillListItem(
+                                        headline = stringResource(R.string.language),
+                                        supporting = LocaleHelper.getSelectedLanguageLabel(context),
+                                        leadingIcon = Icons.Rounded.Language,
+                                        iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                        iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                        trailingIcon = Icons.Default.ChevronRight,
+                                        onClick = { showLanguageDialog = true }
+                                    )
                                     RillListItem(
                                         headline = stringResource(R.string.interface_settings),
                                         supporting = stringResource(R.string.interface_settings_subtitle),

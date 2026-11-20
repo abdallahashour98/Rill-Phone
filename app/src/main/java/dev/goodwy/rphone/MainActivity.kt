@@ -133,6 +133,10 @@ class MainActivity : FragmentActivity() {
     private val mainViewModel: MainViewModel by viewModel()
     private var isAppLocked by mutableStateOf(false)
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(dev.goodwy.rphone.controller.util.LocaleHelper.wrapContext(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)

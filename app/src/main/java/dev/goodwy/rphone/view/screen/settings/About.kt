@@ -498,7 +498,7 @@ fun ThemeColorsDialog(
                             )
                         }
                     }
-                    Text("Current theme colors", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.current_theme_colors), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(16.dp))
 
@@ -577,7 +577,7 @@ fun ThemeColorsDialog(
 
                 Spacer(Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Close") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
                 }
             }
         }

@@ -79,9 +79,12 @@ import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.view.components.SupportProjectItem
 import dev.goodwy.rphone.view.components.Title
 import dev.goodwy.rphone.view.components.RillSelectListItem
+import dev.goodwy.rphone.view.components.RillSliderListItem
 import dev.goodwy.rphone.view.components.RillSwitchListItem
 import dev.goodwy.rphone.view.components.shake
 import dev.goodwy.rphone.view.theme.customColors
+import com.ramcosta.composedestinations.generated.destinations.KeypadPreferenceScreenDestination
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -118,6 +121,9 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
     var hangupWidth by remember(settingsState) { mutableFloatStateOf(prefs.getFloat(PreferenceManager.KEY_HANGUP_WIDTH, 0.5f).coerceIn(0.1f, 1.0f)) }
     var callScreenStyle by remember(settingsState) {
         mutableIntStateOf(prefs.getInt(PreferenceManager.KEY_CALL_SCREEN_STYLE, PreferenceManager.CALL_SCREEN_STYLE_DEFAULT))
+    }
+    var callButtonsScale by remember(settingsState) {
+        mutableFloatStateOf(prefs.getFloat(PreferenceManager.KEY_CALL_BUTTONS_SIZE_SCALE, 1.0f))
     }
     var callScreenLockButton by remember(settingsState) {
         mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_SCREEN_LOCK_BUTTON, true))
@@ -737,6 +743,33 @@ fun CallerUIScreen(navigator: DestinationsNavigator) {
                                     iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
                                     trailingIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     onClick = { showCustomizeButtonsDialog = true }
+                                )
+                                RillSliderListItem(
+                                    headline = stringResource(R.string.call_screen_buttons_size),
+                                    supporting = "${(callButtonsScale * 100).roundToInt()}%",
+                                    leadingIcon = Icons.Rounded.Widgets,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
+                                    value = callButtonsScale,
+                                    valueRange = 0.8f..1.3f,
+                                    steps = 9,
+                                    onValueChange = { callButtonsScale = it },
+                                    onValueChangeFinished = {
+                                        prefs.setFloat(PreferenceManager.KEY_CALL_BUTTONS_SIZE_SCALE, callButtonsScale)
+                                    },
+                                    onValueClick = {
+                                        callButtonsScale = 1.0f
+                                        prefs.setFloat(PreferenceManager.KEY_CALL_BUTTONS_SIZE_SCALE, 1.0f)
+                                    }
+                                )
+                                RillListItem(
+                                    headline = stringResource(R.string.keypad_settings),
+                                    supporting = stringResource(R.string.keypad_shape),
+                                    leadingIcon = Icons.Rounded.Dialpad,
+                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkAmber,
+                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorAmber,
+                                    trailingIcon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    onClick = { navigator.navigate(KeypadPreferenceScreenDestination) }
                                 )
                             }
                         }

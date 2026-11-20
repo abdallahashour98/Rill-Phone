@@ -49,6 +49,8 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import dev.goodwy.rphone.view.components.Title
 import org.koin.compose.koinInject
+import androidx.compose.ui.res.stringResource
+import dev.goodwy.rphone.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -106,7 +108,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
                                 )
                             }
                         }
-                        Text("Block List", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.blocked_numbers), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.customColors.colorRed) {
                             Text("${blockedContactsList.size}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.customColors.colorDarkRed, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
                         }
@@ -119,7 +121,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
                         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Icon(Icons.Rounded.Block, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.35f), modifier = Modifier.size(44.dp))
-                                Text("No numbers blocked", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.no_numbers_blocked), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     } else {
@@ -150,7 +152,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
 
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showBlockListDialog = false }) { Text("Close") }
+                        TextButton(onClick = { showBlockListDialog = false }) { Text(stringResource(R.string.close)) }
                     }
                 }
             }
@@ -234,14 +236,14 @@ fun SpamScreen(navigator: DestinationsNavigator) {
                                 )
                             }
                         }
-                        Text("Blocked Numbers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.blocked_numbers), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search…") },
+                        placeholder = { Text(stringResource(R.string.search)) },
                         leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp)) },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp)) }
@@ -254,7 +256,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
 
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Call Logs", "Contacts", "Manual").forEachIndexed { index, label ->
+                        listOf(stringResource(R.string.calls), stringResource(R.string.contacts), stringResource(R.string.manual)).forEachIndexed { index, label ->
                             val selected = blockedNumbersTab == index
                             Surface(
                                 onClick = { blockedNumbersTab = index },
@@ -350,7 +352,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
                                     OutlinedTextField(
                                         value = blockedNumberInput,
                                         onValueChange = { blockedNumberInput = it },
-                                        label = { Text("Enter number to block") },
+                                        label = { Text(stringResource(R.string.action_block_number)) },
                                         singleLine = true,
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.fillMaxWidth(),
@@ -370,7 +372,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
                                             onClick = { blockNumber(searchQuery.trim()); searchQuery = "" },
                                             modifier = Modifier.fillMaxWidth(),
                                             shape = RoundedCornerShape(50)
-                                        ) { Text("Block \"${searchQuery.trim()}\"") }
+                                        ) { Text("${stringResource(R.string.action_block)} \"${searchQuery.trim()}\"") }
                                     }
                                 }
                             }
@@ -379,7 +381,7 @@ fun SpamScreen(navigator: DestinationsNavigator) {
 
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showBlockedNumbersDialog = false }) { Text("Done") }
+                        TextButton(onClick = { showBlockedNumbersDialog = false }) { Text(stringResource(R.string.done)) }
                     }
                 }
             }

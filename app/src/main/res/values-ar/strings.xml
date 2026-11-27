@@ -486,7 +486,8 @@
     <string name="call_status_incoming">مكالمة واردة</string>
     <string name="call_status_connecting">جاري الاتصال…</string>
     <string name="call_status_unanswered">لم يتم الرد</string>
-    <string name="call_status_remote_waiting">المكالمة في الانتظار…</string>
+    <string name="call_status_remote_waiting">معاه مكالمة أخرى (في الانتظار)…</string>
+    <string name="call_status_remote_on_another_call">الطرف الآخر في مكالمة أخرى</string>
     <string name="call_status_busy">الرقم مشغول</string>
     <string name="call_status_rejected">تم رفض المكالمة</string>
     <string name="redial_unanswered">خيارات إعادة الاتصال</string>
@@ -500,6 +501,8 @@
     <string name="redial_prompt_closes_in">إغلاق النافذة خلال %1$d ثوانٍ…</string>
     <string name="redialing_in">إعادة الاتصال خلال %1$d ثوانٍ…</string>
     <string name="call_now">اتصال الآن</string>
+    <string name="block_call_overlays">حظر النوافذ العائمة في المكالمات الخاصة</string>
+    <string name="block_call_overlays_subtitle">منع التطبيقات الخارجية (مثل تروكولر) من إظهار نوافذ عائمة فوق الأرقام وجهات الاتصال الخاصة</string>
     <string name="slide_to_answer">اسحب للرد</string>
     <string name="swipe_up_to_answer">اسحب لأعلى للرد</string>
     <string name="swipe_down_to_reject">اسحب لأسفل للرفض</string>
@@ -897,6 +900,8 @@
     <string name="keypad_shape_cut_corner">مضلع أنيق (زوايا مشطوفة)</string>
     <string name="keypad_button_size">حجم أزرار لوحة المفاتيح</string>
     <string name="keypad_button_size_subtitle">تعديل مقياس وقطر أزرار لوحة الاتصال</string>
+    <string name="keypad_digit_size">حجم الأرقام داخل الأزرار</string>
+    <string name="keypad_digit_size_subtitle">التحكم في حجم خط الأرقام والرموز الموجودة داخل الأزرار</string>
     <string name="keypad_number_display_size">حجم خط شاشة الأرقام</string>
     <string name="keypad_number_display_size_subtitle">تعديل حجم خط الرقم المكتوب في لوحة المفاتيح</string>
     <string name="keypad_show_letters">إظهار الأحرف أسفل الأرقام</string>

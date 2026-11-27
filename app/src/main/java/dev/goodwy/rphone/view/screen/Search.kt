@@ -72,8 +72,12 @@ import dev.goodwy.rphone.modal.data.CallLogEntry
 import dev.goodwy.rphone.modal.data.getDisplayContactInfo
 import dev.goodwy.rphone.modal.data.getDisplayName
 import dev.goodwy.rphone.view.components.SingleTile
+import dev.goodwy.rphone.modal.data.Contact
+import dev.goodwy.rphone.controller.util.NoteEntry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinActivityViewModel
 import kotlin.text.ifEmpty
@@ -142,10 +146,6 @@ fun ContactSearchContent(
     val callLogVM: CallLogViewModel = koinActivityViewModel()
     val settingsVer by prefs.settingsChanged.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        contactsVM.fetchContactsFull(force = false)
-    }
-
     val fullContacts by contactsVM.allContactsFull.collectAsStateWithLifecycle()
     val baseContacts by contactsVM.allContacts.collectAsStateWithLifecycle()
     val isLoadingContacts by contactsVM.isLoading.collectAsStateWithLifecycle()
@@ -153,6 +153,26 @@ fun ContactSearchContent(
         if (fullContacts.isNotEmpty()) fullContacts else baseContacts
     }
     val callLogs by callLogVM.allCallLogs.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        if (baseContacts.isEmpty()) {
+            contactsVM.fetchContacts()
+        }
+        contactsVM.fetchContactsFull(force = false)
+        callLogVM.refreshLogs()
+    }
+
+    // Safety timeout: never allow loading indicator to hang for more than 2.5 seconds
+    var loadingTimedOut by remember { mutableStateOf(false) }
+    LaunchedEffect(isLoadingContacts) {
+        if (isLoadingContacts) {
+            loadingTimedOut = false
+            delay(2500)
+            loadingTimedOut = true
+        } else {
+            loadingTimedOut = false
+        }
+    }
 
     val filterState = remember(settingsVer) { prefs.getSearchFilterState() }
     val displayOrder = remember(settingsVer) { prefs.getInt(PreferenceManager.KEY_CONTACT_DISPLAY_ORDER, 0) }
@@ -195,9 +215,17 @@ fun ContactSearchContent(
         }
     }
 
-    val filteredContacts = remember(query, contacts, filterState.contacts) {
-        if (!filterState.contacts || query.isBlank()) emptyList()
-        else {
+    val filteredContacts by produceState(
+        initialValue = emptyList<Contact>(),
+        key1 = query,
+        key2 = contacts,
+        key3 = filterState.contacts
+    ) {
+        if (!filterState.contacts || query.isBlank()) {
+            value = emptyList()
+            return@produceState
+        }
+        value = withContext(Dispatchers.Default) {
             val normQuery = query.normalizeForSearch()
             val cleanDigits = normalizeNumberDigits(query)
             val cleanPureDigits = cleanDigits.filter { it.isDigit() }
@@ -225,9 +253,17 @@ fun ContactSearchContent(
     // Numbers that show up in the call log but aren't saved as a contact — i.e. what "Non
     // contacts" in the Filter menu refers to. Deduplicated by normalized number, keeping the
     // most recent entry (callLogs is already date-descending).
-    val nonContactResults = remember(query, callLogs, filterState.nonContacts) {
-        if (!filterState.nonContacts || query.isBlank()) emptyList()
-        else {
+    val nonContactResults by produceState(
+        initialValue = emptyList<CallLogEntry>(),
+        key1 = query,
+        key2 = callLogs,
+        key3 = filterState.nonContacts
+    ) {
+        if (!filterState.nonContacts || query.isBlank()) {
+            value = emptyList()
+            return@produceState
+        }
+        value = withContext(Dispatchers.Default) {
             val seen = LinkedHashMap<String, CallLogEntry>()
             callLogs.asSequence()
                 .filter { it.contactId.isNullOrBlank() }
@@ -249,15 +285,25 @@ fun ContactSearchContent(
 
     var refreshNoteTrigger by remember { mutableIntStateOf(0) }
     // Notes attached to a contact/number (from the call screen or contact info screen).
-    val contactNoteResults = remember(query, filterState.contactNotes, refreshNoteTrigger) {
+    val contactNoteResults by produceState(
+        initialValue = emptyList<NoteEntry>(),
+        key1 = query,
+        key2 = filterState.contactNotes,
+        key3 = refreshNoteTrigger
+    ) {
         val normQuery = query.normalizeForSearch()
         val cleanQueryDigits = normalizeNumberDigits(query)
-        if (!filterState.contactNotes || query.isBlank()) emptyList()
-        else NoteManager.getAllNotes(context).filter { note ->
-            val noteCleanDigits = normalizeNumberDigits(note.phoneNumber)
-            note.contactName.normalizeForSearch().contains(normQuery) ||
-                    (cleanQueryDigits.isNotEmpty() && noteCleanDigits.contains(cleanQueryDigits)) ||
-                    note.content.normalizeForSearch().contains(normQuery)
+        if (!filterState.contactNotes || query.isBlank()) {
+            value = emptyList()
+            return@produceState
+        }
+        value = withContext(Dispatchers.IO) {
+            NoteManager.getAllNotes(context).filter { note ->
+                val noteCleanDigits = normalizeNumberDigits(note.phoneNumber)
+                note.contactName.normalizeForSearch().contains(normQuery) ||
+                        (cleanQueryDigits.isNotEmpty() && noteCleanDigits.contains(cleanQueryDigits)) ||
+                        note.content.normalizeForSearch().contains(normQuery)
+            }
         }
     }
 
@@ -432,7 +478,7 @@ fun ContactSearchContent(
             }
             !hasAnyResults -> {
                 Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                    if (isLoadingContacts && contacts.isEmpty()) {
+                    if (isLoadingContacts && contacts.isEmpty() && !loadingTimedOut) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(36.dp),
                             strokeWidth = 3.dp

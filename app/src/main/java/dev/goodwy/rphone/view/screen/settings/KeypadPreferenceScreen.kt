@@ -52,6 +52,9 @@ fun KeypadPreferenceScreen(navigator: DestinationsNavigator) {
     var buttonSizeScale by remember(settingsState) {
         mutableFloatStateOf(prefs.getKeypadButtonSizeScale())
     }
+    var digitSizeScale by remember(settingsState) {
+        mutableFloatStateOf(prefs.getKeypadDigitSizeScale())
+    }
     var numberDisplaySize by remember(settingsState) {
         mutableIntStateOf(prefs.getKeypadNumberSize())
     }
@@ -149,6 +152,7 @@ fun KeypadPreferenceScreen(navigator: DestinationsNavigator) {
                                                     overrideWidth = previewKeySize,
                                                     overrideHeight = previewKeySize,
                                                     scaleFactor = 1f,
+                                                    digitScale = digitSizeScale,
                                                     keypadShape = keypadShape,
                                                     showLetters = showLetters,
                                                     onClick = {
@@ -310,6 +314,98 @@ fun KeypadPreferenceScreen(navigator: DestinationsNavigator) {
                                     )
                                     Text(
                                         "125%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                            )
+
+                            // Button Digits Font Size Slider (حجم الأرقام داخل الأزرار)
+                            Column(
+                                modifier = Modifier
+                                    .background(color = cardColor)
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.customColors.colorDarkCyan.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Rounded.Pin,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.customColors.colorCyan,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            stringResource(R.string.keypad_digit_size),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            stringResource(R.string.keypad_digit_size_subtitle),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            lineHeight = MaterialTheme.typography.bodyMedium.fontSize,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Slider(
+                                        value = digitSizeScale,
+                                        onValueChange = { digitSizeScale = it },
+                                        onValueChangeFinished = {
+                                            prefs.setKeypadDigitSizeScale(digitSizeScale)
+                                        },
+                                        valueRange = 0.70f..1.40f,
+                                        steps = 13,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "70%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "${(digitSizeScale * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.clickable {
+                                            digitSizeScale = 1.0f
+                                            prefs.setKeypadDigitSizeScale(1.0f)
+                                        }
+                                    )
+                                    Text(
+                                        "140%",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

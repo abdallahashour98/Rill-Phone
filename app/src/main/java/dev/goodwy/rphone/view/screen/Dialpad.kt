@@ -330,6 +330,12 @@ fun DialPadContent(
             cursorPosition = text.length
         }
 
+        LaunchedEffect(Unit) {
+            if (allContacts.isEmpty()) {
+                contactsVM.fetchContacts()
+            }
+        }
+
         LaunchedEffect(initialNumber) {
             if (!initialNumber.isNullOrBlank()) {
                 replaceNumber(initialNumber)
@@ -1080,6 +1086,7 @@ fun DialPadContent(
                                     }
                                 )
                             }
+                            val compactDigitScale = remember(settingsState) { prefs.getKeypadDigitSizeScale() }
                             val keys = listOf(
                                 listOf("1", "2", "3"),
                                 listOf("4", "5", "6"),
@@ -1104,6 +1111,7 @@ fun DialPadContent(
                                             hapticsEnabled = appHapticsEnabled,
                                             dtmfEnabled = dtmfEnabled,
                                             compact = true,
+                                            digitScale = compactDigitScale,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .weight(1f)
@@ -1851,6 +1859,7 @@ fun DialPadContent(
 
                                 val keypadShape = remember(settingsState) { prefs.getKeypadShape() }
                                 val userButtonScale = remember(settingsState) { prefs.getKeypadButtonSizeScale() }
+                                val userDigitScale = remember(settingsState) { prefs.getKeypadDigitSizeScale() }
                                 val userNumberSize = remember(settingsState) { prefs.getKeypadNumberSize() }
                                 val showLetters = remember(settingsState) { prefs.isKeypadShowLetters() }
 
@@ -2156,6 +2165,7 @@ fun DialPadContent(
                                                             overrideWidth = keySize,
                                                             overrideHeight = keySize,
                                                             scaleFactor = scaleFactor,
+                                                            digitScale = userDigitScale,
                                                             keypadShape = keypadShape,
                                                             showLetters = showLetters
                                                         )
@@ -2483,6 +2493,7 @@ fun DialPadKey(
     overrideWidth: Dp? = null,
     overrideHeight: Dp? = null,
     scaleFactor: Float = 1f,
+    digitScale: Float = 1f,
     keypadShape: Int = PreferenceManager.KEYPAD_SHAPE_CIRCLE,
     showLetters: Boolean = true,
     modifier: Modifier? = null
@@ -2567,13 +2578,14 @@ fun DialPadKey(
             contentAlignment = Alignment.Center
         ) {
             val hasLetters = letters.isNotBlank() && showLetters
+            val effectiveDigitScale = (scaleFactor.coerceIn(0.65f, 1.3f) * digitScale).coerceIn(0.45f, 2.2f)
             if (!hasLetters) {
                 // Centered single symbol for "1", "*", "#"
                 val singleFontSize = (when (number) {
                     "*" -> if (compact) 26f else 38f
                     "#" -> if (compact) 20f else 28f
                     else -> if (compact) 22f else 32f
-                } * scaleFactor.coerceIn(0.65f, 1.3f)).sp
+                } * effectiveDigitScale).sp
 
                 Text(
                     text = number,
@@ -2587,8 +2599,8 @@ fun DialPadKey(
                 )
             } else {
                 // Column for digits with sub-letters (2-9 and 0)
-                val mainFontSize = (if (compact) 20f else 32f) * scaleFactor.coerceIn(0.65f, 1.3f)
-                val subFontSize = 10f * scaleFactor.coerceIn(0.65f, 1.3f)
+                val mainFontSize = (if (compact) 20f else 32f) * effectiveDigitScale
+                val subFontSize = 10f * effectiveDigitScale
                 val isPlus = letters.trim() == "+"
 
                 Column(

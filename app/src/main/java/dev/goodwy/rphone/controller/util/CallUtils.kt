@@ -9,11 +9,142 @@ import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 
+import android.media.ToneGenerator
+import android.telecom.DisconnectCause
+
 fun Call.hasCapability(capability: Int): Boolean = (details.callCapabilities and capability) != 0
 
 fun Call?.isConference(): Boolean = this?.details?.hasProperty(Call.Details.PROPERTY_CONFERENCE) == true
 
 fun Call?.isHD(): Boolean = this?.details?.hasProperty(Call.Details.PROPERTY_HIGH_DEF_AUDIO) == true
+
+/**
+ * Checks if the DisconnectCause represents a Busy state (line busy / user busy).
+ * Inspects standard DisconnectCause.BUSY, ToneGenerator busy tones, reason codes,
+ * and carrier description/label strings in both English and Arabic.
+ */
+fun DisconnectCause?.isBusy(): Boolean {
+    if (this == null) return false
+    if (code == DisconnectCause.BUSY) return true
+    try {
+        if (tone == ToneGenerator.TONE_SUP_BUSY || tone == ToneGenerator.TONE_SUP_CONGESTION) return true
+    } catch (_: Exception) {}
+
+    val r = reason.orEmpty().lowercase()
+    val d = description?.toString().orEmpty().lowercase()
+    val l = label?.toString().orEmpty().lowercase()
+
+    return r.contains("busy") || r.contains("486") || r.contains("600") || r.contains("مشغول") ||
+           d.contains("busy") || d.contains("486") || d.contains("مشغول") ||
+           l.contains("busy") || l.contains("مشغول")
+}
+
+/**
+ * Checks if the DisconnectCause represents a Rejected / Declined state.
+ * Inspects standard DisconnectCause.REJECTED, reason codes, and carrier descriptions.
+ */
+fun DisconnectCause?.isRejected(): Boolean {
+    if (this == null) return false
+    if (code == DisconnectCause.REJECTED) return true
+
+    val r = reason.orEmpty().lowercase()
+    val d = description?.toString().orEmpty().lowercase()
+    val l = label?.toString().orEmpty().lowercase()
+
+    return r.contains("reject") || r.contains("decline") || r.contains("603") || r.contains("رفض") ||
+           d.contains("reject") || d.contains("decline") || d.contains("رفض") ||
+           l.contains("reject") || l.contains("decline") || l.contains("رفض")
+}
+
+fun Call?.isBusy(): Boolean = this?.details?.disconnectCause.isBusy()
+
+fun Call?.isRejected(): Boolean = this?.details?.disconnectCause.isRejected()
+
+/**
+ * Accurately detects whether a Bundle contains network supplementary service notification
+ * or carrier call-waiting flags indicating that the remote called party is on another call.
+ */
+fun isCallWaitingBundle(extras: android.os.Bundle?): Boolean {
+    if (extras == null) return false
+    try {
+        // Notification code: 3 = CODE_1_CALL_IS_WAITING (3GPP TS 24.083 / TS 27.007)
+        val codeKeys = listOf(
+            "android.telephony.extra.NOTIFICATION_CODE",
+            "EXTRA_NOTIFICATION_CODE",
+            "notification_code",
+            "notificationCode",
+            "extra_notification_code",
+            "code",
+            "NotificationCode"
+        )
+        for (key in codeKeys) {
+            if (extras.containsKey(key)) {
+                val value = extras.get(key)
+                if (value == 3 || value == "3") return true
+            }
+        }
+
+        // Boolean call-waiting flags across AOSP and OEM chipsets (Qualcomm, Samsung, MediaTek)
+        val boolKeys = listOf(
+            "android.telecom.extra.CALL_WAITING",
+            "call_waiting",
+            "is_call_waiting",
+            "isCallWaiting",
+            "remote_call_waiting",
+            "is_remote_call_waiting",
+            "RemoteCallWaiting",
+            "CallWaiting",
+            "org.codeaurora.extra.CALL_WAITING",
+            "com.samsung.telecom.extra.CALL_WAITING",
+            "mediatek.telecom.extra.CALL_WAITING",
+            "ims_call_waiting"
+        )
+        for (key in boolKeys) {
+            if (extras.containsKey(key)) {
+                val value = extras.get(key)
+                if (value == true || value == 1 || value == "true" || value == "1") return true
+            }
+        }
+
+        // Notification message text matching "waiting" or Arabic "الانتظار" / "أخرى"
+        val msgKeys = listOf(
+            "android.telephony.extra.NOTIFICATION_MESSAGE",
+            "EXTRA_NOTIFICATION_MESSAGE",
+            "message",
+            "description"
+        )
+        for (key in msgKeys) {
+            val msg = extras.getCharSequence(key)?.toString()?.lowercase()
+            if (msg != null && (msg.contains("waiting") || msg.contains("الانتظار") || msg.contains("مكالمة أخرى") || msg.contains("another call"))) {
+                return true
+            }
+        }
+    } catch (_: Exception) {}
+    return false
+}
+
+/**
+ * Checks whether this Call has received indication that the called party is on another call (Call Waiting).
+ */
+fun Call?.isRemoteCallWaiting(event: String? = null, extras: android.os.Bundle? = null): Boolean {
+    if (this == null) return false
+
+    if (event != null) {
+        val ev = event.lowercase()
+        if (ev.contains("supplementary_service") ||
+            ev.contains("call_waiting") ||
+            ev.contains("call_is_waiting")
+        ) {
+            if (extras == null || isCallWaitingBundle(extras)) return true
+        }
+    }
+
+    if (isCallWaitingBundle(extras)) return true
+
+    if (isCallWaitingBundle(details?.extras)) return true
+
+    return false
+}
 
 /**
  * Accurately detects whether this call is a Wi-Fi Calling (VoWiFi) call.

@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.BluetoothAudio
+import androidx.compose.material.icons.rounded.LayersClear
 import androidx.compose.material.icons.rounded.VisibilityOff
 import com.ramcosta.composedestinations.generated.destinations.CallerAliasScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickResponsesScreenDestination
@@ -124,6 +125,9 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
     }
     var bluetoothAutoRoute by remember {
         mutableStateOf(prefs.getBoolean(BluetoothCallAudioHelper.KEY_BT_AUTO_ROUTE, true))
+    }
+    var blockCallOverlays by remember {
+        mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_BLOCK_CALL_OVERLAYS, true))
     }
 
     LaunchedEffect(Unit) {
@@ -398,6 +402,20 @@ fun CallSettingScreen(navigator: DestinationsNavigator) {
                                         prefs.setBoolean(PreferenceManager.KEY_REDIAL_AUTO_CALL, it)
                                     }
                                 )
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                    RillSwitchListItem(
+                                        headline = stringResource(R.string.block_call_overlays),
+                                        supporting = stringResource(R.string.block_call_overlays_subtitle),
+                                        leadingIcon = Icons.Rounded.LayersClear,
+                                        iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkRed,
+                                        iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorRed,
+                                        checked = blockCallOverlays,
+                                        onCheckedChange = {
+                                            blockCallOverlays = it
+                                            prefs.setBoolean(PreferenceManager.KEY_BLOCK_CALL_OVERLAYS, it)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

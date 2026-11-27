@@ -28,6 +28,7 @@ import dev.goodwy.rphone.R
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.bluetooth.BluetoothCallAudioHelper
 import dev.goodwy.rphone.controller.util.isAlreadyDefaultDialer
+import dev.goodwy.rphone.controller.util.isRemoteCallWaiting
 import dev.goodwy.rphone.controller.util.toast
 import dev.goodwy.rphone.modal.`interface`.CallSession
 import dev.goodwy.rphone.modal.`interface`.ICallRepository
@@ -148,12 +149,9 @@ class CallService : InCallService() {
     private val callCallback = object : Call.Callback() {
         override fun onConnectionEvent(call: Call, event: String, extras: android.os.Bundle?) {
             super.onConnectionEvent(call, event, extras)
-            // AOSP Telephony sends supplementary service notification code 1/3 when
-            // the called party is already on a call and our outgoing call is waiting.
-            if (event == EVENT_SUPPLEMENTARY_SERVICE_NOTIFICATION &&
-                extras?.getInt(EXTRA_NOTIFICATION_TYPE, -1) == 0 &&
-                extras?.getInt(EXTRA_NOTIFICATION_CODE, -1) == 3 &&
-                (call.state == Call.STATE_DIALING || call.state == Call.STATE_CONNECTING)
+            // Detect when the called party is already on a call and our outgoing call is waiting (Call Waiting / SSN)
+            if (call.isRemoteCallWaiting(event, extras) &&
+                call.state != Call.STATE_ACTIVE && call.state != Call.STATE_DISCONNECTED
             ) {
                 remoteWaitingCallsState.value = remoteWaitingCallsState.value + call
                 if (!isSuppressed(call)) updateNotification(call)
@@ -194,8 +192,10 @@ class CallService : InCallService() {
                 }
             }
 
-            if (state != Call.STATE_DIALING && state != Call.STATE_CONNECTING) {
+            if (state == Call.STATE_ACTIVE || state == Call.STATE_DISCONNECTED) {
                 remoteWaitingCallsState.value = remoteWaitingCallsState.value - call
+            } else if (call.isRemoteCallWaiting() && state != Call.STATE_DISCONNECTED) {
+                remoteWaitingCallsState.value = remoteWaitingCallsState.value + call
             }
             updateCallState()
 
@@ -218,6 +218,12 @@ class CallService : InCallService() {
 
         override fun onDetailsChanged(call: Call, details: Call.Details) {
             super.onDetailsChanged(call, details)
+            if (call.isRemoteCallWaiting(null, details.extras) &&
+                call.state != Call.STATE_ACTIVE && call.state != Call.STATE_DISCONNECTED
+            ) {
+                remoteWaitingCallsState.value = remoteWaitingCallsState.value + call
+                if (!isSuppressed(call)) updateNotification(call)
+            }
             val number = details.handle?.schemeSpecificPart?.let { android.net.Uri.decode(it) } ?: ""
             val cnam = if (details.callerDisplayNamePresentation == TelecomManager.PRESENTATION_ALLOWED) {
                 details.callerDisplayName
@@ -568,6 +574,10 @@ class CallService : InCallService() {
                 updateCallState()
             }
             return
+        }
+
+        if (!isIncoming && call.isRemoteCallWaiting()) {
+            remoteWaitingCallsState.value = remoteWaitingCallsState.value + call
         }
 
         // Update call state synchronously so CallActivity sees active calls immediately

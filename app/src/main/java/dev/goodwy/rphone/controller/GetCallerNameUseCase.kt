@@ -12,11 +12,13 @@ class GetCallerNameUseCase(private val repository: ICallerRepository) {
                 number = if (alias.hideNumber) "••••••••" else incomingNumber,
                 name = alias.aliasName,
                 isLocalContact = true,
-                photoUri = null
+                photoUri = null,
+                isPrivate = true
             )
         }
 
         val localContact = repository.getContactByNumber(incomingNumber)
+        val isPrivateContact = localContact?.isPrivate == true
         
         val hasLocalName = localContact != null && (
             localContact.givenName.isNotBlank() || 
@@ -31,14 +33,16 @@ class GetCallerNameUseCase(private val repository: ICallerRepository) {
                     number = incomingNumber,
                     name = localContact.displayName,
                     isLocalContact = true,
-                    photoUri = localContact.photoUri
+                    photoUri = localContact.photoUri,
+                    isPrivate = isPrivateContact
                 )
             }
             !cnamName.isNullOrBlank() -> {
                 CallerMetadata(
                     number = incomingNumber,
                     name = cnamName,
-                    isLocalContact = false
+                    isLocalContact = false,
+                    isPrivate = isPrivateContact
                 )
             }
             localContact != null -> {
@@ -47,7 +51,8 @@ class GetCallerNameUseCase(private val repository: ICallerRepository) {
                     number = incomingNumber,
                     name = localContact.displayName,
                     isLocalContact = true,
-                    photoUri = localContact.photoUri
+                    photoUri = localContact.photoUri,
+                    isPrivate = isPrivateContact
                 )
             }
             else -> {

@@ -91,6 +91,7 @@ fun KeypadButton(
     key: Char,
     style: Int = PreferenceManager.KEYPAD_SHAPE_CIRCLE,
     buttonScale: Float = 1.0f,
+    digitScale: Float = 1.0f,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -130,7 +131,7 @@ fun KeypadButton(
             Text(
                 text = key.toString(),
                 style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = (26 * buttonScale).coerceIn(18f, 34f).sp
+                    fontSize = (26 * buttonScale * digitScale).coerceIn(16f, 44f).sp
                 ),
                 fontWeight = FontWeight.Medium
             )
@@ -2114,6 +2115,9 @@ fun InCallKeypad(
     val buttonScale by remember(settingsState) {
         mutableFloatStateOf(prefs.getKeypadButtonSizeScale())
     }
+    val digitScale by remember(settingsState) {
+        mutableFloatStateOf(prefs.getKeypadDigitSizeScale())
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -2172,6 +2176,7 @@ fun InCallKeypad(
                             key = key,
                             style = dialpadStyle,
                             buttonScale = buttonScale,
+                            digitScale = digitScale,
                             onClick = {
                                 if (prefs.getBoolean(PreferenceManager.KEY_DTMF_TONE, true)) {
                                     val toneType = when (key) {

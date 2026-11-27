@@ -488,7 +488,8 @@
     <string name="call_status_incoming">Incoming call</string>
     <string name="call_status_connecting">Connecting…</string>
     <string name="call_status_unanswered">No answer</string>
-    <string name="call_status_remote_waiting">Call is waiting…</string>
+    <string name="call_status_remote_waiting">On another call (Call waiting)…</string>
+    <string name="call_status_remote_on_another_call">Party is on another call</string>
     <string name="call_status_busy">Line busy</string>
     <string name="call_status_rejected">Call declined</string>
     <string name="redial_unanswered">Redial options</string>
@@ -502,6 +503,8 @@
     <string name="redial_prompt_closes_in">Closing in %1$d…</string>
     <string name="redialing_in">Calling again in %1$d…</string>
     <string name="call_now">Call now</string>
+    <string name="block_call_overlays">Block overlay apps on private calls</string>
+    <string name="block_call_overlays_subtitle">Prevent third-party apps (like Truecaller) from displaying floating caller ID windows over private contacts and numbers</string>
     <string name="slide_to_answer">slide to answer</string>
     <string name="swipe_up_to_answer">Swipe up to answer</string>
     <string name="swipe_down_to_reject">Swipe down to reject</string>
@@ -895,6 +898,8 @@
     <string name="keypad_shape_cut_corner">Geometric Cut Corner</string>
     <string name="keypad_button_size">Keypad Button Size</string>
     <string name="keypad_button_size_subtitle">Adjust button diameter and scale</string>
+    <string name="keypad_digit_size">Keypad Digits Font Size</string>
+    <string name="keypad_digit_size_subtitle">Adjust font size of numbers and symbols inside buttons</string>
     <string name="keypad_number_display_size">Typed Number Font Size</string>
     <string name="keypad_number_display_size_subtitle">Adjust font size of the entered phone number</string>
     <string name="keypad_show_letters">Show Letters on Keys</string>

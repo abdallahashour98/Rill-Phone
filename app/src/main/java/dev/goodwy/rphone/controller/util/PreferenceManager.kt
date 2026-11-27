@@ -490,6 +490,7 @@ class PreferenceManager(context: Context) {
         const val KEYPAD_SHAPE_CUT_CORNER = 5
 
         const val KEY_KEYPAD_BUTTON_SIZE_SCALE = "keypad_button_size_scale"
+        const val KEY_KEYPAD_DIGIT_SIZE_SCALE = "keypad_digit_size_scale"
         const val KEY_KEYPAD_NUMBER_SIZE = "keypad_number_size"
         const val KEY_KEYPAD_SHOW_LETTERS = "keypad_show_letters"
         const val KEY_CALL_BUTTONS_SIZE_SCALE = "call_buttons_size_scale"
@@ -533,6 +534,7 @@ class PreferenceManager(context: Context) {
         const val KEY_REDIAL_UNANSWERED = "redial_unanswered"
         const val KEY_REDIAL_AUTO_CALL = "redial_auto_call"
         const val KEY_REDIAL_PROMPT_SECONDS = "redial_prompt_seconds"
+        const val KEY_BLOCK_CALL_OVERLAYS = "block_call_overlays"
         const val KEY_NAV_BAR_STYLE = "nav_bar_style"
         const val NAV_BAR_STYLE_STANDARD = 0
         const val NAV_BAR_STYLE_TOOLBAR = 1
@@ -780,6 +782,9 @@ class PreferenceManager(context: Context) {
 
     fun getKeypadButtonSizeScale(): Float = getFloat(KEY_KEYPAD_BUTTON_SIZE_SCALE, 1.0f)
     fun setKeypadButtonSizeScale(scale: Float) = setFloat(KEY_KEYPAD_BUTTON_SIZE_SCALE, scale)
+
+    fun getKeypadDigitSizeScale(): Float = getFloat(KEY_KEYPAD_DIGIT_SIZE_SCALE, 1.0f)
+    fun setKeypadDigitSizeScale(scale: Float) = setFloat(KEY_KEYPAD_DIGIT_SIZE_SCALE, scale)
 
     fun getKeypadNumberSize(): Int = getInt(KEY_KEYPAD_NUMBER_SIZE, 36)
     fun setKeypadNumberSize(size: Int) = setInt(KEY_KEYPAD_NUMBER_SIZE, size)

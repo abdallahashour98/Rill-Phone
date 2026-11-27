@@ -197,6 +197,7 @@ class ContactsViewModel(
     init {
         fetchAccounts()
         registerObserverIfNeeded()
+        fetchContacts()
     }
 
     fun fetchContacts() {
@@ -205,9 +206,14 @@ class ContactsViewModel(
             if (_allContacts.value.isEmpty()) {
                 _isLoading.value = true
             }
-            val result = contactsRepo.getContacts()
-            _allContacts.value = result
-            _isLoading.value = false
+            try {
+                val result = contactsRepo.getContacts()
+                _allContacts.value = result
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
@@ -215,9 +221,18 @@ class ContactsViewModel(
         if (!isFullContactsLoaded || force) {
             isFullContactsLoaded = true
             viewModelScope.launch {
-                val fullContacts = contactsRepo.getContactsFull()
-                _allContactsFull.value = fullContacts
+                try {
+                    val fullContacts = contactsRepo.getContactsFull()
+                    _allContactsFull.value = fullContacts
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    isFullContactsLoaded = false
+                } finally {
+                    _isLoading.value = false
+                }
             }
+        } else {
+            _isLoading.value = false
         }
     }
 
@@ -585,11 +600,17 @@ class ContactsViewModel(
 
     fun refreshContacts() {
         viewModelScope.launch {
-            val freshContacts = contactsRepo.getContacts()
-            _allContacts.value = freshContacts
-            if (isFullContactsLoaded) {
-                val fullContacts = contactsRepo.getContactsFull()
-                _allContactsFull.value = fullContacts
+            try {
+                val freshContacts = contactsRepo.getContacts()
+                _allContacts.value = freshContacts
+                if (isFullContactsLoaded) {
+                    val fullContacts = contactsRepo.getContactsFull()
+                    _allContactsFull.value = fullContacts
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

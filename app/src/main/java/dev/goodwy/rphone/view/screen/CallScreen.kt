@@ -88,6 +88,8 @@ import dev.goodwy.rphone.controller.util.isPhoneNumber
 import dev.goodwy.rphone.controller.util.hasCapability
 import dev.goodwy.rphone.controller.util.isHD
 import dev.goodwy.rphone.controller.util.isWifi
+import dev.goodwy.rphone.controller.util.isBusy
+import dev.goodwy.rphone.controller.util.isRejected
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.LayerBackdrop
 import dev.goodwy.rphone.liquidglass.drawBackdrop
@@ -485,8 +487,20 @@ fun ExpressiveCallScreen(
                     enter = fadeIn(tween(1000)) + expandVertically(tween(800))
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val disconnectCause = call.details?.disconnectCause
+                        val isBusy = remember(disconnectCause) { disconnectCause.isBusy() }
+                        val isRejected = remember(disconnectCause) { disconnectCause.isRejected() }
+
                         val statusText = when (callState) {
-                            Call.STATE_DISCONNECTED -> stringResource(R.string.call_status_ended)
+                            Call.STATE_DISCONNECTED -> {
+                                when {
+                                    isBusy -> stringResource(R.string.call_status_busy)
+                                    isRejected -> stringResource(R.string.call_status_rejected)
+                                    !disconnectCause?.label.isNullOrBlank() -> disconnectCause.label.toString()
+                                    !disconnectCause?.description.isNullOrBlank() -> disconnectCause.description.toString()
+                                    else -> stringResource(R.string.call_status_ended)
+                                }
+                            }
                             Call.STATE_HOLDING -> stringResource(R.string.call_status_on_hold)
                             Call.STATE_ACTIVE -> formatDuration(callDuration)
                             Call.STATE_DIALING -> stringResource(
@@ -501,14 +515,78 @@ fun ExpressiveCallScreen(
                             else -> stringResource(R.string.call_status_connecting)
                         }
 
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (callState == Call.STATE_HOLDING) MaterialTheme.colorScheme.tertiary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        val isDisconnectAlert = callState == Call.STATE_DISCONNECTED && (isBusy || isRejected)
+                        val isWaitingOtherCall = isRemoteWaiting && (callState == Call.STATE_DIALING || callState == Call.STATE_CONNECTING)
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isDisconnectAlert) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PhoneDisabled,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .padding(end = 4.dp)
+                                )
+                            } else if (isWaitingOtherCall) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PhoneInTalk,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .padding(end = 6.dp)
+                                )
+                            }
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (isDisconnectAlert || isWaitingOtherCall) FontWeight.Bold else FontWeight.Normal,
+                                color = when {
+                                    isDisconnectAlert -> MaterialTheme.colorScheme.error
+                                    isWaitingOtherCall -> MaterialTheme.colorScheme.tertiary
+                                    callState == Call.STATE_HOLDING -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = isWaitingOtherCall,
+                            enter = fadeIn(tween(400)) + expandVertically(tween(400)),
+                            exit = fadeOut(tween(300)) + shrinkVertically(tween(300))
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PhoneInTalk,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = stringResource(R.string.call_status_remote_on_another_call),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(16.dp))
 
                         val resolvedNameSize = when (callerNameSize) {

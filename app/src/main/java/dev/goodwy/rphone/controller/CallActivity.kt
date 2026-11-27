@@ -43,6 +43,9 @@ import dev.goodwy.rphone.controller.util.CallBackgroundStore
 import dev.goodwy.rphone.controller.util.PreferenceManager
 import dev.goodwy.rphone.controller.util.isAlreadyDefaultDialer
 import dev.goodwy.rphone.controller.util.isConference
+import dev.goodwy.rphone.controller.util.isBusy
+import dev.goodwy.rphone.controller.util.isRejected
+import dev.goodwy.rphone.controller.util.isRemoteCallWaiting
 import dev.goodwy.rphone.liquidglass.LocalLiquidGlassBackdrop
 import dev.goodwy.rphone.liquidglass.backdrops.rememberLayerBackdrop
 import dev.goodwy.rphone.modal.data.getDisplayName
@@ -64,7 +67,8 @@ private data class CallIdentity(
     val number: String,
     val name: String,
     val photoUri: String?,
-    val backgroundUri: String?
+    val backgroundUri: String?,
+    val isPrivate: Boolean = false
 )
 
 private data class CachedCallIdentity(
@@ -138,12 +142,18 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                 var retainedSession by remember { mutableStateOf<CallSession?>(null) }
                 var hasHadCall by remember { mutableStateOf(false) }
                 var hasEverBeenActive by remember { mutableStateOf(false) }
+                var outgoingDialNumber by remember { mutableStateOf("") }
                 var redialTarget by remember { mutableStateOf<dev.goodwy.rphone.view.components.RedialTarget?>(null) }
+                var isHandlingDisconnect by remember { mutableStateOf(false) }
 
                 LaunchedEffect(session) {
                     if (session != null) {
                         hasHadCall = true
                         retainedSession = session
+                        val sNum = session!!.call.details?.handle?.schemeSpecificPart.orEmpty()
+                        if (sNum.isNotBlank() && !sNum.contains("•")) {
+                            outgoingDialNumber = sNum
+                        }
                         if (session!!.state != Call.STATE_DISCONNECTED) {
                             redialTarget = null
                         }
@@ -159,7 +169,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
 
                 val displaySession = session ?: retainedSession
                 val displayCall = displaySession?.call
-                val callState = session?.state
+                val callState = session?.state ?: (if (hasHadCall) Call.STATE_DISCONNECTED else null)
 
                 val identity = if (displayCall != null) {
                     rememberCallIdentity(displayCall, settingsState)
@@ -179,13 +189,22 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     onDispose { }
                 }
 
-                LaunchedEffect(callState, settingsState, audioState) {
+                LaunchedEffect(callState, settingsState, audioState, identity?.isPrivate) {
                     val keepScreenOn =
                         preferenceManager.getBoolean(PreferenceManager.KEY_KEEP_SCREEN_ON, true)
                     if (keepScreenOn) {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     } else {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val blockOverlays = preferenceManager.getBoolean(PreferenceManager.KEY_BLOCK_CALL_OVERLAYS, true)
+                        val shouldBlock = blockOverlays && (identity?.isPrivate == true)
+                        try {
+                            window.setHideOverlayWindows(shouldBlock)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                     when (callState) {
                         Call.STATE_ACTIVE -> {
@@ -214,7 +233,13 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                         }
 
                         Call.STATE_DISCONNECTED -> {
-                            if (preferenceManager.getBoolean(PreferenceManager.KEY_VIBRATE_ON_HANGUP, false)) {
+                            isHandlingDisconnect = true
+                            val disconnectCause = displayCall?.details?.disconnectCause
+                            val disconnectCauseCode = disconnectCause?.code
+                            val isCallBusy = disconnectCause.isBusy()
+                            val isCallRejected = disconnectCause.isRejected()
+
+                            if (isCallBusy || isCallRejected || preferenceManager.getBoolean(PreferenceManager.KEY_VIBRATE_ON_HANGUP, false)) {
                                 this@CallActivity.window?.decorView?.performHapticFeedback(
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                         HapticFeedbackConstants.REJECT
@@ -234,28 +259,51 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                             val hasNoOtherCalls = callViewModel.allCalls.value.none { it != displayCall && it.state != Call.STATE_DISCONNECTED }
                             val redialEnabled = preferenceManager.getBoolean(PreferenceManager.KEY_REDIAL_UNANSWERED, true)
 
-                            val disconnectCauseCode = displayCall?.details?.disconnectCause?.code
                             val canOfferRedial = disconnectCauseCode != android.telecom.DisconnectCause.LOCAL &&
                                 disconnectCauseCode != android.telecom.DisconnectCause.CANCELED
-                            if (isUnansweredOutgoing && hasNoOtherCalls && redialEnabled && canOfferRedial && identity != null && identity.number.isNotBlank()) {
-                                val reasonText = when (disconnectCauseCode) {
-                                    android.telecom.DisconnectCause.BUSY -> getString(R.string.call_status_busy)
-                                    android.telecom.DisconnectCause.REJECTED -> getString(R.string.call_status_rejected)
+
+                            val rawCallNumber = displayCall?.details?.handle?.schemeSpecificPart.orEmpty()
+                            val candidateNumber = rawCallNumber.ifBlank { outgoingDialNumber }
+                            val dialableNumber = if (candidateNumber.isNotBlank() && !candidateNumber.contains("•")) {
+                                candidateNumber
+                            } else {
+                                val matchedAlias = dev.goodwy.rphone.controller.util.alias.CallerAliasManager.aliases.value.find {
+                                    (identity != null && it.aliasName.equals(identity.name, ignoreCase = true)) ||
+                                    (candidateNumber.isNotBlank() && it.cleanNumber == dev.goodwy.rphone.controller.util.alias.CallerAlias.cleanPhoneNumber(candidateNumber))
+                                }
+                                matchedAlias?.rawNumber ?: (identity?.number ?: "").filter { it.isDigit() || it == '+' || it == '*' || it == '#' }
+                            }
+
+                            if (isUnansweredOutgoing && hasNoOtherCalls && redialEnabled && canOfferRedial && dialableNumber.isNotBlank()) {
+                                val reasonText = when {
+                                    isCallBusy -> getString(R.string.call_status_busy)
+                                    isCallRejected -> getString(R.string.call_status_rejected)
                                     else -> getString(R.string.call_status_unanswered)
                                 }
+                                if (isCallBusy || isCallRejected) {
+                                    delay(1200.milliseconds)
+                                }
                                 redialTarget = dev.goodwy.rphone.view.components.RedialTarget(
-                                    name = identity.name,
-                                    number = identity.number,
-                                    photoUri = identity.photoUri,
-                                    backgroundUri = identity.backgroundUri,
+                                    name = identity?.name ?: dialableNumber,
+                                    number = identity?.number ?: dialableNumber,
+                                    dialNumber = dialableNumber,
+                                    photoUri = identity?.photoUri,
+                                    backgroundUri = identity?.backgroundUri,
                                     phoneAccountHandle = displayCall?.details?.accountHandle,
                                     reason = reasonText
                                 )
+                                isHandlingDisconnect = false
                             } else {
                                 if (isUnansweredIncoming) {
+                                    isHandlingDisconnect = false
                                     dismissCallScreen()
                                 } else {
-                                    delay(350.milliseconds)
+                                    if (isCallBusy || isCallRejected) {
+                                        delay(2500.milliseconds)
+                                    } else {
+                                        delay(350.milliseconds)
+                                    }
+                                    isHandlingDisconnect = false
                                     dismissCallScreen()
                                 }
                             }
@@ -264,7 +312,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                         else -> releaseProximityLock()
                     }
 
-                    if (session == null && redialTarget == null) {
+                    if (session == null && redialTarget == null && !isHandlingDisconnect) {
                         if (hasHadCall) {
                             delay(400.milliseconds)
                             if (callViewModel.allCalls.value.none { it.state != Call.STATE_DISCONNECTED }) {
@@ -306,7 +354,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                     rememberCallIdentity(targetCall, settingsState)
                                 }
                             val targetState = if (isDisplayed) {
-                                session?.state ?: targetCall.state
+                                session?.state ?: (if (hasHadCall) Call.STATE_DISCONNECTED else targetCall.state)
                             } else {
                                 targetCall.state
                             }
@@ -322,7 +370,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                                 ExpressiveCallScreen(
                                     call = targetCall,
                                     callState = targetState,
-                                    isRemoteWaiting = targetCall in remoteWaitingCalls,
+                                    isRemoteWaiting = (targetCall in remoteWaitingCalls) || targetCall.isRemoteCallWaiting(),
                                     contactName = targetIdentity.name,
                                     phoneNumber = targetIdentity.number,
                                     photoUri = targetIdentity.photoUri,
@@ -345,7 +393,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                             autoCallEnabled = autoCall,
                             totalDurationSeconds = preferenceManager.getInt(PreferenceManager.KEY_REDIAL_PROMPT_SECONDS, 10).coerceIn(5, 30),
                             onRedial = { rTarget ->
-                                val num = rTarget.number
+                                val num = rTarget.dialNumber.takeIf { it.isNotBlank() && !it.contains("•") }
+                                    ?: rTarget.number.filter { it.isDigit() || it == '+' || it == '*' || it == '#' }
                                 val account = rTarget.phoneAccountHandle
                                 redialTarget = null
                                 hasEverBeenActive = false
@@ -387,13 +436,14 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
         val initialAlias = remember(number) { dev.goodwy.rphone.controller.util.alias.CallerAliasManager.getAliasForNumber(number) }
         var identity by remember(number, cnam, unknownLabel, initialAlias) {
             val base = if (isConference) {
-                CallIdentity("", conference, null, null)
+                CallIdentity("", conference, null, null, false)
             } else if (initialAlias != null) {
                 CallIdentity(
                     number = if (initialAlias.hideNumber) "••••••••" else number,
                     name = initialAlias.aliasName,
                     photoUri = null,
-                    backgroundUri = null
+                    backgroundUri = null,
+                    isPrivate = true
                 )
             } else {
                 val cached = cachedIdentity(number, settingsState)
@@ -406,10 +456,11 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                             number = number,
                             name = metadata.name.ifBlank { cnam ?: number.ifEmpty { unknownLabel } },
                             photoUri = metadata.photoUri,
-                            backgroundUri = null
+                            backgroundUri = null,
+                            isPrivate = metadata.isPrivate
                         )
                     } else {
-                        CallIdentity(number, cnam ?: number.ifEmpty { unknownLabel }, null, null)
+                        CallIdentity(number, cnam ?: number.ifEmpty { unknownLabel }, null, null, false)
                     }
                 }
             }
@@ -433,7 +484,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     identity = identity.copy(
                         name = currentAlias.aliasName,
                         number = if (currentAlias.hideNumber) "••••••••" else number,
-                        photoUri = null
+                        photoUri = null,
+                        isPrivate = true
                     )
                     return@LaunchedEffect
                 }
@@ -442,7 +494,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     if (meta.name.isNotBlank() && meta.name != number) {
                         identity = identity.copy(
                             name = meta.name,
-                            photoUri = meta.photoUri ?: identity.photoUri
+                            photoUri = meta.photoUri ?: identity.photoUri,
+                            isPrivate = identity.isPrivate || meta.isPrivate
                         )
                     }
                 }
@@ -467,7 +520,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     number = if (currentAlias.hideNumber) "••••••••" else number,
                     name = currentAlias.aliasName,
                     photoUri = null,
-                    backgroundUri = handleBackground ?: defaultBackground
+                    backgroundUri = handleBackground ?: defaultBackground,
+                    isPrivate = true
                 )
                 cacheIdentity(number, resolved, settingsState)
                 identity = resolved
@@ -482,6 +536,7 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                 }
             }
             val contact = lookup?.getOrNull()
+            val isPrivateContact = contact?.isPrivate == true
             val contactFailed = lookup?.isFailure == true
 
             val contactId = contact?.id?.takeIf { it.isNotBlank() }
@@ -507,7 +562,8 @@ class CallActivity : FragmentActivity() { //ComponentActivity()
                     ?: identity.name.takeIf { contactFailed && it.isNotBlank() }
                     ?: number.ifEmpty { unknownLabel },
                 photoUri = contact?.photoUri ?: identity.photoUri.takeIf { contactFailed },
-                backgroundUri = background
+                backgroundUri = background,
+                isPrivate = isPrivateContact || identity.isPrivate
             )
             cacheIdentity(number, resolved, settingsState)
             identity = resolved

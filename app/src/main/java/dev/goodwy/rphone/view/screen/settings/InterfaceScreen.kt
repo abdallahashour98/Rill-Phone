@@ -178,8 +178,6 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
     var callUIShowMissed   by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_UI_SHOW_MISSED, true)) }
     var callUIShowOutgoing by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_UI_SHOW_OUTGOING, true)) }
     var callUIShowCallTime by remember(settingsState) { mutableStateOf(prefs.getBoolean(PreferenceManager.KEY_CALL_UI_SHOW_CALL_TIME, true)) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var currentLangCode by remember { mutableStateOf(LocaleHelper.getSelectedLanguage(context)) }
 
     var hexInput by remember(settingsState) { mutableStateOf(String.format("%06X", 0xFFFFFF and customPrimaryColor)) }
     var hexError by remember(settingsState) { mutableStateOf(false) }
@@ -303,78 +301,6 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
         )
     }
 
-    // ── Language Dialog ────────────────────────────────────────────────────────
-    if (showLanguageDialog) {
-        AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },
-            icon = { Icon(Icons.Rounded.Language, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.select_language), fontWeight = FontWeight.Bold) },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    LocaleHelper.supportedLanguages.forEach { option ->
-                        val isSelected = currentLangCode == option.code
-                        Surface(
-                            onClick = {
-                                currentLangCode = option.code
-                                showLanguageDialog = false
-                                LocaleHelper.setLanguage(context, option.code)
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = option.flag,
-                                    fontSize = 22.sp,
-                                    modifier = Modifier.padding(end = 12.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = option.nativeName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                                    )
-                                    if (option.displayName != option.nativeName) {
-                                        Text(
-                                            text = option.displayName,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = {
-                                        currentLangCode = option.code
-                                        showLanguageDialog = false
-                                        LocaleHelper.setLanguage(context, option.code)
-                                    },
-                                    colors = RadioButtonDefaults.colors(
-                                        selectedColor = MaterialTheme.colorScheme.primary
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLanguageDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
 
     // Font state
     val savedFontPath = prefs.getString(PreferenceManager.KEY_CUSTOM_FONT_PATH, null)
@@ -779,15 +705,7 @@ fun InterfaceScreen(navigator: DestinationsNavigator) {
                                         prefs.setInt(PreferenceManager.KEY_CARD_ROUNDNESS, cardRoundness)
                                     }
                                 )
-                                RillListItem(
-                                    headline = stringResource(R.string.language),
-                                    supporting = LocaleHelper.getSelectedLanguageLabel(context),
-                                    leadingIcon = Icons.Rounded.Language,
-                                    iconContainerColor = MaterialTheme.colorScheme.customColors.colorDarkBlue,
-                                    iconBgContainerColor = MaterialTheme.colorScheme.customColors.colorBlue,
-                                    trailingIcon = Icons.Default.ChevronRight,
-                                    onClick = { showLanguageDialog = true }
-                                )
+
                             }
                         }
                     }
